@@ -2,7 +2,10 @@ module OpenSplit2
 
 go 1.23
 
-require github.com/wailsapp/wails/v2 v2.10.2
+require (
+	github.com/wailsapp/wails/v2 v2.10.2
+	golang.org/x/sys v0.30.0
+)
 
 require (
 	github.com/bep/debounce v1.2.1 // indirect
@@ -30,7 +33,6 @@ require (
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	golang.org/x/crypto v0.33.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 )
 

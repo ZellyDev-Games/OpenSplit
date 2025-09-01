@@ -1,0 +1,10 @@
+@layer components {
+    .app {
+        min-width: 0;      /* prevents overflow from wide children in flex */
+        min-height: 100dvh;
+        width: 100%;       /* redundant but fine */
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font-sans), sans-serif;
+    }
+}
