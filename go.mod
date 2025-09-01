@@ -1,4 +1,4 @@
-module OpenSplit2
+module OpenSplit
 
 go 1.23
 

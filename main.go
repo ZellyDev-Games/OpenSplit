@@ -1,8 +1,8 @@
 package main
 
 import (
-	"OpenSplit2/logger"
-	"OpenSplit2/timer"
+	"OpenSplit/logger"
+	"OpenSplit/timer"
 	"context"
 	"embed"
 	"fmt"
