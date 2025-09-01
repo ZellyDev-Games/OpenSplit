@@ -2,6 +2,8 @@ package main
 
 import (
 	"OpenSplit/logger"
+	"OpenSplit/session"
+	"OpenSplit/session/persister"
 	"OpenSplit/timer"
 	"context"
 	"embed"
@@ -12,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -26,7 +29,20 @@ func main() {
 	setupLogging(logDir)
 	logger.Info("logging initialized, starting opensplit")
 
-	timerService := timer.NewService()
+	timerService, timeUpdatedChannel := timer.NewService()
+	logger.Debug("Timer service initialized")
+
+	jsonFilePersister := persister.JsonFile{}
+	logger.Debug("JSON FilePersister initialized")
+
+	mockSegments := []session.Segment{
+		*session.NewSegment(uuid.New(), "Segment 1"),
+		*session.NewSegment(uuid.New(), "Segment 2"),
+		*session.NewSegment(uuid.New(), "Segment 3"),
+	}
+	mockSplitFile := session.NewSplitFile("Test Game", "Any%", mockSegments)
+	sessionService := session.NewService(timerService, timeUpdatedChannel, jsonFilePersister, mockSplitFile)
+
 	// Create application with options
 	err := wails.Run(&options.App{
 		Title:  "OpenSplit",
@@ -38,10 +54,11 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
 			timerService.Startup(ctx)
+			sessionService.Startup(ctx)
 			runtime.WindowSetAlwaysOnTop(ctx, true)
 		},
 		Bind: []interface{}{
-			timerService,
+			sessionService,
 		},
 	})
 

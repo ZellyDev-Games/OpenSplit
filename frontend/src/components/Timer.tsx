@@ -1,5 +1,6 @@
 import {useEffect, useState} from "react";
-import {EventsOn, EventsOff} from "../../wailsjs/runtime";
+import {EventsOn} from "../../wailsjs/runtime";
+import {Split} from "../../wailsjs/go/session/Service";
 
 export default function Timer() {
     const [time, setTime] = useState(0);
@@ -10,7 +11,7 @@ export default function Timer() {
         });
     }, []);
 
-    return (<span>{formatDuration(time)}</span>)
+    return (<span>{formatDuration(time)} <button onClick={Split}>Split</button> </span>)
 }
 
 function formatDuration(ms: number, fmt = "HH:MM:SS.cc"): string {
