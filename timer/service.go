@@ -2,26 +2,28 @@ package timer
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"time"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type Service struct {
-	ctx         context.Context
-	currentTime time.Duration
-	startTime   time.Time
-	running     bool
-	mu          sync.Mutex
+	ctx                context.Context
+	currentTime        time.Duration
+	startTime          time.Time
+	running            bool
+	mu                 sync.Mutex
+	timeUpdatedChannel chan time.Duration
 }
 
-func NewService() *Service {
+func NewService() (*Service, chan time.Duration) {
+	timeUpdatedChannel := make(chan time.Duration)
 	return &Service{
-		ctx:         nil,
-		currentTime: 0,
-		running:     false,
-	}
+		ctx:                nil,
+		currentTime:        0,
+		running:            false,
+		timeUpdatedChannel: timeUpdatedChannel,
+	}, timeUpdatedChannel
 }
 
 func (s *Service) Startup(ctx context.Context) {
@@ -46,7 +48,11 @@ func (s *Service) Run() {
 				if s.running {
 					// elapsed since last Start + whatever we had before
 					s.currentTime = time.Since(s.startTime)
-					runtime.EventsEmit(s.ctx, "timer:update", s.currentTime.Milliseconds())
+
+					select {
+					case s.timeUpdatedChannel <- s.currentTime:
+					default:
+					}
 				}
 				s.mu.Unlock()
 			}
@@ -78,4 +84,12 @@ func (s *Service) Reset() {
 	defer s.mu.Unlock()
 	s.running = false
 	s.currentTime = 0
+}
+
+func (s *Service) GetCurrentTimeFormatted() string {
+	return strconv.FormatInt(s.currentTime.Milliseconds(), 10)
+}
+
+func (s *Service) GetCurrentTime() time.Duration {
+	return s.currentTime
 }

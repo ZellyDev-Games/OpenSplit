@@ -1,8 +1,10 @@
 package main
 
 import (
-	"OpenSplit2/logger"
-	"OpenSplit2/timer"
+	"OpenSplit/logger"
+	"OpenSplit/persister"
+	"OpenSplit/session"
+	"OpenSplit/timer"
 	"context"
 	"embed"
 	"fmt"
@@ -26,7 +28,16 @@ func main() {
 	setupLogging(logDir)
 	logger.Info("logging initialized, starting opensplit")
 
-	timerService := timer.NewService()
+	timerService, timeUpdatedChannel := timer.NewService()
+	logger.Debug("Timer service initialized")
+
+	jsonFilePersister := persister.JsonFile{}
+	persisterService := persister.NewService(&jsonFilePersister)
+	logger.Debug("JSON FilePersister initialized")
+
+	sessionService := session.NewService(timerService, timeUpdatedChannel, nil)
+	logger.Debug("SessionService initialized")
+
 	// Create application with options
 	err := wails.Run(&options.App{
 		Title:  "OpenSplit",
@@ -38,10 +49,14 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
 			timerService.Startup(ctx)
+			sessionService.Startup(ctx)
+			persisterService.Startup(ctx)
 			runtime.WindowSetAlwaysOnTop(ctx, true)
+			logger.Info("startup complete")
 		},
 		Bind: []interface{}{
-			timerService,
+			sessionService,
+			persisterService,
 		},
 	})
 
