@@ -134,12 +134,15 @@ func (s *Service) Reset() {
 	s.currentSegment = nil
 	runtime.EventsEmit(s.ctx, "timer:update", 0)
 	runtime.EventsEmit(s.ctx, "session:update", s.getServicePayload())
-	logger.Debug(fmt.Sprintf("session reset (%s - %s)", s.loadedSplitFile.gameName, s.loadedSplitFile.gameCategory))
+	if s.loadedSplitFile != nil {
+		logger.Debug(fmt.Sprintf("session reset (%s - %s)", s.loadedSplitFile.gameName, s.loadedSplitFile.gameCategory))
+	} else {
+		logger.Debug("session reset (no loaded split file)")
+	}
 }
 
 func (s *Service) getServicePayload() ServicePayload {
-	return ServicePayload{
-		SplitFile:            s.loadedSplitFile.GetPayload(),
+	payload := ServicePayload{
 		CurrentSegmentIndex:  s.currentSegmentIndex,
 		CurrentSegment:       s.currentSegment,
 		Finished:             s.finished,
@@ -147,6 +150,12 @@ func (s *Service) getServicePayload() ServicePayload {
 		CurrentTimeFormatted: s.timer.GetCurrentTimeFormatted(),
 		Paused:               !s.timer.IsRunning(),
 	}
+
+	if s.loadedSplitFile != nil {
+		payload.SplitFile = s.loadedSplitFile.GetPayload()
+	}
+
+	return payload
 }
 
 func (s *Service) getSplitPayload() SplitPayload {

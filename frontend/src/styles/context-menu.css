@@ -1,0 +1,55 @@
+@layer components {
+    .cm-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+    }
+
+    .cm-container {
+        position: absolute;
+    }
+
+    .cm-panel {
+        min-width: 200px;
+        max-height: 70vh;
+        overflow: auto;
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .cm-list {
+        list-style: none;
+        margin: 0;
+        padding: 6px 0; /* similar to py-1.5 */
+    }
+
+    .cm-separator {
+        height: 1px;
+        margin: 6px 4px; /* similar to my-1 mx-1 */
+        background: rgba(0, 0, 0, 0.1);
+    }
+
+    .cm-item {
+        display: block;
+        width: 100%;
+        text-align: left;
+        font-size: 14px; /* ~ text-sm */
+        padding: 8px 12px; /* px-3 py-2 */
+        color: #222;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+    }
+
+    .cm-item:hover {
+        background: rgba(0, 0, 0, 0.05);
+    }
+
+    .cm-item--disabled,
+    .cm-item:disabled {
+        color: rgba(0, 0, 0, 0.3);
+        cursor: not-allowed;
+    }
+}
