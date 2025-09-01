@@ -2,6 +2,7 @@ package session
 
 import (
 	"OpenSplit/logger"
+	"OpenSplit/splits"
 	"OpenSplit/timer"
 	"context"
 	"fmt"
@@ -10,46 +11,39 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-type Persister interface {
-	Save(id string, splitFile *SplitFile) error
-	Load(id string) (*SplitFile, error)
-}
-
 type ServicePayload struct {
-	SplitFile            *SplitFile    `json:"split_file"`
-	CurrentSegmentIndex  int           `json:"current_segment_index"`
-	CurrentSegment       *Segment      `json:"current_segment"`
-	Finished             bool          `json:"finished"`
-	Paused               bool          `json:"paused"`
-	CurrentTime          time.Duration `json:"current_time"`
-	CurrentTimeFormatted string        `json:"current_time_formatted"`
+	SplitFile            splits.SplitFilePayload `json:"split_file"`
+	CurrentSegmentIndex  int                     `json:"current_segment_index"`
+	CurrentSegment       *splits.Segment         `json:"current_segment"`
+	Finished             bool                    `json:"finished"`
+	Paused               bool                    `json:"paused"`
+	CurrentTime          time.Duration           `json:"current_time"`
+	CurrentTimeFormatted string                  `json:"current_time_formatted"`
 }
 
 type SplitPayload struct {
-	SplitIndex           int           `json:"split_index"`
-	NewIndex             int           `json:"new_index"`
-	SplitSegment         *Segment      `json:"split_segment"`
-	NewSegment           *Segment      `json:"new_segment"`
-	Finished             bool          `json:"finished"`
-	CurrentTime          time.Duration `json:"current_time"`
-	CurrentTimeFormatted string        `json:"current_time_formatted"`
+	SplitIndex           int             `json:"split_index"`
+	NewIndex             int             `json:"new_index"`
+	SplitSegment         *splits.Segment `json:"split_segment"`
+	NewSegment           *splits.Segment `json:"new_segment"`
+	Finished             bool            `json:"finished"`
+	CurrentTime          time.Duration   `json:"current_time"`
+	CurrentTimeFormatted string          `json:"current_time_formatted"`
 }
 
 type Service struct {
 	ctx                 context.Context
 	timer               *timer.Service
-	persister           Persister
-	loadedSplitFile     *SplitFile
-	currentSegment      *Segment
+	loadedSplitFile     *splits.SplitFile
+	currentSegment      *splits.Segment
 	currentSegmentIndex int
 	finished            bool
 	timeUpdatedChannel  chan time.Duration
 }
 
-func NewService(timer *timer.Service, timeUpdatedChannel chan time.Duration, persister Persister, splitFile *SplitFile) *Service {
+func NewService(timer *timer.Service, timeUpdatedChannel chan time.Duration, splitFile *splits.SplitFile) *Service {
 	service := &Service{
 		timer:              timer,
-		persister:          persister,
 		timeUpdatedChannel: timeUpdatedChannel,
 		loadedSplitFile:    splitFile,
 	}
@@ -75,26 +69,13 @@ func (s *Service) Startup(ctx context.Context) {
 	}()
 }
 
-func (s *Service) Save(id string, splitFile *SplitFile) error {
-	return s.persister.Save(id, splitFile)
-}
-
-func (s *Service) Load(id string) error {
-	splitFile, err := s.persister.Load(id)
-	if err != nil {
-		return err
-	}
-	s.loadedSplitFile = splitFile
-	s.Reset()
-	return nil
-}
-
 func (s *Service) Split() {
 	if s.loadedSplitFile == nil {
 		logger.Debug("split called with no split file loaded: NO-OP")
 		return
 	}
 
+	loadedSplitFileData := s.loadedSplitFile.GetPayload()
 	if s.finished {
 		s.Reset()
 		return
@@ -102,7 +83,7 @@ func (s *Service) Split() {
 		s.currentSegmentIndex++
 	}
 
-	if s.currentSegmentIndex >= len(s.loadedSplitFile.segments) {
+	if s.currentSegmentIndex >= len(loadedSplitFileData.Segments) {
 		s.timer.Pause()
 		s.finished = true
 		runtime.EventsEmit(s.ctx, "session:update", s.getServicePayload())
@@ -111,25 +92,28 @@ func (s *Service) Split() {
 		return
 	}
 
-	s.currentSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
+	s.currentSegment = &loadedSplitFileData.Segments[s.currentSegmentIndex]
+	currentSegmentPayload := s.currentSegment.GetPayload()
 	if s.currentSegmentIndex == 0 {
 		s.timer.Reset()
 		s.timer.Start()
+		s.loadedSplitFile.NewAttempt()
 		runtime.EventsEmit(s.ctx, "session:update", s.getServicePayload())
 		runtime.EventsEmit(s.ctx, "split:update", s.getSplitPayload())
-		logger.Debug(fmt.Sprintf("starting new run (%s - %s - %s) ",
-			s.loadedSplitFile.gameName,
-			s.loadedSplitFile.gameCategory,
-			s.currentSegment.name))
+		logger.Debug(fmt.Sprintf("starting new run (%s - %s - %s) attempt #%d",
+			loadedSplitFileData.GameName,
+			loadedSplitFileData.GameCategory,
+			currentSegmentPayload.Name,
+			loadedSplitFileData.Attempts))
 	} else {
 		runtime.EventsEmit(s.ctx, "session:update", s.getServicePayload())
 		runtime.EventsEmit(s.ctx, "split:update", s.getSplitPayload())
 		logger.Debug(fmt.Sprintf("segment index %d (%s) completed at %s, loading segment %d (%s)",
 			s.currentSegmentIndex-1,
-			s.loadedSplitFile.segments[s.currentSegmentIndex-1].name,
+			loadedSplitFileData.Segments[s.currentSegmentIndex-1].GetPayload().Name,
 			s.timer.GetCurrentTimeFormatted(),
 			s.currentSegmentIndex,
-			s.currentSegment.name))
+			currentSegmentPayload.Name))
 	}
 }
 
@@ -146,6 +130,7 @@ func (s *Service) Pause() {
 }
 
 func (s *Service) Reset() {
+	splitFileData := s.loadedSplitFile.GetPayload()
 	s.timer.Pause()
 	s.timer.Reset()
 	s.finished = false
@@ -153,12 +138,12 @@ func (s *Service) Reset() {
 	s.currentSegment = nil
 	runtime.EventsEmit(s.ctx, "timer:update", 0)
 	runtime.EventsEmit(s.ctx, "session:update", s.getServicePayload())
-	logger.Debug(fmt.Sprintf("session reset (%s - %s)", s.loadedSplitFile.gameName, s.loadedSplitFile.gameCategory))
+	logger.Debug(fmt.Sprintf("session reset (%s - %s)", splitFileData.GameName, splitFileData.GameCategory))
 }
 
 func (s *Service) getServicePayload() ServicePayload {
 	return ServicePayload{
-		SplitFile:            s.loadedSplitFile,
+		SplitFile:            s.loadedSplitFile.GetPayload(),
 		CurrentSegmentIndex:  s.currentSegmentIndex,
 		CurrentSegment:       s.currentSegment,
 		Finished:             s.finished,
@@ -169,6 +154,7 @@ func (s *Service) getServicePayload() ServicePayload {
 }
 
 func (s *Service) getSplitPayload() SplitPayload {
+	loadedSplitFileData := s.loadedSplitFile.GetPayload()
 	var payload = SplitPayload{
 		SplitIndex:           s.currentSegmentIndex - 1,
 		NewIndex:             s.currentSegmentIndex,
@@ -178,12 +164,12 @@ func (s *Service) getSplitPayload() SplitPayload {
 	}
 
 	if !s.finished {
-		payload.NewSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
+		payload.NewSegment = &loadedSplitFileData.Segments[s.currentSegmentIndex]
 		payload.NewIndex = s.currentSegmentIndex
 	}
 
 	if s.currentSegmentIndex != 0 {
-		payload.SplitSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex-1]
+		payload.SplitSegment = &loadedSplitFileData.Segments[s.currentSegmentIndex-1]
 		payload.SplitIndex = s.currentSegmentIndex - 1
 	}
 

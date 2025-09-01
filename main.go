@@ -2,8 +2,9 @@ package main
 
 import (
 	"OpenSplit/logger"
+	"OpenSplit/persister"
 	"OpenSplit/session"
-	"OpenSplit/session/persister"
+	"OpenSplit/splits"
 	"OpenSplit/timer"
 	"context"
 	"embed"
@@ -33,15 +34,20 @@ func main() {
 	logger.Debug("Timer service initialized")
 
 	jsonFilePersister := persister.JsonFile{}
+	persisterService := persister.NewService(&jsonFilePersister)
 	logger.Debug("JSON FilePersister initialized")
 
-	mockSegments := []session.Segment{
-		*session.NewSegment(uuid.New(), "Segment 1"),
-		*session.NewSegment(uuid.New(), "Segment 2"),
-		*session.NewSegment(uuid.New(), "Segment 3"),
+	mockSegments := []splits.Segment{
+		*splits.NewSegment(uuid.New(), "Segment 1"),
+		*splits.NewSegment(uuid.New(), "Segment 2"),
+		*splits.NewSegment(uuid.New(), "Segment 3"),
 	}
-	mockSplitFile := session.NewSplitFile("Test Game", "Any%", mockSegments)
-	sessionService := session.NewService(timerService, timeUpdatedChannel, jsonFilePersister, mockSplitFile)
+	mockSplitFile := splits.NewSplitFile("Test Game", "Any%", mockSegments)
+	persisterService.SetSplitFile(mockSplitFile)
+	logger.Warn("Mock SplitFile initialized - make sure to replace this at some point")
+
+	sessionService := session.NewService(timerService, timeUpdatedChannel, mockSplitFile)
+	logger.Debug("SessionService initialized")
 
 	// Create application with options
 	err := wails.Run(&options.App{
@@ -55,10 +61,13 @@ func main() {
 		OnStartup: func(ctx context.Context) {
 			timerService.Startup(ctx)
 			sessionService.Startup(ctx)
+			persisterService.Startup(ctx)
 			runtime.WindowSetAlwaysOnTop(ctx, true)
+			logger.Info("startup complete")
 		},
 		Bind: []interface{}{
 			sessionService,
+			persisterService,
 		},
 	})
 
