@@ -1,7 +1,6 @@
 package main
 
 import (
-	timer2 "OpenSplit2/hotkeys/timer"
 	"OpenSplit2/logger"
 	"OpenSplit2/timer"
 	"context"
@@ -28,7 +27,6 @@ func main() {
 	logger.Info("logging initialized, starting opensplit")
 
 	timerService := timer.NewService()
-	timerHotkeys := timer2.TimerHotkeys{}
 	// Create application with options
 	err := wails.Run(&options.App{
 		Title:  "OpenSplit",
@@ -40,7 +38,6 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
 			timerService.Startup(ctx)
-			timerHotkeys.Startup(ctx, timerService)
 			runtime.WindowSetAlwaysOnTop(ctx, true)
 		},
 		Bind: []interface{}{
