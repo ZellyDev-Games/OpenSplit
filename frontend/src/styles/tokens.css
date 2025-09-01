@@ -1,0 +1,25 @@
+@layer tokens {
+    :root {
+        /* Palette */
+        --bg: #0b0d10;
+        --bg-elev: #13161b;
+        --text: #e7ecf3;
+        --muted: #a4afc0;
+        --accent: #6ec1ff;
+        --accent-contrast: #041018;
+
+        /* Surfaces */
+        --radius: 12px;
+        --shadow-sm: 0 1px 2px rgba(0,0,0,.2);
+        --shadow-md: 0 4px 20px rgba(0,0,0,.25);
+
+        /* Typography */
+        --font-sans: ui-sans-serif, system-ui, Inter, Segoe UI, Roboto, Arial, sans-serif;
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+        /* Component-specific tokens (stable names) */
+        --timer-font-size: clamp(36px, 6vw, 96px);
+        --segment-gap: 8px;
+        --button-pad: 8px 12px;
+    }
+}
