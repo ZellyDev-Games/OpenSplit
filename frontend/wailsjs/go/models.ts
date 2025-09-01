@@ -1,4 +1,4 @@
-export namespace splits {
+export namespace session {
 	
 	export class SplitFile {
 	

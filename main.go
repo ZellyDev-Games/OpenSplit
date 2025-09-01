@@ -4,7 +4,6 @@ import (
 	"OpenSplit/logger"
 	"OpenSplit/persister"
 	"OpenSplit/session"
-	"OpenSplit/splits"
 	"OpenSplit/timer"
 	"context"
 	"embed"
@@ -15,7 +14,6 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -37,16 +35,7 @@ func main() {
 	persisterService := persister.NewService(&jsonFilePersister)
 	logger.Debug("JSON FilePersister initialized")
 
-	mockSegments := []splits.Segment{
-		*splits.NewSegment(uuid.New(), "Segment 1"),
-		*splits.NewSegment(uuid.New(), "Segment 2"),
-		*splits.NewSegment(uuid.New(), "Segment 3"),
-	}
-	mockSplitFile := splits.NewSplitFile("Test Game", "Any%", mockSegments)
-	persisterService.SetSplitFile(mockSplitFile)
-	logger.Warn("Mock SplitFile initialized - make sure to replace this at some point")
-
-	sessionService := session.NewService(timerService, timeUpdatedChannel, mockSplitFile)
+	sessionService := session.NewService(timerService, timeUpdatedChannel, nil)
 	logger.Debug("SessionService initialized")
 
 	// Create application with options

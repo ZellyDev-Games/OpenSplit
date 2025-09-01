@@ -1,4 +1,4 @@
-package splits
+package session
 
 import (
 	"time"

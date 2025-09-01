@@ -2,7 +2,7 @@ package persister
 
 import (
 	"OpenSplit/logger"
-	"OpenSplit/splits"
+	"OpenSplit/session"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -23,14 +23,14 @@ func (j *JsonFile) Startup(ctx context.Context) {
 	j.ctx = ctx
 }
 
-func (j *JsonFile) Save(splitFile *splits.SplitFile) error {
-	splitFilePayload := splitFile.GetPayload()
+func (j *JsonFile) Save(splitFile *session.SplitFile) error {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		logger.Error("save failed: " + err.Error())
 		return err
 	}
 
+	splitFilePayload := splitFile.GetPayload()
 	defaultFileName := j.getDefaultFileName(splitFilePayload)
 	filename, err := runtime.SaveFileDialog(j.ctx, runtime.SaveDialogOptions{
 		Title:            "Save OpenSplit File",
@@ -67,7 +67,7 @@ func (j *JsonFile) Save(splitFile *splits.SplitFile) error {
 	return err
 }
 
-func (j *JsonFile) Load() (*splits.SplitFile, error) {
+func (j *JsonFile) Load() (*session.SplitFile, error) {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		return nil, err
@@ -98,13 +98,13 @@ func (j *JsonFile) Load() (*splits.SplitFile, error) {
 		return nil, err
 	}
 
-	var splitFile splits.SplitFile
-	err = json.Unmarshal(data, &splitFile)
+	var splitFilePayload session.SplitFilePayload
+	err = json.Unmarshal(data, &splitFilePayload)
 	if err != nil {
 		return nil, err
 	}
 
-	return &splitFile, nil
+	return session.NewFromPayload(splitFilePayload), nil
 }
 
 func (j *JsonFile) getDefaultDirectory() (string, error) {
@@ -128,10 +128,10 @@ func (j *JsonFile) getDefaultDirectory() (string, error) {
 	return defaultDirectory, nil
 }
 
-func (j *JsonFile) getDefaultFileName(splitFilePayload splits.SplitFilePayload) string {
+func (j *JsonFile) getDefaultFileName(splitFile session.SplitFilePayload) string {
 	if j.fileName != "" {
 		return j.fileName
 	} else {
-		return fmt.Sprintf("%s-%s.osf", splitFilePayload.GameName, splitFilePayload.GameCategory)
+		return fmt.Sprintf("%s-%s.osf", splitFile.GameName, splitFile.GameCategory)
 	}
 }

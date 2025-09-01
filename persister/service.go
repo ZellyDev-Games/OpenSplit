@@ -1,20 +1,20 @@
 package persister
 
 import (
-	"OpenSplit/splits"
+	"OpenSplit/session"
 	"context"
 )
 
 type Persister interface {
-	Save(*splits.SplitFile) error
-	Load() (*splits.SplitFile, error)
+	Save(*session.SplitFile) error
+	Load() (*session.SplitFile, error)
 	Startup(context.Context)
 }
 
 type Service struct {
 	ctx       context.Context
 	persister Persister
-	splitFile *splits.SplitFile
+	splitFile *session.SplitFile
 }
 
 func NewService(p Persister) *Service {
@@ -26,7 +26,7 @@ func (s *Service) Startup(ctx context.Context) {
 	s.persister.Startup(ctx)
 }
 
-func (s *Service) SetSplitFile(file *splits.SplitFile) {
+func (s *Service) SetSplitFile(file *session.SplitFile) {
 	s.splitFile = file
 }
 
@@ -34,6 +34,6 @@ func (s *Service) Save() error {
 	return s.persister.Save(s.splitFile)
 }
 
-func (s *Service) Load() (*splits.SplitFile, error) {
+func (s *Service) Load() (*session.SplitFile, error) {
 	return s.Load()
 }
