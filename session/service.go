@@ -21,13 +21,13 @@ type ServicePayload struct {
 }
 
 type SplitPayload struct {
-	SplitIndex           int           `json:"split_index"`
-	NewIndex             int           `json:"new_index"`
-	SplitSegment         *Segment      `json:"split_segment"`
-	NewSegment           *Segment      `json:"new_segment"`
-	Finished             bool          `json:"finished"`
-	CurrentTime          time.Duration `json:"current_time"`
-	CurrentTimeFormatted string        `json:"current_time_formatted"`
+	SplitIndex           int            `json:"split_index"`
+	NewIndex             int            `json:"new_index"`
+	SplitSegment         SegmentPayload `json:"split_segment"`
+	NewSegment           SegmentPayload `json:"new_segment"`
+	Finished             bool           `json:"finished"`
+	CurrentTime          time.Duration  `json:"current_time"`
+	CurrentTimeFormatted string         `json:"current_time_formatted"`
 }
 
 type Service struct {
@@ -169,12 +169,12 @@ func (s *Service) getSplitPayload() SplitPayload {
 	}
 
 	if !s.finished {
-		payload.NewSegment = &loadedSplitFileData.Segments[s.currentSegmentIndex]
+		payload.NewSegment = loadedSplitFileData.Segments[s.currentSegmentIndex]
 		payload.NewIndex = s.currentSegmentIndex
 	}
 
 	if s.currentSegmentIndex != 0 {
-		payload.SplitSegment = &loadedSplitFileData.Segments[s.currentSegmentIndex-1]
+		payload.SplitSegment = loadedSplitFileData.Segments[s.currentSegmentIndex-1]
 		payload.SplitIndex = s.currentSegmentIndex - 1
 	}
 

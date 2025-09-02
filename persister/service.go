@@ -6,8 +6,8 @@ import (
 )
 
 type Persister interface {
-	Save(*session.SplitFile) error
-	Load() (*session.SplitFile, error)
+	Save(payload session.SplitFilePayload) error
+	Load() (session.SplitFilePayload, error)
 	Startup(context.Context)
 }
 
@@ -26,14 +26,10 @@ func (s *Service) Startup(ctx context.Context) {
 	s.persister.Startup(ctx)
 }
 
-func (s *Service) SetSplitFile(file *session.SplitFile) {
-	s.splitFile = file
+func (s *Service) Save(payload session.SplitFilePayload) error {
+	return s.persister.Save(payload)
 }
 
-func (s *Service) Save() error {
-	return s.persister.Save(s.splitFile)
-}
-
-func (s *Service) Load() (*session.SplitFile, error) {
+func (s *Service) Load() (session.SplitFilePayload, error) {
 	return s.Load()
 }

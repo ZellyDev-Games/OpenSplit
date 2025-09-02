@@ -1,0 +1,35 @@
+@layer componenets {
+    .timer-container {
+        color: var(--timer-color);
+        position: relative;
+        padding: var(--pad-panel);
+        border-radius: var(--radius-panel);
+        background: var(--surface-1);
+        box-shadow: var(--shadow-panel);
+        overflow: hidden;
+    }
+
+    .time {
+        font-family: var(--timer-font-family), sans-serif;
+        font-size: var(--timer-font-size);
+    }
+
+    .time-centis {
+        color: var(--muted);
+        font-size: var(--timer-centis-font-size);
+    }
+
+    .timer-root::before {
+        /* Background image + gradient overlay */
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: var(--bg-gradient),
+        var(--bg-image);
+        background-size: cover;
+        background-position: center;
+        opacity: var(--bg-image-opacity);
+        pointer-events: none;
+        filter: blur(0);
+    }
+}

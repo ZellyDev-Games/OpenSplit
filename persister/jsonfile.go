@@ -23,14 +23,13 @@ func (j *JsonFile) Startup(ctx context.Context) {
 	j.ctx = ctx
 }
 
-func (j *JsonFile) Save(splitFile *session.SplitFile) error {
+func (j *JsonFile) Save(splitFilePayload session.SplitFilePayload) error {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		logger.Error("save failed: " + err.Error())
 		return err
 	}
 
-	splitFilePayload := splitFile.GetPayload()
 	defaultFileName := j.getDefaultFileName(splitFilePayload)
 	filename, err := runtime.SaveFileDialog(j.ctx, runtime.SaveDialogOptions{
 		Title:            "Save OpenSplit File",
@@ -67,10 +66,11 @@ func (j *JsonFile) Save(splitFile *session.SplitFile) error {
 	return err
 }
 
-func (j *JsonFile) Load() (*session.SplitFile, error) {
+func (j *JsonFile) Load() (session.SplitFilePayload, error) {
+	var splitFilePayload session.SplitFilePayload
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
-		return nil, err
+		return splitFilePayload, err
 	}
 
 	filename, err := runtime.OpenFileDialog(j.ctx, runtime.OpenDialogOptions{
@@ -84,27 +84,26 @@ func (j *JsonFile) Load() (*session.SplitFile, error) {
 
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to get path from open file dialog: %s", err.Error()))
-		return nil, err
+		return splitFilePayload, err
 	}
 
 	if filename == "" {
 		logger.Debug("user cancelled save")
-		return nil, nil
+		return splitFilePayload, nil
 	}
 
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to load split file: %s", err.Error()))
-		return nil, err
+		return splitFilePayload, err
 	}
 
-	var splitFilePayload session.SplitFilePayload
 	err = json.Unmarshal(data, &splitFilePayload)
 	if err != nil {
-		return nil, err
+		return splitFilePayload, err
 	}
 
-	return session.NewFromPayload(splitFilePayload), nil
+	return splitFilePayload, nil
 }
 
 func (j *JsonFile) getDefaultDirectory() (string, error) {

@@ -13,7 +13,7 @@
         min-width: 200px;
         max-height: 70vh;
         overflow: auto;
-        background: #ffffff;
+        background: var(--fg);
         border: 1px solid rgba(0, 0, 0, 0.1);
         border-radius: 10px;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);

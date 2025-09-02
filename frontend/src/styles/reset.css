@@ -1,12 +1,10 @@
 @layer reset {
-    html, body {
-        min-height: 100dvh;
-        width: 100%;       /* ✅ use % instead of 100vw */
-        margin: 0;
-        overflow-x: hidden;/* optional guard against stray overflow */
-    }
+    html, body, #root, #App { height: 100%; }
+    body { margin: 0; }
 
-    #root {
-        flex: 1 0;
+    #App {
+        display: flex;
+        flex-direction: column;   /* or row */
+        min-height: 100%;
     }
 }

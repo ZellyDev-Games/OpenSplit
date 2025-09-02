@@ -6,12 +6,8 @@ export function Load() {
   return window['go']['persister']['Service']['Load']();
 }
 
-export function Save() {
-  return window['go']['persister']['Service']['Save']();
-}
-
-export function SetSplitFile(arg1) {
-  return window['go']['persister']['Service']['SetSplitFile'](arg1);
+export function Save(arg1) {
+  return window['go']['persister']['Service']['Save'](arg1);
 }
 
 export function Startup(arg1) {

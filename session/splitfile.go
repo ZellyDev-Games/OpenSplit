@@ -1,10 +1,10 @@
 package session
 
 type SplitFilePayload struct {
-	GameName     string    `json:"game_name"`
-	GameCategory string    `json:"game_category"`
-	Segments     []Segment `json:"segments"`
-	Attempts     int       `json:"attempts"`
+	GameName     string           `json:"game_name"`
+	GameCategory string           `json:"game_category"`
+	Segments     []SegmentPayload `json:"segments"`
+	Attempts     int              `json:"attempts"`
 }
 
 type SplitFile struct {
@@ -23,11 +23,20 @@ func NewSplitFile(gameName string, gameCategory string, segments []Segment, atte
 	}
 }
 func NewFromPayload(payload SplitFilePayload) *SplitFile {
+	var segments []Segment
+	for _, segment := range payload.Segments {
+		segments = append(segments, Segment{
+			id:          segment.ID,
+			name:        segment.Name,
+			bestTime:    segment.BestTime,
+			averageTime: segment.Average,
+		})
+	}
 	return &SplitFile{
 		gameName:     payload.GameName,
 		gameCategory: payload.GameCategory,
-		segments:     payload.Segments,
 		attempts:     payload.Attempts,
+		segments:     segments,
 	}
 }
 
@@ -47,7 +56,7 @@ func (s *SplitFile) GetPayload() SplitFilePayload {
 	return SplitFilePayload{
 		GameName:     s.gameName,
 		GameCategory: s.gameCategory,
-		Segments:     s.segments,
+		Segments:     segmentPayloads,
 		Attempts:     s.attempts,
 	}
 }
