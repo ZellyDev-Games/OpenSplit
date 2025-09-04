@@ -4,7 +4,8 @@
 
     #App {
         display: flex;
-        flex-direction: column;   /* or row */
+        flex-direction: column;
         min-height: 100%;
+        --wails-draggable: drag;
     }
 }

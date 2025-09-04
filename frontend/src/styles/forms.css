@@ -1,0 +1,64 @@
+@layer components {
+    .datagrid {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    div.datagrid {
+        margin: 30px 0 30px;
+    }
+
+    .datagrid th {
+        background-color: #640199;
+        text-align: left;
+        height: 40px;
+        padding-left: 10px;
+    }
+
+    .datagrid td {
+        border: 1px solid #666;
+        background-color: #282828;
+    }
+
+    .datagrid input {
+        border: 0;
+        padding: 8px 0 0 8px;
+        background-color: transparent;
+    }
+    .datagrid input:focus {
+        outline: 0;
+    }
+
+    label {
+        position: relative;
+        left: 5px;
+    }
+
+    input, textarea {
+        --wails-draggable: nodrag;
+        padding: 15px;
+        border: 1px solid #333;
+        border-radius: 3px;
+        margin-bottom: 10px;
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 16px;
+        background-color: #282828;
+        color: #d9d9d9;
+    }
+
+    input:focus { outline: none; }
+    input:focus-visible {
+        outline: 2px solid #640199;   /* your color */
+        outline-offset: 2px;          /* pull it off the edge a bit */
+    }
+
+    form .actions {
+        width: 100%;
+        display: flex;
+        justify-content: end;
+    }
+    form .actions button {
+        margin-left: 10px;
+    }
+}

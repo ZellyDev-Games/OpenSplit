@@ -2,6 +2,7 @@ export function setActiveSkin(name: string) : string {
     let defaultLink = document.getElementById("default-skin") as HTMLLinkElement | null;
     let link = document.getElementById("active-skin") as HTMLLinkElement | null;
     if (!defaultLink) {
+        console.log("Adding default skin link")
         defaultLink = document.createElement("link");
         defaultLink.id = "default-skin";
         defaultLink.rel = "stylesheet";

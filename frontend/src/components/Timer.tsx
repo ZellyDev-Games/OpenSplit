@@ -44,7 +44,7 @@ export function formatDuration(ms: number) {
     const sepSC = "."; // always show dot before centis
 
     return (
-        <span className="time" aria-label="formatted duration">
+        <span className="time-container" aria-label="formatted duration">
           <span className="time-hours" data-unit="hours" data-present={showHours ? "1" : "0"}>{hoursText}</span>
           <span className="time-sep-hm" aria-hidden="true">{sepHM}</span>
           <span className="time-minutes" data-unit="minutes" data-present={showMinutes ? "1" : "0"}>{minutesText}</span>

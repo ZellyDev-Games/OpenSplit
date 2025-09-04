@@ -5,13 +5,15 @@ import {Quit} from "../wailsjs/runtime";
 import {Route, Routes, useNavigate} from "react-router";
 import React, {useEffect} from "react";
 import SplitEditor from "./components/SplitEditor";
-import SkinPicker from "./components/SkinPicker";
 import {setActiveSkin} from "./skinLoader";
 
 function App() {
     const navigate = useNavigate()
     const contextMenu = useContextMenu()
     const contextMenuItems: MenuItem[] = [
+        {
+            label: "Reload skins", onClick: () => {setActiveSkin("default")}
+        },
         {
             label: "Edit Splits", onClick: () => navigate("/edit"),
         },{
