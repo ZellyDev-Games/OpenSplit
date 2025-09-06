@@ -1,9 +1,10 @@
 import {useEffect, useState} from "react";
 import {EventsOn} from "../../wailsjs/runtime";
 import {Split} from "../../wailsjs/go/session/Service";
-import {Save} from "../../wailsjs/go/persister/Service";
+import useWindowResize from "../hooks/useWindowResize";
 
 export default function Timer() {
+    useWindowResize("app");
     const [time, setTime] = useState(0);
 
     useEffect(() => {

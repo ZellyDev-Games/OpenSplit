@@ -9,6 +9,7 @@ import TimeRow from "./TimeRow";
 import {useNavigate} from "react-router";
 import {useClickOutside} from "../hooks/useClickOutside";
 import {WindowSetSize} from "../../wailsjs/runtime";
+import useWindowResize from "../hooks/useWindowResize";
 
 type SplitEditorProps = {
     loadedSplitFile : SplitFilePayload | null;
@@ -29,6 +30,7 @@ type Segment = {
 }
 
 export default function SplitEditor({loadedSplitFile} : SplitEditorProps) {
+    useWindowResize("edit");
     const clickOutsideRef = useRef<HTMLDivElement | null>(null);
     const navigate = useNavigate();
     const [gameName, setGameName] = React.useState<string>("");

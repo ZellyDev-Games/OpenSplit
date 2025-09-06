@@ -16,6 +16,14 @@ export default function TimeRow({idx, time, onChangeCallback}: timeRowParams) {
         onChangeCallback(idx, `${hours}:${minutes}:${seconds}.${centis}`)
     }, [hours, minutes, seconds, centis, idx])
 
+    useEffect(() => {
+        const timeParts = time.split(":");
+        setHours(timeParts[0]);
+        setMinutes(timeParts[1]);
+        setSeconds(timeParts[2].split(".")[0]);
+        setCentis(timeParts[2].split(".")[1]);
+    }, []);
+
     const handleChange = (val: string, clamp: number, updateFunc: (val: string) => void) => {
         if(!val) {
             val = "00";

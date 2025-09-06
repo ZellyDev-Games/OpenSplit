@@ -15,14 +15,6 @@ export type ContextMenuState = {
     y: number;
 };
 
-export type UseContextMenu = {
-    bind: {
-        onContextMenu: (e: React.MouseEvent<HTMLElement>) => void;
-    };
-    state: ContextMenuState;
-    close: () => void;
-};
-
 export type ContextMenuProps = {
     state: ContextMenuState;
     close: () => void;
@@ -33,7 +25,7 @@ export function useContextMenu() {
     const [state, setState] = useState<ContextMenuState>({ open: false, x: 0, y: 0 });
 
     const onContextMenu = useCallback((e: React.MouseEvent<HTMLElement>) => {
-        console.log("Attempting to open context menu");
+        console.log("opening context menu");
         e.preventDefault();
         setState({ open: true, x: e.clientX, y: e.clientY });
     }, []);

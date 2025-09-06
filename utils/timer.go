@@ -29,7 +29,6 @@ func ParseStringToTime(s string) (time.Duration, error) {
 	}
 
 	var h, m, sec, cs int
-	fmt.Println(s)
 	_, err := fmt.Sscanf(s, "%02d:%02d:%02d.%02d", &h, &m, &sec, &cs)
 	if err != nil {
 		return 0, err
