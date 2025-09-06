@@ -22,23 +22,6 @@ func NewSplitFile(gameName string, gameCategory string, segments []Segment, atte
 		attempts:     attempts,
 	}
 }
-func NewFromPayload(payload SplitFilePayload) *SplitFile {
-	var segments []Segment
-	for _, segment := range payload.Segments {
-		segments = append(segments, Segment{
-			id:          segment.ID,
-			name:        segment.Name,
-			bestTime:    segment.BestTime,
-			averageTime: segment.Average,
-		})
-	}
-	return &SplitFile{
-		gameName:     payload.GameName,
-		gameCategory: payload.GameCategory,
-		attempts:     payload.Attempts,
-		segments:     segments,
-	}
-}
 
 func (s *SplitFile) NewAttempt() {
 	s.attempts++
@@ -59,4 +42,22 @@ func (s *SplitFile) GetPayload() SplitFilePayload {
 		Segments:     segmentPayloads,
 		Attempts:     s.attempts,
 	}
+}
+
+func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
+	var segments []Segment
+	for _, segment := range payload.Segments {
+		newSegment, err := NewFromPayload(segment)
+		if err != nil {
+			return nil, err
+		}
+		segments = append(segments, newSegment)
+	}
+
+	return &SplitFile{
+		gameName:     payload.GameName,
+		gameCategory: payload.GameCategory,
+		attempts:     payload.Attempts,
+		segments:     segments,
+	}, nil
 }

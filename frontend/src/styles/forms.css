@@ -1,11 +1,23 @@
 @layer components {
-    .datagrid {
-        width: 100%;
-        border-collapse: collapse;
+    form {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+    }
+    .datagrid-container {
+        height: 100px;
+        padding-right:5px;
+        flex-grow: 1;
+        margin: 0;
+        overflow-y:auto;
+        overflow-x:hidden;
     }
 
-    div.datagrid {
-        margin: 30px 0 30px;
+    .datagrid {
+        --wails-draggable: no-drag;
+        flex: 1 1 auto;
+        min-width: 0;
+        border-collapse: collapse;
     }
 
     .datagrid th {
@@ -39,7 +51,6 @@
         padding: 15px;
         border: 1px solid #333;
         border-radius: 3px;
-        margin-bottom: 10px;
         width: 100%;
         box-sizing: border-box;
         font-size: 16px;
@@ -60,5 +71,23 @@
     }
     form .actions button {
         margin-left: 10px;
+    }
+
+    div.segment-time {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-end;
+        padding: 5px 20px 5px 5px;
+    }
+
+    .segment-time input {
+        height: 25%;
+        text-align: right;
+        background-color: #444;
+        padding-right:10px;
+    }
+
+    ::placeholder {
+        color: #808080; /* Example: a light gray color */
     }
 }

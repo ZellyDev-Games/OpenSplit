@@ -2,7 +2,6 @@ package main
 
 import (
 	"OpenSplit/logger"
-	"OpenSplit/persister"
 	"OpenSplit/session"
 	"OpenSplit/skin"
 	"OpenSplit/sysopen"
@@ -39,11 +38,10 @@ func main() {
 	timerService, timeUpdatedChannel := timer.NewService()
 	logger.Debug("Timer service initialized")
 
-	jsonFilePersister := persister.JsonFile{}
-	persisterService := persister.NewService(&jsonFilePersister)
+	jsonFilePersister := session.JsonFile{}
 	logger.Debug("JSON FilePersister initialized")
 
-	sessionService := session.NewService(timerService, timeUpdatedChannel, nil)
+	sessionService := session.NewService(timerService, timeUpdatedChannel, nil, jsonFilePersister)
 	logger.Debug("SessionService initialized")
 
 	// Create application with options
@@ -66,7 +64,6 @@ func main() {
 		OnStartup: func(ctx context.Context) {
 			sysopenService.Startup(ctx)
 			timerService.Startup(ctx)
-			persisterService.Startup(ctx)
 			skinService.Startup(ctx, skinDir)
 			sessionService.Startup(ctx)
 			//runtime.WindowSetAlwaysOnTop(ctx, true)
@@ -74,7 +71,6 @@ func main() {
 		},
 		Bind: []interface{}{
 			sessionService,
-			persisterService,
 			sysopenService,
 			skinService,
 		},

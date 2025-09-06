@@ -1,16 +1,19 @@
 package session
 
 import (
+	"OpenSplit/logger"
+	"OpenSplit/utils"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 type SegmentPayload struct {
-	ID       uuid.UUID     `json:"id"`
-	Name     string        `json:"name"`
-	BestTime time.Duration `json:"best_time"`
-	Average  time.Duration `json:"average_time"`
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	BestTime string `json:"best_time"`
+	Average  string `json:"average_time"`
 }
 
 type Segment struct {
@@ -20,15 +23,28 @@ type Segment struct {
 	averageTime time.Duration
 }
 
-func NewSegment(id uuid.UUID, name string) *Segment {
-	return &Segment{id: id, name: name}
+func NewFromPayload(payload SegmentPayload) (Segment, error) {
+	if payload.ID == "" {
+		payload.ID = uuid.New().String()
+	}
+	bestTime, err := utils.ParseStringToTime(payload.BestTime)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to parse best time: %s", err))
+	}
+
+	averageTime, err := utils.ParseStringToTime(payload.Average)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to parse average time: %s", err))
+	}
+
+	return Segment{id: uuid.MustParse(payload.ID), name: payload.Name, bestTime: bestTime, averageTime: averageTime}, err
 }
 
 func (s *Segment) GetPayload() SegmentPayload {
 	return SegmentPayload{
-		ID:       s.id,
+		ID:       s.id.String(),
 		Name:     s.name,
-		BestTime: s.bestTime,
-		Average:  s.averageTime,
+		BestTime: utils.FormatTimeToString(s.bestTime),
+		Average:  utils.FormatTimeToString(s.averageTime),
 	}
 }

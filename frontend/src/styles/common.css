@@ -1,19 +1,22 @@
 @layer components {
     :root {
-        padding: 20px;
         background-color: #282828;
         font-family: sans-serif;
         color: #d9d9f0;
     }
 
     hr {
+        width: 100%;
         border:none;
         height: 1px;
+        margin-top:5px;
+        margin-bottom:5px;
         background-color: #abd5e7;
     }
 
     .container {
         display: flex;
+        flex-grow: 1;
         flex-direction: column;
         background-color: #333333;
         padding: 20px;
@@ -24,6 +27,7 @@
     }
 
     button {
+        --wails-draggable: no-drag;
         background-color: #222;
         border-radius: 4px;
         border-color: #333;

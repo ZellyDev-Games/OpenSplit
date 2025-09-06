@@ -1,10 +1,22 @@
 export namespace session {
 	
+	export class Config {
+	    speed_run_API_base: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Config(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.speed_run_API_base = source["speed_run_API_base"];
+	    }
+	}
 	export class SegmentPayload {
-	    id: number[];
+	    id: string;
 	    name: string;
-	    best_time: number;
-	    average_time: number;
+	    best_time: string;
+	    average_time: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new SegmentPayload(source);

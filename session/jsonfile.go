@@ -1,8 +1,7 @@
-package persister
+package session
 
 import (
 	"OpenSplit/logger"
-	"OpenSplit/session"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -23,7 +22,7 @@ func (j *JsonFile) Startup(ctx context.Context) {
 	j.ctx = ctx
 }
 
-func (j *JsonFile) Save(splitFilePayload session.SplitFilePayload) error {
+func (j *JsonFile) Save(splitFilePayload SplitFilePayload) error {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		logger.Error("save failed: " + err.Error())
@@ -66,8 +65,8 @@ func (j *JsonFile) Save(splitFilePayload session.SplitFilePayload) error {
 	return err
 }
 
-func (j *JsonFile) Load() (session.SplitFilePayload, error) {
-	var splitFilePayload session.SplitFilePayload
+func (j *JsonFile) Load() (SplitFilePayload, error) {
+	var splitFilePayload SplitFilePayload
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		return splitFilePayload, err
@@ -127,7 +126,7 @@ func (j *JsonFile) getDefaultDirectory() (string, error) {
 	return defaultDirectory, nil
 }
 
-func (j *JsonFile) getDefaultFileName(splitFile session.SplitFilePayload) string {
+func (j *JsonFile) getDefaultFileName(splitFile SplitFilePayload) string {
 	if j.fileName != "" {
 		return j.fileName
 	} else {
