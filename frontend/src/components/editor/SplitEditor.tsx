@@ -1,20 +1,16 @@
-import {session} from "../../wailsjs/go/models";
+import {session} from "../../../wailsjs/go/models";
 import React, {useEffect, useRef} from "react";
-import {GetConfig, UpdateSplitFile} from "../../wailsjs/go/session/Service";
+import {GetConfig, GetLoadedSplitFile, UpdateSplitFile} from "../../../wailsjs/go/session/Service";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faTrash} from "@fortawesome/free-solid-svg-icons";
 import SegmentPayload = session.SegmentPayload;
 import SplitFilePayload = session.SplitFilePayload;
 import TimeRow from "./TimeRow";
 import {useNavigate} from "react-router";
-import {useClickOutside} from "../hooks/useClickOutside";
-import {WindowSetSize} from "../../wailsjs/runtime";
-import useWindowResize from "../hooks/useWindowResize";
+import {useClickOutside} from "../../hooks/useClickOutside";
+import {WindowSetSize} from "../../../wailsjs/runtime";
+import useWindowResize from "../../hooks/useWindowResize";
 
-type SplitEditorProps = {
-    setLoadedSplitFile: (payload: SplitFilePayload) => void;
-    loadedSplitFile : SplitFilePayload | null;
-}
 
 type Game = {
     id: string;
@@ -30,7 +26,7 @@ type Segment = {
     best_time: string
 }
 
-export default function SplitEditor({setLoadedSplitFile, loadedSplitFile} : SplitEditorProps) {
+export default function SplitEditor() {
     useWindowResize("edit");
     const clickOutsideRef = useRef<HTMLDivElement | null>(null);
     const navigate = useNavigate();
@@ -47,6 +43,7 @@ export default function SplitEditor({setLoadedSplitFile, loadedSplitFile} : Spli
 
     useEffect(() => {
         (async() => {
+            const loadedSplitFile = await GetLoadedSplitFile();
             if (loadedSplitFile === null) return;
             setGameName(loadedSplitFile.game_name);
             setGameCategory(loadedSplitFile.game_category);
@@ -58,7 +55,7 @@ export default function SplitEditor({setLoadedSplitFile, loadedSplitFile} : Spli
                 }) : []
             )
         })()
-    }, [loadedSplitFile]);
+    }, []);
 
     useEffect(() => {
         (async() => {
@@ -119,10 +116,7 @@ export default function SplitEditor({setLoadedSplitFile, loadedSplitFile} : Spli
 
         UpdateSplitFile(splitFilePayload)
             .then(saved => {
-                if(saved) {
-                    setLoadedSplitFile(splitFilePayload)
-                    navigate("/")
-                }
+                if(saved) navigate("/")
             })
             .catch((err) => console.log(err));
     }

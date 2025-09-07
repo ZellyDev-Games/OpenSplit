@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
-import {EventsOn} from "../../wailsjs/runtime";
-import useWindowResize from "../hooks/useWindowResize";
+import {EventsOn} from "../../../wailsjs/runtime";
+import useWindowResize from "../../hooks/useWindowResize";
 
 export type TimeParts = {
     hours: number;
@@ -28,9 +28,9 @@ export default function Timer() {
     const [time, setTime] = useState(0);
 
     useEffect(() => {
-        const off = EventsOn("timer:update", (val: number) => {
+        return EventsOn("timer:update", (val: number) => {
             setTime(val);
-        });
+        })
     }, []);
 
     const formattedTimeParts = formatDuration(msToParts(time))
