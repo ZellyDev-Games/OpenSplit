@@ -3,6 +3,8 @@
 import {session} from '../models';
 import {context} from '../models';
 
+export function CloseSplitFile():Promise<void>;
+
 export function GetConfig():Promise<session.Config>;
 
 export function GetLoadedSplitFile():Promise<session.SplitFilePayload>;

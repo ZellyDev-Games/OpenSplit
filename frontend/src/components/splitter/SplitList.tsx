@@ -1,15 +1,28 @@
-import {session} from "../../wailsjs/go/models";
-import SplitFilePayload = session.SplitFilePayload;
+import {session} from "../../../wailsjs/go/models";
 import {formatDuration, stringToParts} from "./Timer";
-
-type SplitListProps = {
-    splitFile: SplitFilePayload | null
-    compareAgainst: CompareAgainst
-}
+import {useEffect, useState} from "react";
+import {GetLoadedSplitFile} from "../../../wailsjs/go/session/Service";
+import {EventsOn} from "../../../wailsjs/runtime";
+import SplitFilePayload = session.SplitFilePayload;
 
 export type CompareAgainst = "best" | "average"
 
-export default function SplitList({splitFile, compareAgainst} : SplitListProps) {
+export default function SplitList() {
+    const [splitFile, setSplitFile] = useState<session.SplitFilePayload | null>(null);
+    const [compareAgainst, setCompareAgainst] = useState<CompareAgainst | null>(null);
+
+    useEffect(() => {
+        (async() => {
+            console.log("fetching loaded splitfile...")
+            setSplitFile(await GetLoadedSplitFile())
+        })()
+
+        return EventsOn("splitfile:update", (splitFilePayload: SplitFilePayload) => {
+            console.log("received splitfile update", splitFilePayload);
+            setSplitFile(splitFilePayload)
+        })
+    }, [])
+
     const formattedSegments = splitFile?.segments.map((segment, index) =>{
         const time = compareAgainst === "average" ? segment.average_time : segment.best_time;
         const formattedParts = formatDuration(stringToParts(time))

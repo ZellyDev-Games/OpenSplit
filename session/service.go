@@ -121,7 +121,6 @@ func (s *Service) Split() {
 			s.currentSegment.name,
 			s.loadedSplitFile.attempts))
 	} else {
-		runtime.EventsEmit(s.ctx, "session:update", s.getServicePayload())
 		runtime.EventsEmit(s.ctx, "split:update", s.getSplitPayload())
 		logger.Debug(fmt.Sprintf("segment index %d (%s) completed at %s, loading segment %d (%s)",
 			s.currentSegmentIndex-1,
@@ -174,16 +173,37 @@ func (s *Service) UpdateSplitFile(payload SplitFilePayload) (bool, error) {
 		return false, err
 	}
 
+	runtime.EventsEmit(s.ctx, "splitfile:update", s.loadedSplitFile.GetPayload())
 	return saved, err
 }
 
 func (s *Service) LoadSplitFile() (*SplitFilePayload, error) {
-	newSplitFile, err := s.persister.Load()
+	newSplitFilePayload, err := s.persister.Load()
 	if err != nil {
 		s.loadedSplitFile = nil
 		return nil, err
 	}
-	return newSplitFile, nil
+
+	if newSplitFilePayload == nil {
+		return nil, nil
+	}
+
+	newSplitFile, err := newFromPayload(*newSplitFilePayload)
+	if err != nil {
+		s.loadedSplitFile = nil
+		return nil, err
+	}
+
+	s.loadedSplitFile = newSplitFile
+	s.Reset()
+	runtime.EventsEmit(s.ctx, "splitfile:update", s.loadedSplitFile.GetPayload())
+	return newSplitFilePayload, nil
+}
+
+func (s *Service) CloseSplitFile() {
+	s.loadedSplitFile = nil
+	s.Reset()
+	runtime.EventsEmit(s.ctx, "splitfile:update", nil)
 }
 
 func (s *Service) GetLoadedSplitFile() *SplitFilePayload {
