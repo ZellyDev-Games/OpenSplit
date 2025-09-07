@@ -1,10 +1,10 @@
 package session
 
 type SplitFilePayload struct {
-	GameName     string    `json:"game_name"`
-	GameCategory string    `json:"game_category"`
-	Segments     []Segment `json:"segments"`
-	Attempts     int       `json:"attempts"`
+	GameName     string           `json:"game_name"`
+	GameCategory string           `json:"game_category"`
+	Segments     []SegmentPayload `json:"segments"`
+	Attempts     int              `json:"attempts"`
 }
 
 type SplitFile struct {
@@ -20,14 +20,6 @@ func NewSplitFile(gameName string, gameCategory string, segments []Segment, atte
 		gameCategory: gameCategory,
 		segments:     segments,
 		attempts:     attempts,
-	}
-}
-func NewFromPayload(payload SplitFilePayload) *SplitFile {
-	return &SplitFile{
-		gameName:     payload.GameName,
-		gameCategory: payload.GameCategory,
-		segments:     payload.Segments,
-		attempts:     payload.Attempts,
 	}
 }
 
@@ -47,7 +39,25 @@ func (s *SplitFile) GetPayload() SplitFilePayload {
 	return SplitFilePayload{
 		GameName:     s.gameName,
 		GameCategory: s.gameCategory,
-		Segments:     s.segments,
+		Segments:     segmentPayloads,
 		Attempts:     s.attempts,
 	}
+}
+
+func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
+	var segments []Segment
+	for _, segment := range payload.Segments {
+		newSegment, err := NewFromPayload(segment)
+		if err != nil {
+			return nil, err
+		}
+		segments = append(segments, newSegment)
+	}
+
+	return &SplitFile{
+		gameName:     payload.GameName,
+		gameCategory: payload.GameCategory,
+		attempts:     payload.Attempts,
+		segments:     segments,
+	}, nil
 }

@@ -1,0 +1,50 @@
+@layer components {
+    div.autocomplete {
+        position: absolute;
+        background-color: #282828;
+        width:50%;
+        z-index:9999;
+    }
+
+    .autocomplete ul {
+        height:200px;
+        overflow-y:scroll;
+        margin: 0;
+        padding:10px;
+    }
+
+    .autocomplete li {
+        background-color: #640199;
+        text-decoration: none;
+        list-style: none;
+        border: 3px solid #222;
+        border-collapse: collapse;
+        padding:5px;
+        margin-bottom:5px;
+        cursor:pointer;
+        border-radius: 3px;
+    }
+
+    .autocomplete li:hover {
+        border-color: #abd5e7;
+    }
+
+    div.autocomplete-item {
+        display: flex;
+        flex-direction: row;
+    }
+
+    div.autocomplete-item img {
+        width: 40px;
+        height: 40px;
+        border: 2px solid black;
+        border-radius: 4px;
+    }
+
+    div.autocomplete-item div.game-info {
+        display: flex;
+        flex-direction: column;
+        margin-left:10px;
+        flex-grow: 1;
+    }
+}

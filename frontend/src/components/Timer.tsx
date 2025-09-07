@@ -1,35 +1,58 @@
 import {useEffect, useState} from "react";
 import {EventsOn} from "../../wailsjs/runtime";
 import {Split} from "../../wailsjs/go/session/Service";
-import {Save} from "../../wailsjs/go/persister/Service";
+import useWindowResize from "../hooks/useWindowResize";
 
 export default function Timer() {
+    useWindowResize("app");
     const [time, setTime] = useState(0);
 
     useEffect(() => {
         const off = EventsOn("timer:update", (val: number) => {
-           setTime(val);
+            setTime(val);
         });
     }, []);
 
-    return (<span>{formatDuration(time)} <button onClick={Split}>Split</button> <button onClick={Save}>Save</button> </span>)
+    return (
+        <div className={"timer-container"}>
+            {formatDuration(time)}
+        </div>
+    )
 }
 
-function formatDuration(ms: number, fmt = "HH:MM:SS.cc"): string {
+export function formatDuration(ms: number) {
     const totalSeconds = Math.floor(ms / 1000);
-    const hours   = Math.floor(totalSeconds / 3600);
+    const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-    const millis  = ms % 1000;
-    const centis  = Math.floor(millis / 10);
+    const centis = Math.floor((ms % 1000) / 10);
 
-    return fmt
-        .replace(/HH/g, hours.toString().padStart(2, "0"))
-        .replace(/H/g, hours.toString())
-        .replace(/MM/g, minutes.toString().padStart(2, "0"))
-        .replace(/M/g, minutes.toString())
-        .replace(/SS/g, seconds.toString().padStart(2, "0"))
-        .replace(/S/g, seconds.toString())
-        .replace(/mmm/g, millis.toString().padStart(3, "0"))
-        .replace(/cc/g, centis.toString().padStart(2, "0"));
+    // What to show
+    const showHours = hours > 0;
+    const showMinutes = showHours ? true : minutes > 0;             // if hours>0 we show minutes (padded); else show only if minutes>0
+    const padMinutes = showHours;                                    // minutes padded when hours>0
+    const padSeconds = minutes > 0 || hours > 0;                     // seconds padded when any minutes exist
+
+    // Text values (empty string means “render span but no value”)
+    const hoursText = showHours ? String(hours) : "";
+    const minutesText = showMinutes ? (padMinutes ? String(minutes).padStart(2, "0") : String(minutes)) : "";
+    const secondsText = padSeconds ? String(seconds).padStart(2, "0") : String(seconds);
+    const centisText = String(centis).padStart(2, "0");
+
+    // Separators only if the left side is present
+    const sepHM = showHours && showMinutes ? ":" : "";
+    const sepMS = showMinutes ? ":" : "";
+    const sepSC = "."; // always show dot before centis
+
+    return (
+        <span className="time-container" aria-label="formatted duration">
+          <span className="time-hours" data-unit="hours" data-present={showHours ? "1" : "0"}>{hoursText}</span>
+          <span className="time-sep-hm" aria-hidden="true">{sepHM}</span>
+          <span className="time-minutes" data-unit="minutes" data-present={showMinutes ? "1" : "0"}>{minutesText}</span>
+          <span className="time-sep-ms" aria-hidden="true">{sepMS}</span>
+          <span className="time-seconds" data-unit="seconds">{secondsText}</span>
+          <span className="time-sep-sc" aria-hidden="true">{sepSC}</span>
+          <span className="time-centis" data-unit="centis">{centisText}</span>
+        </span>
+    );
 }
