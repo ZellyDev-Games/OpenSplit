@@ -12,6 +12,7 @@ import {WindowSetSize} from "../../wailsjs/runtime";
 import useWindowResize from "../hooks/useWindowResize";
 
 type SplitEditorProps = {
+    setLoadedSplitFile: (payload: SplitFilePayload) => void;
     loadedSplitFile : SplitFilePayload | null;
 }
 
@@ -29,7 +30,7 @@ type Segment = {
     best_time: string
 }
 
-export default function SplitEditor({loadedSplitFile} : SplitEditorProps) {
+export default function SplitEditor({setLoadedSplitFile, loadedSplitFile} : SplitEditorProps) {
     useWindowResize("edit");
     const clickOutsideRef = useRef<HTMLDivElement | null>(null);
     const navigate = useNavigate();
@@ -87,8 +88,8 @@ export default function SplitEditor({loadedSplitFile} : SplitEditorProps) {
 
     const addSegment = () => {
         setSegments((prev) => [...prev, {
-            average_time: "0",
-            best_time: "0",
+            average_time: "00:00:00.00",
+            best_time: "00:00:00.00",
             id: "",
             name: ""
         }]);
@@ -116,7 +117,14 @@ export default function SplitEditor({loadedSplitFile} : SplitEditorProps) {
             attempts: Number(attempts)
         })
 
-        UpdateSplitFile(splitFilePayload).then(_ => navigate("/")).catch((err) => console.log(err));
+        UpdateSplitFile(splitFilePayload)
+            .then(saved => {
+                if(saved) {
+                    setLoadedSplitFile(splitFilePayload)
+                    navigate("/")
+                }
+            })
+            .catch((err) => console.log(err));
     }
 
     const handleTimeChange = (idx: number, time: string, isBest: boolean) => {

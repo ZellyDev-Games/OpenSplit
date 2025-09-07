@@ -17,4 +17,4 @@ export function Split():Promise<void>;
 
 export function Startup(arg1:context.Context):Promise<void>;
 
-export function UpdateSplitFile(arg1:session.SplitFilePayload):Promise<void>;
+export function UpdateSplitFile(arg1:session.SplitFilePayload):Promise<boolean>;

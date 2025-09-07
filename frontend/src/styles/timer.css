@@ -1,3 +1,5 @@
 @layer componenets {
-
+    .time-container {
+        font-size: 50px;
+    }
 }

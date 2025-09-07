@@ -1,4 +1,5 @@
 import React, {useEffect} from "react";
+import {stringToParts} from "./Timer";
 
 type timeRowParams = {
     idx: number;
@@ -17,11 +18,11 @@ export default function TimeRow({idx, time, onChangeCallback}: timeRowParams) {
     }, [hours, minutes, seconds, centis, idx])
 
     useEffect(() => {
-        const timeParts = time.split(":");
-        setHours(timeParts[0]);
-        setMinutes(timeParts[1]);
-        setSeconds(timeParts[2].split(".")[0]);
-        setCentis(timeParts[2].split(".")[1]);
+        const timeParts = stringToParts(time)
+        setHours(String(timeParts.hours));
+        setMinutes(String(timeParts.minutes));
+        setSeconds(String(timeParts.seconds));
+        setCentis(String(timeParts.centis));
     }, []);
 
     const handleChange = (val: string, clamp: number, updateFunc: (val: string) => void) => {

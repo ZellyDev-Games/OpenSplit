@@ -22,11 +22,11 @@ func (j *JsonFile) Startup(ctx context.Context) {
 	j.ctx = ctx
 }
 
-func (j *JsonFile) Save(splitFilePayload SplitFilePayload) error {
+func (j *JsonFile) Save(splitFilePayload SplitFilePayload) (bool, error) {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		logger.Error("save failed: " + err.Error())
-		return err
+		return false, err
 	}
 
 	defaultFileName := j.getDefaultFileName(splitFilePayload)
@@ -42,12 +42,12 @@ func (j *JsonFile) Save(splitFilePayload SplitFilePayload) error {
 
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to get path from save file dialog: %s", err.Error()))
-		return err
+		return false, err
 	}
 
 	if filename == "" {
 		logger.Debug("user cancelled save")
-		return nil
+		return false, nil
 	}
 
 	j.fileName = filename
@@ -55,21 +55,22 @@ func (j *JsonFile) Save(splitFilePayload SplitFilePayload) error {
 	data, err := json.Marshal(splitFilePayload)
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to marshal split file payload: %s", err.Error()))
-		return err
+		return false, err
 	}
 	err = os.WriteFile(j.fileName, data, 0644)
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to save split file: %s", err.Error()))
+		return false, err
 	}
 
-	return err
+	return true, err
 }
 
-func (j *JsonFile) Load() (SplitFilePayload, error) {
+func (j *JsonFile) Load() (*SplitFilePayload, error) {
 	var splitFilePayload SplitFilePayload
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
-		return splitFilePayload, err
+		return nil, err
 	}
 
 	filename, err := runtime.OpenFileDialog(j.ctx, runtime.OpenDialogOptions{
@@ -83,26 +84,26 @@ func (j *JsonFile) Load() (SplitFilePayload, error) {
 
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to get path from open file dialog: %s", err.Error()))
-		return splitFilePayload, err
+		return nil, err
 	}
 
 	if filename == "" {
 		logger.Debug("user cancelled save")
-		return splitFilePayload, nil
+		return nil, nil
 	}
 
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to load split file: %s", err.Error()))
-		return splitFilePayload, err
+		return nil, err
 	}
 
 	err = json.Unmarshal(data, &splitFilePayload)
 	if err != nil {
-		return splitFilePayload, err
+		return nil, err
 	}
 
-	return splitFilePayload, nil
+	return &splitFilePayload, nil
 }
 
 func (j *JsonFile) getDefaultDirectory() (string, error) {

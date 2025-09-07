@@ -1,0 +1,70 @@
+@layer components {
+    div.splitter {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+    }
+
+    div.splitList {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+
+    .gameInfo {
+        background: linear-gradient(to bottom, #640199, #5b0190);
+        text-align: center;
+    }
+
+    .gameTitle {
+        margin: 0;
+        padding-top:5px;
+        font-size: 20px;
+        font-weight: normal;
+    }
+
+    .gameCategory {
+        margin-block: 0;
+        margin: 0;
+        padding-bottom: 10px;
+        font-size: 20px;
+        font-weight: normal;
+    }
+
+    .splitContainer {
+        flex: 1;
+    }
+
+    .splitList table {
+        margin:0;
+        padding: 0;
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .splitList table td {
+        border: 2px solid #444;
+        border-left: 0;
+        border-right: 0;
+        padding:5px;
+    }
+
+    .splitList .splitName {
+        width: 60%;
+    }
+
+    .splitList .splitComparison {
+        text-align: right;
+    }
+
+    .timer-container {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+        padding:10px;
+    }
+
+    .finalSegment {
+        background: linear-gradient(to bottom, #640199, #5b0190);
+    }
+}
