@@ -159,26 +159,29 @@ func (s *Service) Reset() {
 	}
 }
 
-func (s *Service) UpdateSplitFile(payload SplitFilePayload) {
+func (s *Service) UpdateSplitFile(payload SplitFilePayload) (bool, error) {
 	newSplitFile, err := newFromPayload(payload)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to parse split file payload: %s", err))
-		return
+		return false, err
 	}
 
 	s.loadedSplitFile = newSplitFile
-	err = s.persister.Save(s.loadedSplitFile.GetPayload())
+	saved, err := s.persister.Save(s.loadedSplitFile.GetPayload())
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to save split file: %s", err))
 		s.loadedSplitFile = nil
+		return false, err
 	}
+
+	return saved, err
 }
 
-func (s *Service) LoadSplitFile() (SplitFilePayload, error) {
+func (s *Service) LoadSplitFile() (*SplitFilePayload, error) {
 	newSplitFile, err := s.persister.Load()
 	if err != nil {
 		s.loadedSplitFile = nil
-		return SplitFilePayload{}, err
+		return nil, err
 	}
 	return newSplitFile, nil
 }
