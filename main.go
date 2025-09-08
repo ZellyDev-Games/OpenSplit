@@ -16,6 +16,7 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -23,7 +24,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed all:frontend/dist
@@ -41,11 +42,11 @@ func main() {
 	logger.Info("logging initialized, starting opensplit")
 
 	sysopenService := sysopen.NewService(skinDir)
+	logger.Debug("sysopen service initialized")
 
 	skinsFileServer := setupSkinServer(skinDir)
-	logger.Info("skin server initialized")
-
 	skinService := &skin.Service{}
+	logger.Debug("Skin service initialized")
 
 	timerService, timeUpdatedChannel := timer.NewService()
 	logger.Debug("Timer service initialized")
@@ -56,9 +57,11 @@ func main() {
 	sessionService := session.NewService(timerService, timeUpdatedChannel, nil, jsonFilePersister)
 	logger.Debug("SessionService initialized")
 
-	hotkeyManager, _ := hotkeys.NewWindowsHotkeyManager()
+	hotkeyProvider, keyInfoChannel := setupHotkeys()
+	hotkeyService := hotkeys.NewService(keyInfoChannel, sessionService, hotkeyProvider)
+	logger.Debug("HotkeyService initialized")
 
-	// Create application with options
+	logger.Info("services initialized, starting application")
 	err := wails.Run(&options.App{
 		Title:     "OpenSplit",
 		Width:     1024,
@@ -76,14 +79,18 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
-
 			sysopenService.Startup(ctx)
 			timerService.Startup(ctx)
 			skinService.Startup(ctx, skinDir)
 			sessionService.Startup(ctx)
-			//runtime.WindowSetAlwaysOnTop(ctx, true)
-			hotkeyManager.SetWindowsHook()
-			logger.Info("startup complete")
+			wailsRuntime.WindowSetAlwaysOnTop(ctx, true)
+			err := hotkeyProvider.StartHook()
+			if err != nil {
+				logger.Error(fmt.Sprintf("failed to start hotkey provider hook: %s", err))
+				os.Exit(2)
+			}
+			hotkeyService.StartDispatcher()
+			logger.Info("application startup complete")
 
 			go func() {
 				ch := make(chan os.Signal, 1)
@@ -92,10 +99,10 @@ func main() {
 				logger.Info(fmt.Sprintf("received exit signal %s", s))
 
 				// Do cleanup *now* so we don't depend on Wails calling OnShutdown
-				gracefulShutdown(hotkeyManager)
+				gracefulShutdown(hotkeyProvider)
 
 				// Ask Wails to quit (this will still call OnShutdown in normal paths)
-				runtime.Quit(ctx)
+				wailsRuntime.Quit(ctx)
 
 				// Give Wails a brief moment to unwind; then hard-exit if needed
 				select {
@@ -106,7 +113,7 @@ func main() {
 			}()
 		},
 		OnShutdown: func(ctx context.Context) {
-			gracefulShutdown(hotkeyManager)
+			gracefulShutdown(hotkeyProvider)
 		},
 		Bind: []interface{}{
 			sessionService,
@@ -168,10 +175,24 @@ func setupLogging(logDir string) {
 	logger.AddHandler(fileHandler)
 }
 
-func gracefulShutdown(hotkeyManager *hotkeys.WindowsManager) {
+func gracefulShutdown(hotkeyProvider hotkeys.HotkeyProvider) {
 	shutdownOnce.Do(func() {
-		hotkeyManager.UnhookWindowsHook()
+		_ = hotkeyProvider.Unhook()
 		logger.Info("shutdown complete")
 		close(shutdownDone)
 	})
+}
+
+func setupHotkeys() (hotkeys.HotkeyProvider, chan hotkeys.KeyInfo) {
+	var hotkeyProvider hotkeys.HotkeyProvider
+	var keyInfoChannel chan hotkeys.KeyInfo
+	switch runtime.GOOS {
+	case "windows":
+		hotkeyProvider, keyInfoChannel = hotkeys.NewWindowsHotkeyManager()
+	default:
+		logger.Error(fmt.Sprintf("operating system %s is not yet supported", runtime.GOOS))
+		os.Exit(1)
+	}
+
+	return hotkeyProvider, keyInfoChannel
 }
