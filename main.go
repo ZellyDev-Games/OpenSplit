@@ -79,41 +79,17 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
+			wailsRuntime.WindowSetAlwaysOnTop(ctx, true)
 			sysopenService.Startup(ctx)
 			timerService.Startup(ctx)
 			skinService.Startup(ctx, skinDir)
 			sessionService.Startup(ctx)
-			wailsRuntime.WindowSetAlwaysOnTop(ctx, true)
-			err := hotkeyProvider.StartHook()
-			if err != nil {
-				logger.Error(fmt.Sprintf("failed to start hotkey provider hook: %s", err))
-				os.Exit(2)
-			}
 			hotkeyService.StartDispatcher()
+			startInterruptListener(ctx, hotkeyService)
 			logger.Info("application startup complete")
-
-			go func() {
-				ch := make(chan os.Signal, 1)
-				signal.Notify(ch, os.Interrupt, syscall.SIGTERM) // disables default exit for these
-				s := <-ch
-				logger.Info(fmt.Sprintf("received exit signal %s", s))
-
-				// Do cleanup *now* so we don't depend on Wails calling OnShutdown
-				gracefulShutdown(hotkeyProvider)
-
-				// Ask Wails to quit (this will still call OnShutdown in normal paths)
-				wailsRuntime.Quit(ctx)
-
-				// Give Wails a brief moment to unwind; then hard-exit if needed
-				select {
-				case <-shutdownDone:
-				case <-time.After(2 * time.Second):
-				}
-				os.Exit(0)
-			}()
 		},
 		OnShutdown: func(ctx context.Context) {
-			gracefulShutdown(hotkeyProvider)
+			gracefulShutdown(hotkeyService)
 		},
 		Bind: []interface{}{
 			sessionService,
@@ -125,6 +101,24 @@ func main() {
 	if err != nil {
 		println("Error:", err.Error())
 	}
+}
+
+func setupLogging(logDir string) {
+	f, err := os.OpenFile(path.Join(logDir, "OpenSplit.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	consoleHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
+
+	fileHandler := slog.NewJSONHandler(f, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
+
+	logger.AddHandler(consoleHandler)
+	logger.AddHandler(fileHandler)
 }
 
 func setupSkinServer(skinDir string) http.Handler {
@@ -157,32 +151,6 @@ func setupPaths() (string, string, string) {
 	return appDir, logDir, skinDir
 }
 
-func setupLogging(logDir string) {
-	f, err := os.OpenFile(path.Join(logDir, "OpenSplit.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		panic(err)
-	}
-
-	consoleHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	})
-
-	fileHandler := slog.NewJSONHandler(f, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	})
-
-	logger.AddHandler(consoleHandler)
-	logger.AddHandler(fileHandler)
-}
-
-func gracefulShutdown(hotkeyProvider hotkeys.HotkeyProvider) {
-	shutdownOnce.Do(func() {
-		_ = hotkeyProvider.Unhook()
-		logger.Info("shutdown complete")
-		close(shutdownDone)
-	})
-}
-
 func setupHotkeys() (hotkeys.HotkeyProvider, chan hotkeys.KeyInfo) {
 	var hotkeyProvider hotkeys.HotkeyProvider
 	var keyInfoChannel chan hotkeys.KeyInfo
@@ -195,4 +163,34 @@ func setupHotkeys() (hotkeys.HotkeyProvider, chan hotkeys.KeyInfo) {
 	}
 
 	return hotkeyProvider, keyInfoChannel
+}
+
+func startInterruptListener(ctx context.Context, hotkeyService *hotkeys.Service) {
+	go func() {
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, os.Interrupt, syscall.SIGTERM) // disables default exit for these
+		s := <-ch
+		logger.Info(fmt.Sprintf("received exit signal %s", s))
+
+		// Do cleanup *now* so we don't depend on Wails calling OnShutdown
+		gracefulShutdown(hotkeyService)
+
+		// Ask Wails to quit (this will still call OnShutdown in normal paths)
+		wailsRuntime.Quit(ctx)
+
+		// Give Wails a brief moment to unwind; then hard-exit if needed
+		select {
+		case <-shutdownDone:
+		case <-time.After(2 * time.Second):
+		}
+		os.Exit(0)
+	}()
+}
+
+func gracefulShutdown(hotkeyService *hotkeys.Service) {
+	shutdownOnce.Do(func() {
+		hotkeyService.StopDispatcher()
+		logger.Info("shutdown complete")
+		close(shutdownDone)
+	})
 }
