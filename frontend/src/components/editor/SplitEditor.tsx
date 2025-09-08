@@ -8,7 +8,7 @@ import SplitFilePayload = session.SplitFilePayload;
 import TimeRow from "./TimeRow";
 import {useNavigate} from "react-router";
 import {useClickOutside} from "../../hooks/useClickOutside";
-import {WindowSetSize} from "../../../wailsjs/runtime";
+import {WindowSetPosition, WindowSetSize} from "../../../wailsjs/runtime";
 import useWindowResize from "../../hooks/useWindowResize";
 
 
@@ -63,6 +63,10 @@ export default function SplitEditor() {
             setSpeedrunAPIBase(config.speed_run_API_base);
         })()
     }, []);
+
+    useEffect(() => {
+        WindowSetPosition(400, 100)
+    }, [])
 
     const searchSpeedrun = async () => {
         if(!speedrunAPIBase) return;

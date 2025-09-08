@@ -1,5 +1,5 @@
 import {Route, Routes, useNavigate} from "react-router";
-import Splitter from "./components/Splitter/Splitter";
+import Splitter from "./components/splitter/Splitter";
 import SplitEditor from "./components/editor/SplitEditor";
 
 function App() {
