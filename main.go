@@ -1,6 +1,7 @@
 package main
 
 import (
+	"OpenSplit/hotkeys"
 	"OpenSplit/logger"
 	"OpenSplit/session"
 	"OpenSplit/skin"
@@ -8,19 +9,30 @@ import (
 	"OpenSplit/timer"
 	"context"
 	"embed"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
+	"sync"
+	"syscall"
+	"time"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+var (
+	shutdownOnce sync.Once
+	shutdownDone = make(chan struct{})
+)
 
 func main() {
 	_, logDir, skinDir := setupPaths()
@@ -44,6 +56,8 @@ func main() {
 	sessionService := session.NewService(timerService, timeUpdatedChannel, nil, jsonFilePersister)
 	logger.Debug("SessionService initialized")
 
+	hotkeyManager, _ := hotkeys.NewWindowsHotkeyManager()
+
 	// Create application with options
 	err := wails.Run(&options.App{
 		Title:     "OpenSplit",
@@ -62,12 +76,37 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
+
 			sysopenService.Startup(ctx)
 			timerService.Startup(ctx)
 			skinService.Startup(ctx, skinDir)
 			sessionService.Startup(ctx)
 			//runtime.WindowSetAlwaysOnTop(ctx, true)
+			hotkeyManager.SetWindowsHook()
 			logger.Info("startup complete")
+
+			go func() {
+				ch := make(chan os.Signal, 1)
+				signal.Notify(ch, os.Interrupt, syscall.SIGTERM) // disables default exit for these
+				s := <-ch
+				logger.Info(fmt.Sprintf("received exit signal %s", s))
+
+				// Do cleanup *now* so we don't depend on Wails calling OnShutdown
+				gracefulShutdown(hotkeyManager)
+
+				// Ask Wails to quit (this will still call OnShutdown in normal paths)
+				runtime.Quit(ctx)
+
+				// Give Wails a brief moment to unwind; then hard-exit if needed
+				select {
+				case <-shutdownDone:
+				case <-time.After(2 * time.Second):
+				}
+				os.Exit(0)
+			}()
+		},
+		OnShutdown: func(ctx context.Context) {
+			gracefulShutdown(hotkeyManager)
 		},
 		Bind: []interface{}{
 			sessionService,
@@ -127,4 +166,12 @@ func setupLogging(logDir string) {
 
 	logger.AddHandler(consoleHandler)
 	logger.AddHandler(fileHandler)
+}
+
+func gracefulShutdown(hotkeyManager *hotkeys.WindowsManager) {
+	shutdownOnce.Do(func() {
+		hotkeyManager.UnhookWindowsHook()
+		logger.Info("shutdown complete")
+		close(shutdownDone)
+	})
 }
