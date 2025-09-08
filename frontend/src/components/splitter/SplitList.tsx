@@ -1,5 +1,5 @@
 import {session} from "../../../wailsjs/go/models";
-import {formatDuration, stringToParts} from "./Timer";
+import {formatDuration, stringToParts} from "./Timer"
 import {useEffect, useState} from "react";
 import {GetLoadedSplitFile} from "../../../wailsjs/go/session/Service";
 import {EventsOn} from "../../../wailsjs/runtime";

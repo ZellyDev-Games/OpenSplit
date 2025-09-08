@@ -1,5 +1,5 @@
 import React, {useEffect} from "react";
-import {stringToParts} from "../Splitter/Timer";
+import {stringToParts} from "../splitter/Timer";
 
 type timeRowParams = {
     idx: number;
