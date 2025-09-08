@@ -68,7 +68,7 @@ func NewWindowsHotkeyManager() (*WindowsManager, chan KeyInfo) {
 	return manager, manager.keyChannel
 }
 
-func (h *WindowsManager) SetWindowsHook() {
+func (h *WindowsManager) StartHook() error {
 	go func() {
 		// Messages are sent to the thread that installed the hook, so lock this function down to just that thread
 		runtime.LockOSThread()
@@ -96,20 +96,23 @@ func (h *WindowsManager) SetWindowsHook() {
 			ret, _, _ := getMessage.Call(uintptr(unsafe.Pointer(msg)), 0, 0, 0)
 			if ret == 0 {
 				logger.Debug("WM_QUIT received, quitting message loop")
-				h.UnhookWindowsHook()
+				h.Unhook()
 				return
 			}
 		}
 	}()
+
+	return nil
 }
 
-func (h *WindowsManager) UnhookWindowsHook() {
+func (h *WindowsManager) Unhook() error {
 	ret, _, err := unhookWindowsHook.Call(h.hhookHandle)
 	if ret == 0 {
 		logger.Error(err.Error())
-		return
+		return err
 	}
 	logger.Debug(fmt.Sprintf("hook removed at address %d", h.hhookHandle))
+	return nil
 }
 
 func (h *WindowsManager) HandleKeyDown(nCode uintptr, identifier uintptr, kbHookStruct uintptr) uintptr {
