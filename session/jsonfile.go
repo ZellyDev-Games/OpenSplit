@@ -12,25 +12,46 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+type RuntimeProvider interface {
+	SaveFileDialog(context.Context, runtime.SaveDialogOptions) (string, error)
+	OpenFileDialog(context.Context, runtime.OpenDialogOptions) (string, error)
+}
+
+type FileProvider interface {
+	WriteFile(string, []byte, os.FileMode) error
+	ReadFile(string) ([]byte, error)
+	MkdirAll(string, os.FileMode) error
+	UserHomeDir() (string, error)
+}
+
 type JsonFile struct {
 	ctx               context.Context
+	runtime           RuntimeProvider
+	fileProvider      FileProvider
 	fileName          string
 	lastUsedDirectory string
+}
+
+func NewJsonFile(runtime RuntimeProvider, fileProvider FileProvider) *JsonFile {
+	return &JsonFile{
+		runtime:      runtime,
+		fileProvider: fileProvider,
+	}
 }
 
 func (j *JsonFile) Startup(ctx context.Context) {
 	j.ctx = ctx
 }
 
-func (j *JsonFile) save(splitFilePayload SplitFilePayload) (bool, error) {
+func (j *JsonFile) Save(splitFilePayload SplitFilePayload) error {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		logger.Error("save failed: " + err.Error())
-		return false, err
+		return err
 	}
 
 	defaultFileName := j.getDefaultFileName(splitFilePayload)
-	filename, err := runtime.SaveFileDialog(j.ctx, runtime.SaveDialogOptions{
+	filename, err := j.runtime.SaveFileDialog(j.ctx, runtime.SaveDialogOptions{
 		Title:            "save OpenSplit File",
 		DefaultFilename:  defaultFileName,
 		DefaultDirectory: defaultDirectory,
@@ -42,12 +63,12 @@ func (j *JsonFile) save(splitFilePayload SplitFilePayload) (bool, error) {
 
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to get path from save file dialog: %s", err.Error()))
-		return false, err
+		return err
 	}
 
 	if filename == "" {
 		logger.Debug("user cancelled save")
-		return false, nil
+		return nil
 	}
 
 	j.fileName = filename
@@ -55,25 +76,25 @@ func (j *JsonFile) save(splitFilePayload SplitFilePayload) (bool, error) {
 	data, err := json.Marshal(splitFilePayload)
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to marshal split file payload: %s", err.Error()))
-		return false, err
+		return err
 	}
-	err = os.WriteFile(j.fileName, data, 0644)
+	err = j.fileProvider.WriteFile(j.fileName, data, 0644)
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to save split file: %s", err.Error()))
-		return false, err
+		return err
 	}
 
-	return true, err
+	return err
 }
 
-func (j *JsonFile) load() (*SplitFilePayload, error) {
+func (j *JsonFile) Load() (SplitFilePayload, error) {
 	var splitFilePayload SplitFilePayload
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
-		return nil, err
+		return SplitFilePayload{}, err
 	}
 
-	filename, err := runtime.OpenFileDialog(j.ctx, runtime.OpenDialogOptions{
+	filename, err := j.runtime.OpenFileDialog(j.ctx, runtime.OpenDialogOptions{
 		Title:            "load OpenSplit File",
 		DefaultDirectory: defaultDirectory,
 		Filters: []runtime.FileFilter{{
@@ -84,26 +105,26 @@ func (j *JsonFile) load() (*SplitFilePayload, error) {
 
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to get path from open file dialog: %s", err.Error()))
-		return nil, err
+		return SplitFilePayload{}, err
 	}
 
 	if filename == "" {
 		logger.Debug("user cancelled save")
-		return nil, nil
+		return SplitFilePayload{}, nil
 	}
 
-	data, err := os.ReadFile(filename)
+	data, err := j.fileProvider.ReadFile(filename)
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to load split file: %s", err.Error()))
-		return nil, err
+		return SplitFilePayload{}, err
 	}
 
 	err = json.Unmarshal(data, &splitFilePayload)
 	if err != nil {
-		return nil, err
+		return SplitFilePayload{}, err
 	}
 
-	return &splitFilePayload, nil
+	return splitFilePayload, nil
 }
 
 func (j *JsonFile) getDefaultDirectory() (string, error) {
@@ -111,13 +132,13 @@ func (j *JsonFile) getDefaultDirectory() (string, error) {
 	if j.lastUsedDirectory != "" {
 		defaultDirectory = j.lastUsedDirectory
 	} else {
-		defaultDirectoryBase, err := os.UserHomeDir()
+		defaultDirectoryBase, err := j.fileProvider.UserHomeDir()
 		if err != nil {
 			logger.Error(fmt.Sprintf("failed to get user home directory: %s", err.Error()))
 			return "", err
 		}
 		defaultDirectory = path.Join(defaultDirectoryBase, "OpenSplit", "Split Files")
-		err = os.MkdirAll(defaultDirectory, 0755)
+		err = j.fileProvider.MkdirAll(defaultDirectory, 0755)
 		if err != nil {
 			logger.Error(fmt.Sprintf("failed to create OpenSplit user data folder: %s", err.Error()))
 			return "", err

@@ -21,10 +21,11 @@ import (
 	"syscall"
 	"time"
 
+	sessionRuntime "OpenSplit/session/runtime"
+
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed all:frontend/dist
@@ -51,10 +52,10 @@ func main() {
 	timerService, timeUpdatedChannel := timer.NewService(timer.NewTicker(time.Millisecond * 20))
 	logger.Debug("Timer service initialized")
 
-	_ = session.JsonFile{}
+	jsonFilePersister := session.NewJsonFile(&sessionRuntime.WailsRuntime{}, &sessionRuntime.FileRuntime{})
 	logger.Debug("JSON FilePersister initialized")
 
-	sessionService := session.NewService(timerService, timeUpdatedChannel, nil, nil)
+	sessionService := session.NewService(timerService, timeUpdatedChannel, nil, jsonFilePersister)
 	logger.Debug("SessionService initialized")
 
 	hotkeyProvider, keyInfoChannel := setupHotkeys()
@@ -79,7 +80,7 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
-			wailsRuntime.WindowSetAlwaysOnTop(ctx, true)
+			sessionRuntime.WindowSetAlwaysOnTop(ctx, true)
 			sysopenService.Startup(ctx)
 			timerService.Startup(ctx)
 			skinService.Startup(ctx, skinDir)
@@ -176,7 +177,7 @@ func startInterruptListener(ctx context.Context, hotkeyService *hotkeys.Service)
 		gracefulShutdown(hotkeyService)
 
 		// Ask Wails to quit (this will still call OnShutdown in normal paths)
-		wailsRuntime.Quit(ctx)
+		sessionRuntime.Quit(ctx)
 
 		// Give Wails a brief moment to unwind; then hard-exit if needed
 		select {
