@@ -22,7 +22,7 @@ func (j *JsonFile) Startup(ctx context.Context) {
 	j.ctx = ctx
 }
 
-func (j *JsonFile) Save(splitFilePayload SplitFilePayload) (bool, error) {
+func (j *JsonFile) save(splitFilePayload SplitFilePayload) (bool, error) {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		logger.Error("save failed: " + err.Error())
@@ -31,7 +31,7 @@ func (j *JsonFile) Save(splitFilePayload SplitFilePayload) (bool, error) {
 
 	defaultFileName := j.getDefaultFileName(splitFilePayload)
 	filename, err := runtime.SaveFileDialog(j.ctx, runtime.SaveDialogOptions{
-		Title:            "Save OpenSplit File",
+		Title:            "save OpenSplit File",
 		DefaultFilename:  defaultFileName,
 		DefaultDirectory: defaultDirectory,
 		Filters: []runtime.FileFilter{{
@@ -66,7 +66,7 @@ func (j *JsonFile) Save(splitFilePayload SplitFilePayload) (bool, error) {
 	return true, err
 }
 
-func (j *JsonFile) Load() (*SplitFilePayload, error) {
+func (j *JsonFile) load() (*SplitFilePayload, error) {
 	var splitFilePayload SplitFilePayload
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
@@ -74,7 +74,7 @@ func (j *JsonFile) Load() (*SplitFilePayload, error) {
 	}
 
 	filename, err := runtime.OpenFileDialog(j.ctx, runtime.OpenDialogOptions{
-		Title:            "Load OpenSplit File",
+		Title:            "load OpenSplit File",
 		DefaultDirectory: defaultDirectory,
 		Filters: []runtime.FileFilter{{
 			DisplayName: "OpenSplit Files",

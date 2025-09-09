@@ -6,8 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestAttempts(t *testing.T) {
-	s := SplitFile{
+func getTestFile() *SplitFile {
+	return &SplitFile{
 		gameName:     "Test Game",
 		gameCategory: "Test Category",
 		segments: []Segment{{
@@ -18,7 +18,10 @@ func TestAttempts(t *testing.T) {
 		}},
 		attempts: 0,
 	}
+}
 
+func TestAttempts(t *testing.T) {
+	s := getTestFile()
 	s.NewAttempt()
 	if s.attempts != 1 {
 		t.Errorf("Test failed. Expected 1 attempt, got %d", s.attempts)

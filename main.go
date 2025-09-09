@@ -51,10 +51,10 @@ func main() {
 	timerService, timeUpdatedChannel := timer.NewService(timer.NewTicker(time.Millisecond * 20))
 	logger.Debug("Timer service initialized")
 
-	jsonFilePersister := session.JsonFile{}
+	_ = session.JsonFile{}
 	logger.Debug("JSON FilePersister initialized")
 
-	sessionService := session.NewService(timerService, timeUpdatedChannel, nil, jsonFilePersister)
+	sessionService := session.NewService(timerService, timeUpdatedChannel, nil, nil)
 	logger.Debug("SessionService initialized")
 
 	hotkeyProvider, keyInfoChannel := setupHotkeys()
