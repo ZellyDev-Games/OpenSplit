@@ -9,6 +9,8 @@ export function GetConfig():Promise<session.Config>;
 
 export function GetLoadedSplitFile():Promise<session.SplitFilePayload>;
 
+export function GetSessionStatus():Promise<session.ServicePayload>;
+
 export function LoadSplitFile():Promise<session.SplitFilePayload>;
 
 export function Pause():Promise<void>;

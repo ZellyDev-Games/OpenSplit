@@ -1,13 +1,24 @@
 import {session} from "../../../wailsjs/go/models";
 import {formatDuration, stringToParts} from "./Timer"
 import {useEffect, useState} from "react";
-import {GetLoadedSplitFile} from "../../../wailsjs/go/session/Service";
+import {GetLoadedSplitFile, GetSessionStatus} from "../../../wailsjs/go/session/Service";
 import {EventsOn} from "../../../wailsjs/runtime";
 import SplitFilePayload = session.SplitFilePayload;
+import SegmentPayload = session.SegmentPayload;
 
 export type CompareAgainst = "best" | "average"
 
+type SplitPayload = {
+    split_index: number;
+    new_index: number;
+    split_segment: SegmentPayload;
+    new_segment: SegmentPayload;
+    finished: boolean;
+    current_time: string;
+}
+
 export default function SplitList() {
+    const [currentSegment, setCurrentSegment] = useState<number | null>(null)
     const [splitFile, setSplitFile] = useState<session.SplitFilePayload | null>(null);
     const [compareAgainst, setCompareAgainst] = useState<CompareAgainst | null>(null);
 
@@ -15,12 +26,29 @@ export default function SplitList() {
         (async() => {
             console.log("fetching loaded splitfile...")
             setSplitFile(await GetLoadedSplitFile())
-        })()
+        })();
 
-        return EventsOn("splitfile:update", (splitFilePayload: SplitFilePayload) => {
+        (async() => {
+            console.log("fetching session data...")
+            const session = await GetSessionStatus()
+            if(session.current_segment) {
+                setCurrentSegment(session.current_segment_index)
+            }
+        })();
+
+        const unsubscribeFromSplitUpdates = EventsOn("session:split", (splitPayload: SplitPayload) => {
+            setCurrentSegment(splitPayload.new_index);
+        });
+
+        const unsubscribeFromSplitFileUpdates = EventsOn("splitfile:update", (splitFilePayload: SplitFilePayload) => {
             console.log("received splitfile update", splitFilePayload);
             setSplitFile(splitFilePayload)
-        })
+        });
+
+        return () => {
+           unsubscribeFromSplitFileUpdates();
+           unsubscribeFromSplitUpdates();
+        }
     }, [])
 
     const formattedSegments = splitFile?.segments.map((segment, index) =>{
@@ -30,7 +58,7 @@ export default function SplitList() {
     })
 
     const segmentRows = splitFile?.segments.map((segment, index) =>
-        <tr key={segment.id ?? index}>
+        <tr key={segment.id ?? index} className={currentSegment !== null && currentSegment === index ? "selected" : ""}>
             <td className="splitName">
                 {segment.name}
             </td>

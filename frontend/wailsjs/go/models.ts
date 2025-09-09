@@ -66,6 +66,48 @@ export namespace session {
 		    return a;
 		}
 	}
+	export class ServicePayload {
+	    split_file?: SplitFilePayload;
+	    current_segment_index: number;
+	    current_segment?: SegmentPayload;
+	    finished: boolean;
+	    paused: boolean;
+	    current_time: number;
+	    current_time_formatted: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ServicePayload(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.split_file = this.convertValues(source["split_file"], SplitFilePayload);
+	        this.current_segment_index = source["current_segment_index"];
+	        this.current_segment = this.convertValues(source["current_segment"], SegmentPayload);
+	        this.finished = source["finished"];
+	        this.paused = source["paused"];
+	        this.current_time = source["current_time"];
+	        this.current_time_formatted = source["current_time_formatted"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 
 }
 

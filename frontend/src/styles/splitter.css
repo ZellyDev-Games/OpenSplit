@@ -42,6 +42,11 @@
         border-collapse: collapse;
     }
 
+    .splitList table tr.selected {
+        background: #5b5557   ;
+        color: #fff;
+    }
+
     .splitList table td {
         border: 2px solid #444;
         border-left: 0;
