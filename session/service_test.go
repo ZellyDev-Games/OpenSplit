@@ -51,7 +51,9 @@ func (t *MockTimer) GetCurrentTime() time.Duration {
 }
 
 type MockPersister struct {
-	ctx context.Context
+	ctx        context.Context
+	SaveCalled int
+	LoadCalled int
 }
 
 func (m *MockPersister) Startup(ctx context.Context) {
@@ -59,10 +61,12 @@ func (m *MockPersister) Startup(ctx context.Context) {
 }
 
 func (m *MockPersister) Load() (SplitFilePayload, error) {
+	m.LoadCalled++
 	return SplitFilePayload{}, nil
 }
 
 func (m *MockPersister) Save(splitFile SplitFilePayload) error {
+	m.SaveCalled++
 	return nil
 }
 
@@ -78,15 +82,15 @@ func getSplitFile() *SplitFile {
 		gameName:     "Test Game",
 		gameCategory: "Test Category",
 		segments: []Segment{{
-			id:          uuid.UUID{},
+			id:          uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
 			name:        "Test Segment 1",
-			bestTime:    1,
-			averageTime: 2,
+			bestTime:    time.Second * 1,
+			averageTime: time.Second * 2,
 		}, {
-			id:          uuid.UUID{},
+			id:          uuid.MustParse("4bc1a05c-d4f3-4095-887f-519e2fbb54f3"),
 			name:        "Test Segment 2",
-			bestTime:    3,
-			averageTime: 4,
+			bestTime:    time.Second * 3,
+			averageTime: time.Second * 4,
 		}},
 		attempts: 0,
 	}
@@ -208,5 +212,69 @@ func TestServiceSplit(t *testing.T) {
 
 	if sf.attempts != 2 {
 		t.Error("new attempt split did not increment attempts")
+	}
+}
+
+func TestPause(t *testing.T) {
+	s, mt, _, _ := getService()
+	mt.Running = true
+	s.Pause()
+	if mt.PauseCalled != 1 {
+		t.Error("session Pause did not pause timer")
+	}
+
+	mt.Running = false
+	s.Pause()
+	if mt.StartCalled != 1 {
+		t.Error("session Pause toggle did not start timer")
+	}
+}
+
+func TestReset(t *testing.T) {
+	s, mt, _, _ := getService()
+	s.finished = true
+	s.Reset()
+	if mt.PauseCalled != 1 {
+		t.Error("session Reset did not pause timer")
+	}
+
+	if mt.ResetCalled != 1 {
+		t.Error("session Reset did not reset timer")
+	}
+
+	if s.finished != false {
+		t.Error("session Reset did not unflag finished")
+	}
+
+	if s.currentSegmentIndex != -1 {
+		t.Error("session Reset did not reset segment index")
+	}
+
+	if s.currentSegment != nil {
+		t.Error("session Reset did not reset current segment")
+	}
+}
+
+func TestUpdateSplitFile(t *testing.T) {
+	s, _, p, sf := getService()
+	payload := sf.GetPayload()
+	s.loadedSplitFile = nil
+	_ = s.UpdateSplitFile(payload)
+
+	if s.loadedSplitFile.gameName != sf.gameName ||
+		s.loadedSplitFile.gameCategory != sf.gameCategory ||
+		s.loadedSplitFile.segments[0].id != sf.segments[0].id ||
+		s.loadedSplitFile.segments[1].id != sf.segments[1].id ||
+		s.loadedSplitFile.segments[0].name != sf.segments[0].name ||
+		s.loadedSplitFile.segments[1].name != sf.segments[1].name ||
+		s.loadedSplitFile.segments[0].bestTime != sf.segments[0].bestTime ||
+		s.loadedSplitFile.segments[1].bestTime != sf.segments[1].bestTime ||
+		s.loadedSplitFile.segments[0].averageTime != sf.segments[0].averageTime ||
+		s.loadedSplitFile.segments[1].averageTime != sf.segments[1].averageTime {
+		t.Error("UpdateSplitFile did not set expected splitfile")
+	}
+
+	if p.SaveCalled != 1 {
+		t.Error("session UpdateSplitFile did not save splitfile")
 	}
 }
