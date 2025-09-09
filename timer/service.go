@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+type TickerInterface interface {
+	Ch() <-chan time.Time
+	Stop()
+}
+
 type Service struct {
 	ctx                context.Context
 	currentTime        time.Duration
@@ -14,15 +19,17 @@ type Service struct {
 	running            bool
 	mu                 sync.Mutex
 	timeUpdatedChannel chan time.Duration
+	ticker             TickerInterface
 }
 
-func NewService() (*Service, chan time.Duration) {
+func NewService(t TickerInterface) (*Service, chan time.Duration) {
 	timeUpdatedChannel := make(chan time.Duration)
 	return &Service{
 		ctx:                nil,
 		currentTime:        0,
 		running:            false,
 		timeUpdatedChannel: timeUpdatedChannel,
+		ticker:             t,
 	}, timeUpdatedChannel
 }
 
@@ -36,25 +43,14 @@ func (s *Service) IsRunning() bool {
 }
 
 func (s *Service) Run() {
-	ticker := time.NewTicker(17 * time.Millisecond) // update ~60fps
 	go func() {
-		defer ticker.Stop()
+		defer s.ticker.Stop()
 		for {
 			select {
 			case <-s.ctx.Done():
 				return
-			case <-ticker.C:
-				s.mu.Lock()
-				if s.running {
-					// elapsed since last Start + whatever we had before
-					s.currentTime = time.Since(s.startTime)
-
-					select {
-					case s.timeUpdatedChannel <- s.currentTime:
-					default:
-					}
-				}
-				s.mu.Unlock()
+			case t := <-s.ticker.Ch():
+				s.tickOnce(t)
 			}
 		}
 	}()
@@ -92,4 +88,13 @@ func (s *Service) GetCurrentTimeFormatted() string {
 
 func (s *Service) GetCurrentTime() time.Duration {
 	return s.currentTime
+}
+
+func (s *Service) tickOnce(now time.Time) {
+	if s.running {
+		s.mu.Lock()
+		s.currentTime = now.Sub(s.startTime)
+		s.mu.Unlock()
+		s.timeUpdatedChannel <- s.currentTime
+	}
 }

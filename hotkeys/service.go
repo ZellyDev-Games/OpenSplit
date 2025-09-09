@@ -2,13 +2,16 @@ package hotkeys
 
 import (
 	"OpenSplit/logger"
-	"OpenSplit/session"
 	"fmt"
 )
 
 type HotkeyProvider interface {
 	StartHook() error
 	Unhook() error
+}
+
+type Splitter interface {
+	Split()
 }
 
 type KeyInfo struct {
@@ -19,10 +22,11 @@ type KeyInfo struct {
 type Service struct {
 	hotkeyChannel  chan KeyInfo
 	hotkeyProvider HotkeyProvider
-	sessionService *session.Service
+	sessionService Splitter
+	internalStop   chan struct{}
 }
 
-func NewService(keyInfoChannel chan KeyInfo, sessionService *session.Service, provider HotkeyProvider) *Service {
+func NewService(keyInfoChannel chan KeyInfo, sessionService Splitter, provider HotkeyProvider) *Service {
 	return &Service{
 		hotkeyChannel:  keyInfoChannel,
 		sessionService: sessionService,
@@ -31,6 +35,7 @@ func NewService(keyInfoChannel chan KeyInfo, sessionService *session.Service, pr
 }
 
 func (s *Service) StartDispatcher() {
+	s.internalStop = make(chan struct{})
 	err := s.hotkeyProvider.StartHook()
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to add hotkey provider hook: %s", err))
@@ -43,12 +48,24 @@ func (s *Service) StopDispatcher() {
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to unhook hotkey provider: %s", err))
 	}
+	close(s.internalStop)
 }
 
 func (s *Service) dispatch() {
 	for {
 		select {
-		case keyInfo := <-s.hotkeyChannel:
+		case <-s.internalStop:
+			return
+		default:
+		}
+
+		select {
+		case keyInfo, ok := <-s.hotkeyChannel:
+			if !ok {
+				logger.Warn("hotkeyChannel closed")
+				s.StopDispatcher()
+				return
+			}
 			switch keyInfo.KeyCode {
 			case 32:
 				s.sessionService.Split()

@@ -48,7 +48,7 @@ func main() {
 	skinService := &skin.Service{}
 	logger.Debug("Skin service initialized")
 
-	timerService, timeUpdatedChannel := timer.NewService()
+	timerService, timeUpdatedChannel := timer.NewService(timer.NewTicker(time.Millisecond * 20))
 	logger.Debug("Timer service initialized")
 
 	jsonFilePersister := session.JsonFile{}
