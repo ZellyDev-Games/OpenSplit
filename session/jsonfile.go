@@ -52,7 +52,7 @@ func (j *JsonFile) Save(splitFilePayload SplitFilePayload) error {
 
 	defaultFileName := j.getDefaultFileName(splitFilePayload)
 	filename, err := j.runtime.SaveFileDialog(j.ctx, runtime.SaveDialogOptions{
-		Title:            "save OpenSplit File",
+		Title:            "Save OpenSplit File",
 		DefaultFilename:  defaultFileName,
 		DefaultDirectory: defaultDirectory,
 		Filters: []runtime.FileFilter{{
