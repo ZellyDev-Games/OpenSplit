@@ -14,6 +14,10 @@ export function GetLoadedSplitFile() {
   return window['go']['session']['Service']['GetLoadedSplitFile']();
 }
 
+export function GetSessionStatus() {
+  return window['go']['session']['Service']['GetSessionStatus']();
+}
+
 export function LoadSplitFile() {
   return window['go']['session']['Service']['LoadSplitFile']();
 }

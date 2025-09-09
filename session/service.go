@@ -103,7 +103,7 @@ func (s *Service) Split() {
 		s.timer.Pause()
 		s.finished = true
 		runtime.EventsEmit(s.ctx, "session:update", s.getServicePayload())
-		runtime.EventsEmit(s.ctx, "split:update", s.getSplitPayload())
+		runtime.EventsEmit(s.ctx, "session:split", s.getSplitPayload())
 		logger.Debug("split called with last segment in loaded split file, run complete")
 		return
 	}
@@ -114,14 +114,14 @@ func (s *Service) Split() {
 		s.timer.Start()
 		s.loadedSplitFile.NewAttempt()
 		runtime.EventsEmit(s.ctx, "session:update", s.getServicePayload())
-		runtime.EventsEmit(s.ctx, "split:update", s.getSplitPayload())
+		runtime.EventsEmit(s.ctx, "session:split", s.getSplitPayload())
 		logger.Debug(fmt.Sprintf("starting new run (%s - %s - %s) attempt #%d",
 			s.loadedSplitFile.gameName,
 			s.loadedSplitFile.gameCategory,
 			s.currentSegment.name,
 			s.loadedSplitFile.attempts))
 	} else {
-		runtime.EventsEmit(s.ctx, "split:update", s.getSplitPayload())
+		runtime.EventsEmit(s.ctx, "session:split", s.getSplitPayload())
 		logger.Debug(fmt.Sprintf("segment index %d (%s) completed at %s, loading segment %d (%s)",
 			s.currentSegmentIndex-1,
 			s.loadedSplitFile.segments[s.currentSegmentIndex-1].name,
@@ -198,6 +198,10 @@ func (s *Service) LoadSplitFile() (*SplitFilePayload, error) {
 	s.Reset()
 	runtime.EventsEmit(s.ctx, "splitfile:update", s.loadedSplitFile.GetPayload())
 	return newSplitFilePayload, nil
+}
+
+func (s *Service) GetSessionStatus() ServicePayload {
+	return s.getServicePayload()
 }
 
 func (s *Service) CloseSplitFile() {
