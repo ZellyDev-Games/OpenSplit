@@ -159,8 +159,7 @@ func setupHotkeys() (hotkeys.HotkeyProvider, chan hotkeys.KeyInfo) {
 	case "windows":
 		hotkeyProvider, keyInfoChannel = hotkeys.NewWindowsHotkeyManager()
 	default:
-		logger.Error(fmt.Sprintf("operating system %s is not yet supported", runtime.GOOS))
-		os.Exit(1)
+		logger.Error(fmt.Sprintf("operating system %s hotkeys are not yet supported", runtime.GOOS))
 	}
 
 	return hotkeyProvider, keyInfoChannel
