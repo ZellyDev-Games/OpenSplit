@@ -16,7 +16,6 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
-	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -58,8 +57,11 @@ func main() {
 	sessionService := session.NewService(timerService, timeUpdatedChannel, nil, jsonFilePersister)
 	logger.Debug("SessionService initialized")
 
-	hotkeyProvider, keyInfoChannel := setupHotkeys()
-	hotkeyService := hotkeys.NewService(keyInfoChannel, sessionService, hotkeyProvider)
+	hotkeyProvider, keyInfoChannel := hotkeys.SetupHotkeys()
+	var hotkeyService *hotkeys.Service
+	if hotkeyProvider != nil {
+		hotkeyService = hotkeys.NewService(keyInfoChannel, sessionService, hotkeyProvider)
+	}
 	logger.Debug("HotkeyService initialized")
 
 	logger.Info("services initialized, starting application")
@@ -85,7 +87,9 @@ func main() {
 			timerService.Startup(ctx)
 			skinService.Startup(ctx, skinDir)
 			sessionService.Startup(ctx)
-			hotkeyService.StartDispatcher()
+			if hotkeyProvider != nil {
+				hotkeyService.StartDispatcher()
+			}
 			startInterruptListener(ctx, hotkeyService)
 			logger.Info("application startup complete")
 		},
@@ -150,20 +154,6 @@ func setupPaths() (string, string, string) {
 		panic(err)
 	}
 	return appDir, logDir, skinDir
-}
-
-func setupHotkeys() (hotkeys.HotkeyProvider, chan hotkeys.KeyInfo) {
-	var hotkeyProvider hotkeys.HotkeyProvider
-	var keyInfoChannel chan hotkeys.KeyInfo
-	switch runtime.GOOS {
-	case "windows":
-		hotkeyProvider, keyInfoChannel = hotkeys.NewWindowsHotkeyManager()
-	default:
-		logger.Error(fmt.Sprintf("operating system %s is not yet supported", runtime.GOOS))
-		os.Exit(1)
-	}
-
-	return hotkeyProvider, keyInfoChannel
 }
 
 func startInterruptListener(ctx context.Context, hotkeyService *hotkeys.Service) {

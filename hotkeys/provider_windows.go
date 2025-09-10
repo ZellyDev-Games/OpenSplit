@@ -1,3 +1,5 @@
+//go:build windows
+
 package hotkeys
 
 import (
@@ -158,4 +160,10 @@ func (h *WindowsManager) HandleKeyDown(nCode uintptr, identifier uintptr, kbHook
 		logger.Error(err.Error())
 	}
 	return ret
+}
+func SetupHotkeys() (HotkeyProvider, chan KeyInfo) {
+	var hotkeyProvider HotkeyProvider
+	var keyInfoChannel chan KeyInfo
+	hotkeyProvider, keyInfoChannel = NewWindowsHotkeyManager()
+	return hotkeyProvider, keyInfoChannel
 }
