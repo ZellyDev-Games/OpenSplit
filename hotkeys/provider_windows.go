@@ -161,3 +161,9 @@ func (h *WindowsManager) HandleKeyDown(nCode uintptr, identifier uintptr, kbHook
 	}
 	return ret
 }
+func SetupHotkeys() (HotkeyProvider, chan KeyInfo) {
+	var hotkeyProvider HotkeyProvider
+	var keyInfoChannel chan KeyInfo
+	hotkeyProvider, keyInfoChannel = NewWindowsHotkeyManager()
+	return hotkeyProvider, keyInfoChannel
+}
