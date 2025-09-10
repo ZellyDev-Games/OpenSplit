@@ -1,0 +1,32 @@
+# Normalize to LF by default in the working tree
+* text=auto eol=lf
+
+# Windows scripts: prefer CRLF
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Treat binaries as binary (no line-ending conversions or diffs)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar.gz binary
+*.gz binary
+*.7z binary
+*.exe binary
+*.dll binary
+*.dmg binary
+*.pkg binary
+
+# Docs classification for GitHub linguist
+docs/** linguist-documentation
+
+# Exclude dev-only folders from release tarballs
+.github/       export-ignore
+.devcontainer/ export-ignore
+scripts/       export-ignore
