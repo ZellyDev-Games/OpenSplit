@@ -1,6 +1,10 @@
-import { useEffect, RefObject } from "react";
+import React, { useEffect, RefObject } from "react";
 
-export function useClickOutside<T extends HTMLElement>(ref: RefObject<T>, handler: (ev: PointerEvent) => void) {
+
+export function useClickOutside<T extends HTMLElement>(
+    ref: React.RefObject<HTMLDivElement | null>,
+    handler: (ev: PointerEvent) => void,
+) {
     useEffect(() => {
         const onPointerDown = (ev: PointerEvent) => {
             const el = ref.current;
