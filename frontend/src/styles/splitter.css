@@ -18,7 +18,7 @@
 
     .gameTitle {
         margin: 0;
-        padding-top:5px;
+        padding-top: 5px;
         font-size: 20px;
         font-weight: normal;
     }
@@ -36,14 +36,14 @@
     }
 
     .splitList table {
-        margin:0;
+        margin: 0;
         padding: 0;
         width: 100%;
         border-collapse: collapse;
     }
 
     .splitList table tr.selected {
-        background: #5b5557   ;
+        background: #5b5557;
         color: #fff;
     }
 
@@ -51,7 +51,7 @@
         border: 2px solid #444;
         border-left: 0;
         border-right: 0;
-        padding:5px;
+        padding: 5px;
     }
 
     .splitList .splitName {
@@ -66,7 +66,7 @@
         display: flex;
         flex-direction: row;
         justify-content: flex-end;
-        padding:10px;
+        padding: 10px;
     }
 
     .finalSegment {

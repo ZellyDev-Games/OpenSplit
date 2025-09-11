@@ -1,8 +1,8 @@
-import {ContextMenuProps, MenuAction, MenuSeparator} from "../hooks/useContextMenu";
+import { ContextMenuProps, MenuAction, MenuSeparator } from "../hooks/useContextMenu";
 import React from "react";
 
-export function ContextMenu({state, close, items = []} : ContextMenuProps) {
-    if(!state.open) return null;
+export function ContextMenu({ state, close, items = [] }: ContextMenuProps) {
+    if (!state.open) return null;
 
     // clamp position to screen based on width/height estimates
     const vw = typeof window !== "undefined" ? window.innerWidth : 1000;
@@ -16,16 +16,16 @@ export function ContextMenu({state, close, items = []} : ContextMenuProps) {
     const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
         e.stopPropagation();
         close();
-    }
+    };
 
     const handleOverlayContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
         e.stopPropagation();
         close();
-    }
+    };
 
     const stopPropagation = (e: React.MouseEvent<HTMLDivElement>) => {
         e.stopPropagation();
-    }
+    };
 
     return (
         <div
@@ -70,5 +70,5 @@ export function ContextMenu({state, close, items = []} : ContextMenuProps) {
                 </div>
             </div>
         </div>
-    )
+    );
 }

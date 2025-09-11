@@ -1,6 +1,6 @@
 # OpenSplit
 <div>
-    <img height="175" style="margin: auto" src="docs/images/screenshot.png" />
+    <img height="175" style="margin: auto" src="docs/images/screenshot.png"  alt=""/>
 </div>
 
 <hr />
@@ -70,12 +70,3 @@
 ## Architecture
 
 OpenSplit uses **[Wails](https://wails.io/)** to bundle a Go backend and a React/TypeScript frontend.
-
-```mermaid
-flowchart LR
-  UI[React + Vite] -- Wails bridge --> GoSvc[Go Services]
-  GoSvc --> Timer[Timer Service]
-  GoSvc --> Session[Session/JSON IO]
-  GoSvc --> Hotkeys[Hotkeys (OS-specific)]
-  GoSvc --> Logger[Logger]
-  UI --> SkinSys[Skin System (CSS tokens/components/images)]

@@ -98,7 +98,10 @@ func (h *WindowsManager) StartHook() error {
 			ret, _, _ := getMessage.Call(uintptr(unsafe.Pointer(msg)), 0, 0, 0)
 			if ret == 0 {
 				logger.Debug("WM_QUIT received, quitting message loop")
-				h.Unhook()
+				err = h.Unhook()
+				if err != nil {
+					return
+				}
 				return
 			}
 		}
