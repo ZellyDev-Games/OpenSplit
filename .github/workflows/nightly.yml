@@ -63,6 +63,9 @@ jobs:
                     libayatana-appindicator3-dev \
                     librsvg2-dev
 
+            - name: Setup Wails
+              run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
             - name: "Install Task (via go install)"
               run: go install github.com/go-task/task/v3/cmd/task@latest
 

@@ -124,8 +124,8 @@ export default function SplitEditor() {
         });
 
         UpdateSplitFile(splitFilePayload)
-            .then((saved) => {
-                if (saved) navigate("/");
+            .then(() => {
+                navigate("/");
             })
             .catch((err) => console.log(err));
     };
