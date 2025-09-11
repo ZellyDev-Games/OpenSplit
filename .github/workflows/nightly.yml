@@ -169,8 +169,8 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
-                  gh release view nightly >/dev/null 2>&1 || \
-                    gh release create nightly --title "Nightly" --prerelease --notes "Rolling nightly build" --latest=false
+                  gh release view nightly --repo "${{ github.repository }}" >/dev/null 2>&1 || \
+                    gh release create nightly --repo "${{ github.repository }}" --title "Nightly" --prerelease --notes "Rolling nightly build" --latest=false
 
             - name: Upload assets (overwrite if exist)
               env:
@@ -179,5 +179,5 @@ jobs:
                   shopt -s nullglob
                   for f in dist/*; do
                     echo "Uploading $f"
-                    gh release upload nightly "$f" --clobber
+                    gh release upload nightly "$f" --clobber --repo "${{ github.repository }}"
                   done
