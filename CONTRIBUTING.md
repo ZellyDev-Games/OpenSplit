@@ -31,13 +31,18 @@ OpenSplit is an open-source, cross-platform speedrun split timer built with **Go
 
 ## Development Prerequisites
 
-- **Go** ≥ 1.22
-- **Node.js** ≥ 20 and **npm**
+- **Go** ≥ 1.22 - [Installation](https://go.dev/doc/install)
+- **Node.js** ≥ 20 and **npm** - [Installation](https://nodejs.org/en/download)
 - **Wails v2 CLI** — install with: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
 - **Task** - install with: `go install github.com/go-task/task/v3/cmd/task@latest`
 - **Git** (on Windows, use **Git Bash** or **PowerShell (pwsh)** for scripts)
 
+### Optional but highly recommended
+
+- **golang CI** [Installation](https://golangci-lint.run/docs/welcome/install/) - install with GitBash if you're on Windows.  
+It's a lot easier to deal with its complaints locally than looking at CI logs
 ---
+
 
 ## Quick Start (Local Dev)
 `task dev`
@@ -88,6 +93,7 @@ Include a screenshot/GIF when submitting a skin PR. 🎨
    `fix(windows): handle extended keys in hook`  
    `chore(ci): add nightly workflow`
 3. **Run tests locally**: `task test`
+4. **Run lint locally** `task lint`
 4. **Open a Pull Request**:
   - Fill out the PR template
   - Add screenshots/GIFs for UI changes
@@ -105,7 +111,6 @@ For larger features, open an issue to discuss approach before coding.
 - Keep functions small; comment intent where it isn’t obvious.
 
 **Go**
-- `ctx context.Context` is the **first parameter**.
 - Don’t store contexts long-term; pass them down call chains.
 - Use **build tags** for OS-specific code (e.g., `*_windows.go`).
 - Prefer small interfaces for runtime adapters (e.g., `RuntimeProvider`) and inject them for testability.
