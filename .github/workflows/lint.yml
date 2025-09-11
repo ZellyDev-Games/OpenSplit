@@ -17,6 +17,9 @@ jobs:
                   go-version-file: 'go.mod'
                   cache: true
 
+            - name: "Ensure dist"
+              run: task ensure-dist
+
             - name: golangci-lint
               uses: golangci/golangci-lint-action@v8
               with:

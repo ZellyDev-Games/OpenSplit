@@ -131,7 +131,7 @@ func (h *WindowsManager) HandleKeyDown(nCode uintptr, identifier uintptr, kbHook
 	if nCode == 0 {
 		if identifier == wmKeyDown {
 			// This is a keydown event, the one we care about
-			hookInfo := *(*KbDLLHook)(unsafe.Pointer(kbHookStruct))
+			hookInfo := *(*KbDLLHook)(unsafe.Pointer(kbHookStruct)) //nolint:all
 			extended := hookInfo.flags&0x1 == 1
 			var lparam uintptr
 			var buf = make([]uint16, 64)
