@@ -1,6 +1,6 @@
 # Architecture
 
-[Common Terms](#common-terms) - [Frontend](#frontend-react) - [Session Service](#session-service)
+[Common Terms](#common-terms) - [Frontend](#frontend-react) - [Session Service](#session-service) - [Hotkey System](#hotkey-serviceproviders) - [Timer](#timer)
 
 ---
 

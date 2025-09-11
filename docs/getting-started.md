@@ -1,9 +1,11 @@
 # Getting Started, A Developer's Guide
 
+[Tech Stack](#tech-stack) - [Prerequisites](#prerequisites) - [Development Server](#development-server) - [Code Contributions](#code-contribution) - [Next Steps](#next-steps)
+
 ## Philosophy
 OpenSplit was created to provide a cross-platform speedrun split timer with a high degree of visual customization via CSS skins.
 
-## Architecture
+## Tech Stack
 Opensplit uses [Wails](https://wails.io) which provides a native application that uses Go and [React with Typescript](https://react.dev/).
 To effectively contribute you'll need some familiarity with both Go and React.
 
@@ -64,3 +66,7 @@ no coverage needed for Wails internals or concrete implementations (e.g. OS file
 * `task fmt` and `task lint` before creating PRs
 * PRs must pass lint and unit tests before merge.
 * All merges to main must be squash commits
+
+
+## Next Steps
+Get to know the [Architecture](architecture.md) of OpenSplit
