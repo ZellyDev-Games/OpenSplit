@@ -7,6 +7,8 @@ OpenSplit was created to provide a cross-platform speedrun split timer with a hi
 Opensplit uses [Wails](https://wails.io) which provides a native application that uses Go and [React with Typescript](https://react.dev/).
 To effectively contribute you'll need some familiarity with both Go and React.
 
+> If something in this guid eis inaccurate, out of date, or doesn't work I hihgly encourage you to raise an issue
+
 ## Prerequisites
 #### Follow the installation steps at each link
 * [**Go >= 1.20**](https://go.dev/doc/install)

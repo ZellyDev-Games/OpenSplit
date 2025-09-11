@@ -47,6 +47,8 @@ It's a lot easier to deal with its complaints locally than looking at CI logs
 
 
 ## Quick Start (Local Dev)
+`task clean` (Only needed once)
+
 `task dev`
 
 The app should launch. Edit files in `frontend/` or Go packages and it will rebuild/reload.
