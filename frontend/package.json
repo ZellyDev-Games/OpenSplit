@@ -1,0 +1,27 @@
+{
+    "name": "frontend",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "fmt": "prettier --write .",
+        "fmt:check": "prettier --check ."
+    },
+    "dependencies": {
+        "@fortawesome/free-solid-svg-icons": "^7.0.1",
+        "@fortawesome/react-fontawesome": "^3.0.2",
+        "react": "^19.1.1",
+        "react-dom": "^19.1.1",
+        "react-router": "^7.8.2"
+    },
+    "devDependencies": {
+        "@types/react": "^19.1.12",
+        "@types/react-dom": "^19.1.9",
+        "@vitejs/plugin-react": "^5.0.2",
+        "prettier": "^3.6.2",
+        "vite": "^7.1.5"
+    }
+}
