@@ -9,6 +9,18 @@ tasks:
     default:
         cmds: [ task: dev ]
 
+    clean:
+        desc: Cleans env for local development/CI
+        cmds:
+            - |
+                {{if eq OS "windows"}}
+                powershell -NoProfile -Command "Remove-Item -ErrorAction SilentlyContinue -Recurse -Force -LiteralPath 'build/bin','frontend/package-lock.json','frontend/node_modules'; exit 0"
+                {{else}}
+                rm -rf build/bin
+                rm -rf frontend/package-lock.json
+                rm -rf frontend/node_modules
+                {{end}}
+
     ensure-dist:
         desc: Ensure frontend/dist/.gitkeep exists
         silent: true
@@ -28,19 +40,19 @@ tasks:
 
     dev:
         desc: Start Wails dev server (installs deps on first run)
-        deps: [ensure-dist]
+        deps: [ ensure-dist ]
         cmds:
             - |
                 {{if eq OS "windows"}}
                 powershell -NoProfile -Command "if (-Not (Test-Path '{{.FRONTEND_DIR}}/node_modules')) { npm ci --prefix '{{.FRONTEND_DIR}}' } else { npm install --prefix '{{.FRONTEND_DIR}}' }"
                 {{else}}
-                bash -lc 'if [ ! -d "{{.FRONTEND_DIR}}/node_modules" ]; then npm ci --prefix {{.FRONTEND_DIR}}; else npm install --prefix {{.FRONTEND_DIR}}; fi'
+                bash -lc 'if [ -d "{{.FRONTEND_DIR}}/node_modules" ]; then npm ci --prefix {{.FRONTEND_DIR}}; else npm install --prefix {{.FRONTEND_DIR}}; fi'
                 {{end}}
             - wails dev
 
     build:
         desc: Production build (clean bin)
-        deps: [ensure-dist, deps]
+        deps: [ ensure-dist, deps ]
         cmds:
             - |
                 {{if eq OS "windows"}}
@@ -52,14 +64,14 @@ tasks:
 
     test:
         desc: Run Go tests
-        deps: [ensure-dist]
+        deps: [ ensure-dist ]
         cmds:
             - go test ./... -count=1 -coverprofile=cover.out
 
     lint:
         desc: Go vet + golangci-lint + optional frontend lint
         cmds:
-            - {cmd: go vet ./..., ignore_error: true }
+            - { cmd: go vet ./..., ignore_error: true }
             - |
                 {{if eq OS "windows"}}
                 powershell -NoProfile -Command "if (Get-Command golangci-lint -ErrorAction SilentlyContinue) { golangci-lint run } else { Write-Host 'skipping: golangci-lint not installed' }"
@@ -91,7 +103,7 @@ tasks:
 
     release:
         desc: Zip current platform build into dist/release
-        deps: [build]
+        deps: [ build ]
         vars:
             OUT_DIR: dist/release
             OSNAME:

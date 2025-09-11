@@ -31,6 +31,8 @@ OpenSplit is an open-source, cross-platform speedrun split timer built with **Go
 
 ## Development Prerequisites
 
+> This is a very high level introduction to getting started with development.  For a more indepth look at the application [check the docs](./docs/getting-started.md)
+
 - **Go** ≥ 1.22 - [Installation](https://go.dev/doc/install)
 - **Node.js** ≥ 20 and **npm** - [Installation](https://nodejs.org/en/download)
 - **Wails v2 CLI** — install with: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
@@ -45,6 +47,8 @@ It's a lot easier to deal with its complaints locally than looking at CI logs
 
 
 ## Quick Start (Local Dev)
+`task clean` (Only needed once)
+
 `task dev`
 
 The app should launch. Edit files in `frontend/` or Go packages and it will rebuild/reload.
