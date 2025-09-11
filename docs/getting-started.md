@@ -16,10 +16,17 @@ To effectively contribute you'll need some familiarity with both Go and React.
   * macOS (zsh): `echo 'export PATH="$PATH:$HOME/go/bin"' >> ~/.zshrc && source ~/.zshrc`
 * [**Node >= 22.19**](https://nodejs.org/en/download/)
   * [**NVM**](https://github.com/nvm-sh/nvm) or [**NVM for Windows**](https://github.com/coreybutler/nvm-windows) is highly recommended
-  * After NVM install: 
+  * After NVM install:
+    * Windows:
+        ```
+        nvm install lts
+        nvm use lts
       ```
-      nvm install latest
-      nvm use latest
+    * Linux/macOS:
+        ```
+        nvm install --lts
+        nvm use --lts 
+        ```
 * [**Wails CLI**](https://wails.io/docs/gettingstarted/installation)
   * install with: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
   * Verify installed and Go PATH bin is correctly on path: `wails version`
