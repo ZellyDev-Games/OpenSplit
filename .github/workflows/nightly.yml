@@ -53,17 +53,20 @@ jobs:
                   cache: 'npm'
                   cache-dependency-path: 'frontend/package-lock.json'
 
-            - name: Upgrade npm (work around optional deps bugs)
+            # Work around npm optional-deps quirks (rollup native binaries)
+            - name: Upgrade npm
               run: npm i -g npm@latest
 
-            - name: Clean install (frontend)
-              run: npm ci --prefix frontend
+            # Use npm install (not ci) so platform optionalDependencies resolve per runner OS/arch
+            - name: Install frontend deps
+              run: npm install --prefix frontend
 
-            - name: Rollup platform fix
+            # (Optional but robust) ensure the exact rollup native binary version is present
+            - name: Ensure Rollup native binary (exact version)
               working-directory: frontend
               shell: bash
               run: |
-                  set -e
+                  set -euo pipefail
                   os="$(uname -s)"; arch="$(uname -m)"
                   case "$os-$arch" in
                     Linux-x86_64)  pkg='@rollup/rollup-linux-x64-gnu' ;;
@@ -73,8 +76,14 @@ jobs:
                     MINGW*|MSYS*|CYGWIN*|Windows_NT-*) pkg='@rollup/rollup-win32-x64-msvc' ;;
                     *) pkg='' ;;
                   esac
-                  [ -n "$pkg" ] && npm i --no-save -D "$pkg"
+                  if [ -n "$pkg" ]; then
+                    ver="$(node -p "require('rollup/package.json').version")"
+                    echo "Installing $pkg@$ver"
+                    npm i --no-save -D "$pkg@$ver"
+                    node -e "require('$pkg'); console.log('OK: $pkg present')"
+                  fi
 
+            # Linux build deps for Wails (22.04 uses webkit 4.0)
             - name: "Linux: install Wails build deps"
               if: ${{ startsWith(matrix.runner, 'ubuntu-') }}
               run: |
@@ -118,7 +127,6 @@ jobs:
                       ditto -c -k --sequesterRsrc --keepParent build/bin "out/$ARCHIVE"
                       ;;
                     *)
-                      # NOTE: go two levels up to write into repo-root/out
                       (cd build/bin && zip -r "../../out/$ARCHIVE" .)
                       ;;
                   esac
@@ -145,13 +153,15 @@ jobs:
 
             - name: Ensure 'nightly' release exists
               env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   gh release view nightly >/dev/null 2>&1 || \
                     gh release create nightly --title "Nightly" --prerelease --notes "Rolling nightly build" --latest=false
 
-            - name: Upload assets (clobber)
+            - name: Upload assets (overwrite if exist)
               env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   shopt -s nullglob
