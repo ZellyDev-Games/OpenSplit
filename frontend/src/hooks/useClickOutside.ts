@@ -1,4 +1,5 @@
-import { useEffect, RefObject } from "react";
+import React, { useEffect, RefObject } from "react";
+
 
 export function useClickOutside<T extends HTMLElement>(
     ref: React.RefObject<HTMLDivElement | null>,
