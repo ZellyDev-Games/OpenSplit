@@ -56,18 +56,14 @@ func (s *Service) dispatch() {
 		select {
 		case <-s.internalStop:
 			return
-		default:
-		}
 
-		select {
 		case keyInfo, ok := <-s.hotkeyChannel:
 			if !ok {
 				logger.Warn("hotkeyChannel closed")
-				s.StopDispatcher()
 				return
 			}
 			switch keyInfo.KeyCode {
-			case 32:
+			case 32: // Space
 				s.sessionService.Split()
 			}
 		}

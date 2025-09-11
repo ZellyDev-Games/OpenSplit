@@ -26,20 +26,12 @@ const (
 	wmKeyDown    = 0x0100
 )
 
-type SetWindowsHookParams struct {
-	idHook int
-}
-
 type KbDLLHook struct {
 	vkCode    uint32
 	scanCode  uint32
 	flags     uint32
 	time      uint32
 	extraInfo uintptr
-}
-
-type LowLevelKeyboardProc struct {
-	nCode int
 }
 
 type threadMessage struct {
@@ -122,7 +114,7 @@ func (h *WindowsManager) Unhook() error {
 
 func (h *WindowsManager) HandleKeyDown(nCode uintptr, identifier uintptr, kbHookStruct uintptr) uintptr {
 	// If nCode is less than zero we're obligated to pass the message along
-	if nCode < 0 {
+	if int(nCode) < 0 {
 		ret, _, _ := callNextHook.Call(uintptr(0), nCode, identifier, kbHookStruct)
 		return ret
 	}
