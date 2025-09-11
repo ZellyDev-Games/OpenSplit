@@ -23,7 +23,7 @@ jobs:
                       goos: linux
                       goarch: amd64
                     - name: linux-arm64
-                      runner: ubuntu-22.04-arm64
+                      runner: ubuntu-22.04-arm
                       goos: linux
                       goarch: arm64
                     - name: windows-amd64
@@ -52,7 +52,7 @@ jobs:
                   node-version: '20'
                   cache: 'npm'
                   cache-dependency-path: 'frontend/package-lock.json'
-                  
+
             # Work around npm optional-deps quirks (rollup native binaries)
             - name: Upgrade npm
               run: npm i -g npm@latest
@@ -61,7 +61,7 @@ jobs:
             - name: Install frontend deps
               run: npm install --prefix frontend
 
-            # (Optional but robust) ensure the exact rollup native binary version is present
+            # Ensure the *exact* rollup-native version is present (matches rollup's version)
             - name: Ensure Rollup native binary (exact version)
               working-directory: frontend
               shell: bash
@@ -83,7 +83,11 @@ jobs:
                     node -e "require('$pkg'); console.log('OK: $pkg present')"
                   fi
 
-            # Linux build deps for Wails (22.04 uses webkit 4.0)
+            # Build the frontend now, so we can skip Wails' install/build
+            - name: Build frontend
+              run: npm run build --prefix frontend
+
+            # Linux build deps for Wails (22.04 -> webkit 4.0)
             - name: "Linux: install Wails build deps"
               if: ${{ startsWith(matrix.runner, 'ubuntu-') }}
               run: |
@@ -107,12 +111,13 @@ jobs:
               shell: bash
               run: rm -rf build/bin || true
 
-            - name: Wails build (current OS/arch)
+            # IMPORTANT: -s skips Wails' frontend install/build steps
+            - name: Wails build (current OS/arch, skip frontend steps)
               shell: bash
               env:
                   GOOS: ${{ matrix.goos }}
                   GOARCH: ${{ matrix.goarch }}
-              run: wails build -clean
+              run: wails build -clean -s
 
             - name: Package
               shell: bash
@@ -138,6 +143,15 @@ jobs:
                   name: nightly-zips-${{ matrix.name }}
                   path: ${{ env.ARCHIVE }}
 
+            # (Optional) Debug if rollup fails again
+            - name: Debug rollup layout
+              if: failure()
+              working-directory: frontend
+              run: |
+                  node -p "require('rollup/package.json').version" || true
+                  ls -la node_modules/@rollup || true
+                  grep -A2 optionalDependencies node_modules/rollup/package.json || true
+
     publish:
         name: Publish Nightly Release
         needs: build
@@ -154,7 +168,6 @@ jobs:
             - name: Ensure 'nightly' release exists
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   gh release view nightly >/dev/null 2>&1 || \
                     gh release create nightly --title "Nightly" --prerelease --notes "Rolling nightly build" --latest=false
