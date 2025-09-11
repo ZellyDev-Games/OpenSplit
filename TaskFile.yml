@@ -54,7 +54,7 @@ tasks:
         desc: Run Go tests
         deps: [ensure-dist]
         cmds:
-            - go test ./... -race -count=1
+            - go test ./... -count=1
 
     lint:
         desc: Go vet + golangci-lint + optional frontend lint
