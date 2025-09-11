@@ -19,11 +19,11 @@ jobs:
             matrix:
                 include:
                     - name: linux-amd64
-                      runner: ubuntu-latest
+                      runner: ubuntu-22.04
                       goos: linux
                       goarch: amd64
                     - name: linux-arm64
-                      runner: ubuntu-latest
+                      runner: ubuntu-22.04
                       goos: linux
                       goarch: arm64
                     - name: windows-amd64

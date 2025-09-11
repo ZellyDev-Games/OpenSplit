@@ -6,7 +6,9 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "fmt": "prettier --write .",
+        "fmt:check": "prettier --check ."
     },
     "dependencies": {
         "@fortawesome/free-solid-svg-icons": "^7.0.1",
@@ -19,6 +21,7 @@
         "@types/react": "^19.1.12",
         "@types/react-dom": "^19.1.9",
         "@vitejs/plugin-react": "^5.0.2",
+        "prettier": "^3.6.2",
         "vite": "^7.1.5"
     }
 }
