@@ -14,9 +14,7 @@ tasks:
         cmds:
             - |
                 {{if eq OS "windows"}}
-                powershell -NoProfile -Command "Remove-Item -Recurse -Force 'build/bin' -ErrorAction SilentlyContinue"
-                powershell -NoProfile -Command "Remove-Item -Recurse -Force 'frontend/package-lock.json' -ErrorAction SilentlyContinue"
-                powershell -NoProfile -Command "Remove-Item -Recurse -Force 'frontend/node_modules' -ErrorAction SilentlyContinue"
+                powershell -NoProfile -Command "Remove-Item -ErrorAction SilentlyContinue -Recurse -Force -LiteralPath 'build/bin','frontend/package-lock.json','frontend/node_modules'; exit 0"
                 {{else}}
                 rm -rf build/bin
                 rm -rf frontend/package-lock.json
