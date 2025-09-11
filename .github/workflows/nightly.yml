@@ -23,7 +23,7 @@ jobs:
                       goos: linux
                       goarch: amd64
                     - name: linux-arm64
-                      runner: ubuntu-22.04
+                      runner: ubuntu-22.04-arm64
                       goos: linux
                       goarch: arm64
                     - name: windows-amd64
@@ -38,20 +38,42 @@ jobs:
         runs-on: ${{ matrix.runner }}
 
         steps:
-            - uses: actions/checkout@v5
+            - uses: actions/checkout@v4
 
             - name: Setup Go
-              uses: actions/setup-go@v6
+              uses: actions/setup-go@v5
               with:
-                  go-version-file: 'go.mod'
+                  go-version-file: go.mod
                   cache: true
 
             - name: Setup Node
-              uses: actions/setup-node@v5
+              uses: actions/setup-node@v4
               with:
                   node-version: '20'
                   cache: 'npm'
                   cache-dependency-path: 'frontend/package-lock.json'
+
+            - name: Upgrade npm (work around optional deps bugs)
+              run: npm i -g npm@latest
+
+            - name: Clean install (frontend)
+              run: npm ci --prefix frontend
+
+            - name: Rollup platform fix
+              working-directory: frontend
+              shell: bash
+              run: |
+                  set -e
+                  os="$(uname -s)"; arch="$(uname -m)"
+                  case "$os-$arch" in
+                    Linux-x86_64)  pkg='@rollup/rollup-linux-x64-gnu' ;;
+                    Linux-aarch64) pkg='@rollup/rollup-linux-arm64-gnu' ;;
+                    Darwin-arm64)  pkg='@rollup/rollup-darwin-arm64' ;;
+                    Darwin-x86_64) pkg='@rollup/rollup-darwin-x64' ;;
+                    MINGW*|MSYS*|CYGWIN*|Windows_NT-*) pkg='@rollup/rollup-win32-x64-msvc' ;;
+                    *) pkg='' ;;
+                  esac
+                  [ -n "$pkg" ] && npm i --no-save -D "$pkg"
 
             - name: "Linux: install Wails build deps"
               if: ${{ startsWith(matrix.runner, 'ubuntu-') }}
@@ -66,28 +88,22 @@ jobs:
             - name: Setup Wails
               run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-            - name: "Install Task (via go install)"
+            - name: Install Task
               run: go install github.com/go-task/task/v3/cmd/task@latest
 
             - name: Ensure frontend/dist exists
               run: task ensure-dist
 
-            - name: Install frontend deps
-              run: task deps
-
             - name: Clean old binaries
               shell: bash
-              run: |
-                  rm -rf build/bin || true
+              run: rm -rf build/bin || true
 
             - name: Wails build (current OS/arch)
               shell: bash
               env:
                   GOOS: ${{ matrix.goos }}
                   GOARCH: ${{ matrix.goarch }}
-              run: |
-                  # For Windows/macOS runners this builds native; for Linux we set GOOS/GOARCH
-                  wails build -clean
+              run: wails build -clean
 
             - name: Package
               shell: bash
@@ -99,19 +115,19 @@ jobs:
                       pwsh -NoProfile -Command "Compress-Archive -Path 'build/bin/*' -DestinationPath \"out/$ARCHIVE\" -Force"
                       ;;
                     darwin)
-                      # 'ditto' preserves file flags better than zip on macOS
                       ditto -c -k --sequesterRsrc --keepParent build/bin "out/$ARCHIVE"
                       ;;
                     *)
-                      (cd build/bin && zip -r "../out/$ARCHIVE" .)
+                      # NOTE: go two levels up to write into repo-root/out
+                      (cd build/bin && zip -r "../../out/$ARCHIVE" .)
                       ;;
                   esac
-                  echo "ARCHIVE=out/$ARCHIVE" >> $GITHUB_ENV
+                  echo "ARCHIVE=out/$ARCHIVE" >> "$GITHUB_ENV"
 
-            - name: Upload artifact (collect)
+            - name: Upload artifact (per platform)
               uses: actions/upload-artifact@v4
               with:
-                  name: nightly-zips
+                  name: nightly-zips-${{ matrix.name }}
                   path: ${{ env.ARCHIVE }}
 
     publish:
@@ -120,21 +136,26 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            - uses: actions/download-artifact@v5
+            - name: Download all artifacts
+              uses: actions/download-artifact@v4
               with:
-                  name: nightly-zips
+                  pattern: nightly-zips-*
+                  merge-multiple: true
                   path: dist
 
-            - name: Publish/Update 'nightly' release
-              uses: softprops/action-gh-release@v2
-              with:
-                  tag_name: nightly
-                  name: Nightly
-                  prerelease: true
-                  files: dist/*
-                  fail_on_unmatched_files: false
-                  generate_release_notes: false
-                  make_latest: false
-                  overwrite_files: true
+            - name: Ensure 'nightly' release exists
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  gh release view nightly >/dev/null 2>&1 || \
+                    gh release create nightly --title "Nightly" --prerelease --notes "Rolling nightly build" --latest=false
+
+            - name: Upload assets (clobber)
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  shopt -s nullglob
+                  for f in dist/*; do
+                    echo "Uploading $f"
+                    gh release upload nightly "$f" --clobber
+                  done
