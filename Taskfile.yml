@@ -1,0 +1,110 @@
+version: '3'
+
+vars:
+    FRONTEND_DIR: frontend
+    FRONTEND_DIST: '{{.FRONTEND_DIR}}/dist'
+    VERSION: '{{.GIT_TAG}}'
+
+tasks:
+    default:
+        cmds: [ task: dev ]
+
+    ensure-dist:
+        desc: Ensure frontend/dist/.gitkeep exists
+        silent: true
+        cmds:
+            - |
+                {{if eq OS "windows"}}
+                powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path '{{.FRONTEND_DIST}}' | Out-Null; New-Item -ItemType File -Force -Path '{{.FRONTEND_DIST}}/.gitkeep' | Out-Null"
+                {{else}}
+                mkdir -p "{{.FRONTEND_DIST}}"
+                : > "{{.FRONTEND_DIST}}/.gitkeep"
+                {{end}}
+
+    deps:
+        desc: Install frontend deps (clean, reproducible)
+        cmds:
+            - npm ci --prefix {{.FRONTEND_DIR}}
+
+    dev:
+        desc: Start Wails dev server (installs deps on first run)
+        deps: [ensure-dist]
+        cmds:
+            - |
+                {{if eq OS "windows"}}
+                powershell -NoProfile -Command "if (-Not (Test-Path '{{.FRONTEND_DIR}}/node_modules')) { npm ci --prefix '{{.FRONTEND_DIR}}' } else { npm install --prefix '{{.FRONTEND_DIR}}' }"
+                {{else}}
+                bash -lc 'if [ ! -d "{{.FRONTEND_DIR}}/node_modules" ]; then npm ci --prefix {{.FRONTEND_DIR}}; else npm install --prefix {{.FRONTEND_DIR}}; fi'
+                {{end}}
+            - wails dev
+
+    build:
+        desc: Production build (clean bin)
+        deps: [ensure-dist, deps]
+        cmds:
+            - |
+                {{if eq OS "windows"}}
+                powershell -NoProfile -Command "Remove-Item -Recurse -Force 'build/bin' -ErrorAction SilentlyContinue"
+                {{else}}
+                rm -rf build/bin
+                {{end}}
+            - wails build -clean
+
+    test:
+        desc: Run Go tests
+        deps: [ensure-dist]
+        cmds:
+            - go test ./... -count=1 -coverprofile=cover.out
+
+    lint:
+        desc: Go vet + golangci-lint + optional frontend lint
+        cmds:
+            - {cmd: go vet ./..., ignore_error: true }
+            - |
+                {{if eq OS "windows"}}
+                powershell -NoProfile -Command "if (Get-Command golangci-lint -ErrorAction SilentlyContinue) { golangci-lint run } else { Write-Host 'skipping: golangci-lint not installed' }"
+                {{else}}
+                bash -lc 'command -v golangci-lint >/dev/null && golangci-lint run || echo "skipping: golangci-lint not installed"'
+                {{end}}
+            - |
+                {{if eq OS "windows"}}
+                powershell -NoProfile -Command "if (Test-Path '{{.FRONTEND_DIR}}/package.json') { if (npm -s --prefix '{{.FRONTEND_DIR}}' run | Select-String '^  lint') { npm run -s --prefix '{{.FRONTEND_DIR}}' lint } else { Write-Host 'frontend: no lint script' } } else { Write-Host 'no frontend dir' }"
+                {{else}}
+                bash -lc 'if [ -f "{{.FRONTEND_DIR}}/package.json" ] && npm -s --prefix {{.FRONTEND_DIR}} run | grep -q "^  lint"; then npm run -s --prefix {{.FRONTEND_DIR}} lint; else echo "frontend: no lint script"; fi'
+                {{end}}
+
+    fmt:
+        desc: Format Go + frontend
+        cmds:
+            - |
+                {{if eq OS "windows"}}
+                powershell -NoProfile -Command "if (Get-Command gofumpt -ErrorAction SilentlyContinue) { gofumpt -w . } else { gofmt -s -w . }"
+                {{else}}
+                bash -lc 'command -v gofumpt >/dev/null && gofumpt -w . || gofmt -s -w .'
+                {{end}}
+            - |
+                {{if eq OS "windows"}}
+                powershell -NoProfile -Command "if (Test-Path '{{.FRONTEND_DIR}}/package.json') { if (npm -s --prefix '{{.FRONTEND_DIR}}' run | Select-String '^  fmt') { npm run -s --prefix '{{.FRONTEND_DIR}}' fmt } else { npx -y prettier@latest --loglevel warn --write '{{.FRONTEND_DIR}}/**/*.{ts,tsx,js,jsx,css,scss,html,json,md}' } }"
+                {{else}}
+                bash -lc 'if [ -f "{{.FRONTEND_DIR}}/package.json" ] && npm -s --prefix {{.FRONTEND_DIR}} run | grep -q "^  fmt"; then npm run -s --prefix {{.FRONTEND_DIR}} fmt; else npx -y prettier@latest --loglevel warn --write "{{.FRONTEND_DIR}}/**/*.{ts,tsx,js,jsx,css,scss,html,json,md}"; fi'
+                {{end}}
+
+    release:
+        desc: Zip current platform build into dist/release
+        deps: [build]
+        vars:
+            OUT_DIR: dist/release
+            OSNAME:
+                sh: |
+                    {{if eq OS "windows"}}echo windows{{else}}uname -s | tr '[:upper:]' '[:lower:]'{{end}}
+            ARCHNAME:
+                sh: |
+                    {{if eq OS "windows"}}wmic os get osarchitecture | findstr /C:64 >nul && echo amd64 || echo 386{{else}}uname -m{{end}}
+        cmds:
+            - |
+                {{if eq OS "windows"}}
+                powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path '{{.OUT_DIR}}' | Out-Null; Compress-Archive -Path 'build/bin/*' -DestinationPath '{{.OUT_DIR}}/opensplit-{{.OSNAME}}-{{.ARCHNAME}}-{{.VERSION | default \"dev\"}}.zip' -Force"
+                {{else}}
+                mkdir -p "{{.OUT_DIR}}"
+                (cd build/bin && zip -r "../../{{.OUT_DIR}}/opensplit-{{.OSNAME}}-{{.ARCHNAME}}-{{.VERSION | default \"dev\"}}.zip" .)
+                {{end}}

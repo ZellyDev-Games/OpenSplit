@@ -7,10 +7,10 @@
 
     hr {
         width: 100%;
-        border:none;
+        border: none;
         height: 1px;
-        margin-top:5px;
-        margin-bottom:5px;
+        margin-top: 5px;
+        margin-bottom: 5px;
         background-color: #abd5e7;
     }
 
@@ -44,6 +44,6 @@
 
     .button:hover,
     .button:focus {
-        opacity: .75;
+        opacity: 0.75;
     }
 }
