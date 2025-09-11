@@ -35,7 +35,7 @@ To effectively contribute you'll need some familiarity with both Go and React.
   * Makefile alternative that runs tasks to make your life a bit easier than shell commands via `Taskfile.yml`
   * Verify: `task --version`
 * [**Git**](https://git-scm.com/downloads)
-* [**Golang-CI**](https://golangci-lint.run/docs/welcome/install/)
+* [**Golang-CI**](https://golangci-lint.run/docs/welcome/install/#binaries)
   * Install with GitBash if you're on Windows
   * Technically optional, but CI runs this and will block PRs until it passes
   * Verify: `golangci-lint --version`
