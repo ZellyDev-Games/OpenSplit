@@ -139,17 +139,17 @@ func setupPaths() (string, string, string) {
 	appDir := filepath.Join(base, "OpenSplit")
 	logDir := filepath.Join(appDir, "logs")
 	skinDir := filepath.Join(appDir, "skins")
-	err = os.MkdirAll(appDir, 755)
+	err = os.MkdirAll(appDir, 0755)
 	if err != nil {
 		panic(err)
 	}
 
-	err = os.MkdirAll(logDir, 755)
+	err = os.MkdirAll(logDir, 0755)
 	if err != nil {
 		panic(err)
 	}
 
-	err = os.MkdirAll(skinDir, 755)
+	err = os.MkdirAll(skinDir, 0755)
 	if err != nil {
 		panic(err)
 	}

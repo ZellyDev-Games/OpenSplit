@@ -26,20 +26,12 @@ const (
 	wmKeyDown    = 0x0100
 )
 
-type SetWindowsHookParams struct {
-	idHook int
-}
-
 type KbDLLHook struct {
 	vkCode    uint32
 	scanCode  uint32
 	flags     uint32
 	time      uint32
 	extraInfo uintptr
-}
-
-type LowLevelKeyboardProc struct {
-	nCode int
 }
 
 type threadMessage struct {
@@ -98,7 +90,10 @@ func (h *WindowsManager) StartHook() error {
 			ret, _, _ := getMessage.Call(uintptr(unsafe.Pointer(msg)), 0, 0, 0)
 			if ret == 0 {
 				logger.Debug("WM_QUIT received, quitting message loop")
-				h.Unhook()
+				err = h.Unhook()
+				if err != nil {
+					return
+				}
 				return
 			}
 		}
@@ -119,7 +114,7 @@ func (h *WindowsManager) Unhook() error {
 
 func (h *WindowsManager) HandleKeyDown(nCode uintptr, identifier uintptr, kbHookStruct uintptr) uintptr {
 	// If nCode is less than zero we're obligated to pass the message along
-	if nCode < 0 {
+	if int(nCode) < 0 {
 		ret, _, _ := callNextHook.Call(uintptr(0), nCode, identifier, kbHookStruct)
 		return ret
 	}
@@ -128,7 +123,7 @@ func (h *WindowsManager) HandleKeyDown(nCode uintptr, identifier uintptr, kbHook
 	if nCode == 0 {
 		if identifier == wmKeyDown {
 			// This is a keydown event, the one we care about
-			hookInfo := *(*KbDLLHook)(unsafe.Pointer(kbHookStruct))
+			hookInfo := *(*KbDLLHook)(unsafe.Pointer(kbHookStruct)) //nolint:all
 			extended := hookInfo.flags&0x1 == 1
 			var lparam uintptr
 			var buf = make([]uint16, 64)

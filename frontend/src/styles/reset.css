@@ -1,6 +1,13 @@
 @layer reset {
-    html, body, #root, #App { height: 100%; }
-    body { margin: 0; }
+    html,
+    body,
+    #root,
+    #App {
+        height: 100%;
+    }
+    body {
+        margin: 0;
+    }
 
     #App {
         display: flex;

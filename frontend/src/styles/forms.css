@@ -6,11 +6,11 @@
     }
     .datagrid-container {
         height: 100px;
-        padding-right:5px;
+        padding-right: 5px;
         flex-grow: 1;
         margin: 0;
-        overflow-y:auto;
-        overflow-x:hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
 
     .datagrid {
@@ -46,7 +46,8 @@
         left: 5px;
     }
 
-    input, textarea {
+    input,
+    textarea {
         --wails-draggable: nodrag;
         padding: 15px;
         border: 1px solid #333;
@@ -58,10 +59,12 @@
         color: #d9d9d9;
     }
 
-    input:focus { outline: none; }
+    input:focus {
+        outline: none;
+    }
     input:focus-visible {
-        outline: 2px solid #640199;   /* your color */
-        outline-offset: 2px;          /* pull it off the edge a bit */
+        outline: 2px solid #640199; /* your color */
+        outline-offset: 2px; /* pull it off the edge a bit */
     }
 
     form .actions {
@@ -84,7 +87,7 @@
         height: 25%;
         text-align: right;
         background-color: #444;
-        padding-right:10px;
+        padding-right: 10px;
     }
 
     ::placeholder {
