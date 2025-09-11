@@ -41,12 +41,14 @@ To effectively contribute you'll need some familiarity with both Go and React.
   * Verify: `golangci-lint --version`
 
 ## Development Server
+* From the checkout root run: `task clean`.  Should only have to run this once.
 * From the checkout root run: `task dev` 
   * Compiles Go backend, generates frontend bindings, and installs all frontend dependencies
   * This can take some time the first time you run it
   * Hot-Reload
     * Changes to frontend (React) are hot-reloaded and instantly viewable in the application
     * Changes to backend (Go) will cause a recompilation and reload of the application
+  * If you get en error related to native rollup optional dependencies, make sure you ran `task clean` first.  You only have to do that once.
 
 ## Code Contribution
 * Use relevant prefixes in your branch naming
