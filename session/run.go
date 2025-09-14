@@ -13,7 +13,7 @@ type Run struct {
 	id               uuid.UUID
 	splitFileID      uuid.UUID
 	splitFileVersion int
-	duration         time.Duration
-	completed        bool
-	splits           []SplitPayload
+	_                time.Duration
+	_                bool
+	_                []SplitPayload
 }

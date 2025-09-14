@@ -58,7 +58,7 @@ type SplitPayload struct {
 type Persister interface {
 	Startup(ctx context.Context)
 	Load() (split SplitFilePayload, err error)
-	Save(split SplitFilePayload) error
+	Save(split SplitFilePayload, splitFile SplitFile) error
 }
 
 // Timer is an interface that a stopwatch service must implement to be used by session.Service
@@ -238,7 +238,7 @@ func (s *Service) UpdateSplitFile(payload SplitFilePayload) error {
 	}
 
 	s.loadedSplitFile = newSplitFile
-	err = s.persister.Save(s.loadedSplitFile.GetPayload())
+	err = s.persister.Save(s.loadedSplitFile.GetPayload(), *s.loadedSplitFile)
 	if err != nil {
 		var cancelled = &UserCancelledSave{}
 		if errors.As(err, cancelled) {

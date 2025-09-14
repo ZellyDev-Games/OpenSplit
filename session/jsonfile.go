@@ -95,7 +95,7 @@ func (j *JsonFile) Save(splitFilePayload SplitFilePayload, splitFile SplitFile) 
 			return err
 		}
 
-		if j.fileName == "" {
+		if filename == "" {
 			logger.Debug("user cancelled save")
 			return UserCancelledSave{}
 		}
