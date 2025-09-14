@@ -1,36 +1,52 @@
 package session
 
+import "github.com/google/uuid"
+
+// SplitFilePayload is a snapshot of a SplitFile
+//
+// Used to communicate the state of a SplitFile to the frontend and Persister implementations without exposing internals.
 type SplitFilePayload struct {
 	GameName     string           `json:"game_name"`
 	GameCategory string           `json:"game_category"`
 	Segments     []SegmentPayload `json:"segments"`
 	Attempts     int              `json:"attempts"`
+	Runs         []Run            `json:"runs"`
 }
 
+// SplitFile represents the data and history of a game/category combo.
 type SplitFile struct {
+	id           uuid.UUID
+	version      int
 	gameName     string
 	gameCategory string
 	segments     []Segment
 	attempts     int
+	runs         []Run
 }
 
-func NewSplitFile(gameName string, gameCategory string, segments []Segment, attempts int) *SplitFile {
+// NewSplitFile constructor for SplitFile
+func NewSplitFile(gameName string, gameCategory string, segments []Segment, attempts int, runs []Run) *SplitFile {
 	return &SplitFile{
 		gameName:     gameName,
 		gameCategory: gameCategory,
 		segments:     segments,
 		attempts:     attempts,
+		runs:         runs,
 	}
 }
 
+// NewAttempt provides a public function to increment the attempts count
 func (s *SplitFile) NewAttempt() {
 	s.attempts++
 }
 
+// SetAttempts provides a public function to set the attempts count
 func (s *SplitFile) SetAttempts(attempts int) {
 	s.attempts = attempts
 }
 
+// GetPayload gets a snapshot of the SplitFile.  Useful for communicating the state of the file while protecting the
+// internal data.
 func (s *SplitFile) GetPayload() SplitFilePayload {
 	var segmentPayloads []SegmentPayload
 	for _, segment := range s.segments {
@@ -41,6 +57,7 @@ func (s *SplitFile) GetPayload() SplitFilePayload {
 		GameCategory: s.gameCategory,
 		Segments:     segmentPayloads,
 		Attempts:     s.attempts,
+		Runs:         s.runs,
 	}
 }
 
@@ -59,5 +76,6 @@ func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
 		gameCategory: payload.GameCategory,
 		attempts:     payload.Attempts,
 		segments:     segments,
+		runs:         payload.Runs,
 	}, nil
 }

@@ -10,21 +10,27 @@ import (
 	"runtime"
 )
 
+// Service provides a binding to allow the frontend to open a folder in the native OS file explorer.
 type Service struct {
 	ctx        context.Context
 	skinFolder string
 }
 
+// NewService returns a Service that can be used to open a folder in the native OS file explorer.
 func NewService(skinFolder string) *Service {
 	return &Service{
 		skinFolder: skinFolder,
 	}
 }
 
+// Startup passes in a context from Wails.Run to allow the exec call to open a file explorer.
+//
+// Any other context will cause OpenFolder and OpenSkinsFolder to panic.
 func (s *Service) Startup(ctx context.Context) {
 	s.ctx = ctx
 }
 
+// OpenSkinsFolder opens the skins folder in the native OS file explorer.
 func (s *Service) OpenSkinsFolder() {
 	err := s.OpenFolder(s.skinFolder)
 	if err != nil {
@@ -32,6 +38,7 @@ func (s *Service) OpenSkinsFolder() {
 	}
 }
 
+// OpenFolder opens an arbitrary file path in the native OS file explorer.
 func (s *Service) OpenFolder(path string) error {
 	if path == "" {
 		return errors.New("empty path")

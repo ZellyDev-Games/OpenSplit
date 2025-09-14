@@ -26,7 +26,7 @@ const (
 	wmKeyDown    = 0x0100
 )
 
-type KbDLLHook struct {
+type kbDLLHook struct {
 	vkCode    uint32
 	scanCode  uint32
 	flags     uint32
@@ -49,6 +49,12 @@ type point struct {
 	y int32
 }
 
+// WindowsManager implements the HotkeyProvider interface for Windows keypresses
+//
+// It creates a callback that is invoked with a low-level keyboard hook provided by user32.dll, then reports all
+// keypresses to keyChannel where the hotkeys.Service routes it appropriately.  It also features a message pump
+// that calls GetMessage provided by user32.dll to inform Windows that our thread is cooperating, and therefore
+// eligible to have the callback executed.
 type WindowsManager struct {
 	hhookHandle uintptr
 	callback    uintptr
@@ -56,12 +62,28 @@ type WindowsManager struct {
 	keyChannel  chan KeyInfo
 }
 
+// NewWindowsHotkeyManager Returns a new WindowsHotkeyManager, and a channel that it will send KeyInfo events to
+//
+// The channel in the second return is suitable for use by hotkeys.Service
 func NewWindowsHotkeyManager() (*WindowsManager, chan KeyInfo) {
 	manager := new(WindowsManager)
 	manager.keyChannel = make(chan KeyInfo)
 	return manager, manager.keyChannel
 }
 
+func SetupHotkeys() (HotkeyProvider, chan KeyInfo) {
+	var hotkeyProvider HotkeyProvider
+	var keyInfoChannel chan KeyInfo
+	hotkeyProvider, keyInfoChannel = NewWindowsHotkeyManager()
+	return hotkeyProvider, keyInfoChannel
+}
+
+// StartHook converts handleKeyDown into a Windows callback via syscall, and installs it to the locked OS thread with
+// setWindowsHook.  It then starts a message pump as required by Windows to inform the OS that this thread is cooperating
+// which makes it eligible to have its callback function invoked by the OS.
+//
+// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowshookexw
+// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmessagew
 func (h *WindowsManager) StartHook() error {
 	go func() {
 		// Messages are sent to the thread that installed the hook, so lock this function down to just that thread
@@ -70,7 +92,7 @@ func (h *WindowsManager) StartHook() error {
 
 		logger.Debug("setting windows hook")
 
-		h.callback = syscall.NewCallback(h.HandleKeyDown)
+		h.callback = syscall.NewCallback(h.handleKeyDown)
 		logger.Debug("created keyboard callback")
 		hhook, _, err := setWindowsHook.Call(whKeyboardLL,
 			h.callback,
@@ -102,6 +124,9 @@ func (h *WindowsManager) StartHook() error {
 	return nil
 }
 
+// Unhook called unhookWindowsHook with the address of our hook handle to inform the OS to stop calling our callback
+//
+// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-unhookwindowshookex
 func (h *WindowsManager) Unhook() error {
 	ret, _, err := unhookWindowsHook.Call(h.hhookHandle)
 	if ret == 0 {
@@ -112,7 +137,9 @@ func (h *WindowsManager) Unhook() error {
 	return nil
 }
 
-func (h *WindowsManager) HandleKeyDown(nCode uintptr, identifier uintptr, kbHookStruct uintptr) uintptr {
+// handleKeyDown is called by the OS after StartHook installs it. The callback receives nCode, lparam, and wparam as
+// defined by the Win32 API: https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelkeyboardproc
+func (h *WindowsManager) handleKeyDown(nCode uintptr, identifier uintptr, kbHookStruct uintptr) uintptr {
 	// If nCode is less than zero we're obligated to pass the message along
 	if int(nCode) < 0 {
 		ret, _, _ := callNextHook.Call(uintptr(0), nCode, identifier, kbHookStruct)
@@ -123,7 +150,7 @@ func (h *WindowsManager) HandleKeyDown(nCode uintptr, identifier uintptr, kbHook
 	if nCode == 0 {
 		if identifier == wmKeyDown {
 			// This is a keydown event, the one we care about
-			hookInfo := *(*KbDLLHook)(unsafe.Pointer(kbHookStruct)) //nolint:all
+			hookInfo := *(*kbDLLHook)(unsafe.Pointer(kbHookStruct)) //nolint:all
 			extended := hookInfo.flags&0x1 == 1
 			var lparam uintptr
 			var buf = make([]uint16, 64)
@@ -155,10 +182,4 @@ func (h *WindowsManager) HandleKeyDown(nCode uintptr, identifier uintptr, kbHook
 		logger.Error(err.Error())
 	}
 	return ret
-}
-func SetupHotkeys() (HotkeyProvider, chan KeyInfo) {
-	var hotkeyProvider HotkeyProvider
-	var keyInfoChannel chan KeyInfo
-	hotkeyProvider, keyInfoChannel = NewWindowsHotkeyManager()
-	return hotkeyProvider, keyInfoChannel
 }
