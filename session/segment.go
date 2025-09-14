@@ -1,9 +1,9 @@
 package session
 
 import (
-	"OpenSplit/logger"
-	"OpenSplit/utils"
 	"fmt"
+	"github.com/zellydev-games/opensplit/logger"
+	"github.com/zellydev-games/opensplit/utils"
 	"time"
 
 	"github.com/google/uuid"

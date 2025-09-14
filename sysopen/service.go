@@ -1,9 +1,9 @@
 package sysopen
 
 import (
-	"OpenSplit/logger"
 	"context"
 	"errors"
+	"github.com/zellydev-games/opensplit/logger"
 	"os"
 	"os/exec"
 	"path/filepath"

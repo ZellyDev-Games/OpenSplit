@@ -1,10 +1,10 @@
 package session
 
 import (
-	"OpenSplit/logger"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/zellydev-games/opensplit/logger"
 	"os"
 	"path"
 	"path/filepath"

@@ -30,11 +30,24 @@ export namespace session {
 	        this.average_time = source["average_time"];
 	    }
 	}
+	export class Run {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new Run(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
 	export class SplitFilePayload {
 	    game_name: string;
 	    game_category: string;
 	    segments: SegmentPayload[];
 	    attempts: number;
+	    runs: Run[];
 	
 	    static createFrom(source: any = {}) {
 	        return new SplitFilePayload(source);
@@ -46,6 +59,7 @@ export namespace session {
 	        this.game_category = source["game_category"];
 	        this.segments = this.convertValues(source["segments"], SegmentPayload);
 	        this.attempts = source["attempts"];
+	        this.runs = this.convertValues(source["runs"], Run);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

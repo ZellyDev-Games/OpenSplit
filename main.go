@@ -1,15 +1,15 @@
 package main
 
 import (
-	"OpenSplit/hotkeys"
-	"OpenSplit/logger"
-	"OpenSplit/session"
-	"OpenSplit/skin"
-	"OpenSplit/sysopen"
-	"OpenSplit/timer"
 	"context"
 	"embed"
 	"fmt"
+	"github.com/zellydev-games/opensplit/hotkeys"
+	"github.com/zellydev-games/opensplit/logger"
+	"github.com/zellydev-games/opensplit/session"
+	"github.com/zellydev-games/opensplit/skin"
+	"github.com/zellydev-games/opensplit/sysopen"
+	"github.com/zellydev-games/opensplit/timer"
 	"log/slog"
 	"net/http"
 	"os"
@@ -20,7 +20,7 @@ import (
 	"syscall"
 	"time"
 
-	sessionRuntime "OpenSplit/session/runtime"
+	sessionRuntime "github.com/zellydev-games/opensplit/session/runtime"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"

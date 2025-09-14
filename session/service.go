@@ -1,13 +1,14 @@
 package session
 
 import (
-	"OpenSplit/logger"
-	"OpenSplit/utils"
 	"context"
 	"errors"
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/zellydev-games/opensplit/logger"
+	"github.com/zellydev-games/opensplit/utils"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
