@@ -75,7 +75,7 @@ func (m *MockPersister) Load() (SplitFilePayload, error) {
 	}, nil
 }
 
-func (m *MockPersister) Save(splitFile SplitFilePayload) error {
+func (m *MockPersister) Save(splitFilePayload SplitFilePayload, splitFile SplitFile) error {
 	m.SaveCalled++
 	return nil
 }

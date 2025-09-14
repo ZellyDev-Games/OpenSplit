@@ -9,16 +9,19 @@ import (
 	"sort"
 )
 
+// Service allows for runtime switching of skins
 type Service struct {
 	ctx     context.Context
 	skinDir string
 }
 
+// Startup takes a context.Context passed by Wails.Run OnStartup and sets it to this Service.
 func (s *Service) Startup(ctx context.Context, skinDir string) {
 	s.ctx = ctx
 	s.skinDir = skinDir
 }
 
+// GetAvailableSkins walks the skins folder and reports the folders that have a valid skin structure
 func (s *Service) GetAvailableSkins() []string {
 	var availableSkins []string
 	entries, err := os.ReadDir(s.skinDir)

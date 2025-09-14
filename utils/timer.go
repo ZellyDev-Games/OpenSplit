@@ -5,6 +5,9 @@ import (
 	"time"
 )
 
+// FormatTimeToString takes a time.Duration and returns a string designed to be worked with by the frontend.
+//
+// Inverse of ParseStringToTime
 func FormatTimeToString(d time.Duration) string {
 	sign := ""
 	if d < 0 {
@@ -21,6 +24,9 @@ func FormatTimeToString(d time.Duration) string {
 	return fmt.Sprintf("%s%d:%02d:%02d.%02d", sign, h, m, s, cs)
 }
 
+// ParseStringToTime unserializes a string, usually from the frontend, into a time.Duration.
+//
+// Inverse of FormatTimeToString.
 func ParseStringToTime(s string) (time.Duration, error) {
 	var neg bool
 	if len(s) > 0 && s[0] == '-' {
