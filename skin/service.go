@@ -1,9 +1,9 @@
 package skin
 
 import (
-	"OpenSplit/logger"
 	"context"
 	"fmt"
+	"github.com/ZellyDev-Games/OpenSplit/logger"
 	"os"
 	"path/filepath"
 	"sort"

@@ -3,8 +3,8 @@
 package hotkeys
 
 import (
-	"OpenSplit/logger"
 	"fmt"
+	"github.com/ZellyDev-Games/OpenSplit/logger"
 	"runtime"
 	"syscall"
 	"unsafe"
