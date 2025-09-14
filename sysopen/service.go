@@ -3,7 +3,7 @@ package sysopen
 import (
 	"context"
 	"errors"
-	"github.com/ZellyDev-Games/OpenSplit/logger"
+	"github.com/zellydev-games/opensplit/logger"
 	"os"
 	"os/exec"
 	"path/filepath"

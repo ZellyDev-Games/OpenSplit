@@ -3,7 +3,7 @@ package skin
 import (
 	"context"
 	"fmt"
-	"github.com/ZellyDev-Games/OpenSplit/logger"
+	"github.com/zellydev-games/opensplit/logger"
 	"os"
 	"path/filepath"
 	"sort"

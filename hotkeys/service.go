@@ -2,7 +2,7 @@ package hotkeys
 
 import (
 	"fmt"
-	"github.com/ZellyDev-Games/OpenSplit/logger"
+	"github.com/zellydev-games/opensplit/logger"
 )
 
 // HotkeyProvider must be implemented by any OS specific hotkey system to be used by the hotkeys.Service

@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ZellyDev-Games/OpenSplit/logger"
-	"github.com/ZellyDev-Games/OpenSplit/utils"
 	"os"
 	"time"
+
+	"github.com/zellydev-games/opensplit/logger"
+	"github.com/zellydev-games/opensplit/utils"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"

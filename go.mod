@@ -1,4 +1,4 @@
-module github.com/ZellyDev-Games/OpenSplit
+module github.com/zellydev-games/opensplit
 
 go 1.25
 
