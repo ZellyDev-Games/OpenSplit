@@ -72,6 +72,11 @@ func (m *MockPersister) Load() (SplitFilePayload, error) {
 			Average:  "00:00:02.00",
 		}},
 		Attempts: 50,
+		Runs: []Run{{
+			id:               uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
+			splitFileID:      uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
+			splitFileVersion: 1,
+		}},
 	}, nil
 }
 
@@ -89,6 +94,7 @@ func getService() (*Service, *MockTimer, *MockPersister, *SplitFile) {
 
 func getSplitFile() *SplitFile {
 	return &SplitFile{
+		id:           uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
 		gameName:     "Test Game",
 		gameCategory: "Test Category",
 		segments: []Segment{{
@@ -103,6 +109,8 @@ func getSplitFile() *SplitFile {
 			averageTime: time.Second * 4,
 		}},
 		attempts: 0,
+		version:  1,
+		runs:     []Run{},
 	}
 }
 
@@ -117,6 +125,10 @@ func TestServiceSplitWithNoFileLoaded(t *testing.T) {
 
 func TestServiceSplit(t *testing.T) {
 	s, mt, _, sf := getService()
+
+	if s.currentRun != nil || len(sf.runs) != 0 {
+		t.Error("new Service wasn't started clean")
+	}
 
 	// first split
 	s.Split()
@@ -138,6 +150,14 @@ func TestServiceSplit(t *testing.T) {
 
 	if sf.attempts != 1 {
 		t.Error("first split did not increment attempts")
+	}
+
+	if s.currentRun == nil {
+		t.Error("first split did not set current run")
+	}
+
+	if len(sf.runs) > 0 {
+		t.Error("first split on new file added Run prematurely")
 	}
 
 	// second split
@@ -202,6 +222,10 @@ func TestServiceSplit(t *testing.T) {
 		t.Error("reset Split did not reset current segment")
 	}
 
+	if len(sf.runs) != 1 {
+		t.Error("reset did not add finished run to splitfile")
+	}
+
 	// first split, new attempt
 	s.Split()
 	if s.currentSegmentIndex != 0 {
@@ -222,6 +246,10 @@ func TestServiceSplit(t *testing.T) {
 
 	if sf.attempts != 2 {
 		t.Error("new attempt split did not increment attempts")
+	}
+
+	if &sf.runs[0] == s.currentRun {
+		t.Error("new attempt split did not set a new run")
 	}
 }
 
@@ -265,13 +293,43 @@ func TestReset(t *testing.T) {
 	}
 }
 
+func TestNewSplitFile(t *testing.T) {
+	s, _, _, _ := getService()
+	payload := SplitFilePayload{
+		ID:           uuid.UUID{},
+		Version:      0,
+		GameName:     "Test New Game",
+		GameCategory: "Test New Category",
+		Segments:     nil,
+		Attempts:     0,
+		Runs:         nil,
+	}
+
+	s.loadedSplitFile = nil
+	_ = s.UpdateSplitFile(payload)
+	emptyUUID := uuid.UUID{}
+	if s.loadedSplitFile.id == emptyUUID {
+		t.Error("session UpdateSplitFile did not create a new ID with a new splitfile")
+	}
+
+	if s.loadedSplitFile.version != 1 {
+		t.Error("session UpdateSplitFile did not bump version on new file")
+	}
+
+	if len(s.loadedSplitFile.runs) > 0 {
+		t.Error("session UpdateSplitFile erroneously added runs to a new file")
+	}
+}
+
 func TestUpdateSplitFile(t *testing.T) {
 	s, _, p, sf := getService()
 	payload := sf.GetPayload()
-	s.loadedSplitFile = nil
+	payload.GameName = "Updated Game"
 	_ = s.UpdateSplitFile(payload)
 
-	if s.loadedSplitFile.gameName != sf.gameName ||
+	if s.loadedSplitFile.id != sf.id ||
+		s.loadedSplitFile.version != sf.version+1 ||
+		s.loadedSplitFile.gameName != "Updated Game" ||
 		s.loadedSplitFile.gameCategory != sf.gameCategory ||
 		s.loadedSplitFile.segments[0].id != sf.segments[0].id ||
 		s.loadedSplitFile.segments[1].id != sf.segments[1].id ||
@@ -281,14 +339,14 @@ func TestUpdateSplitFile(t *testing.T) {
 		s.loadedSplitFile.segments[1].bestTime != sf.segments[1].bestTime ||
 		s.loadedSplitFile.segments[0].averageTime != sf.segments[0].averageTime ||
 		s.loadedSplitFile.segments[1].averageTime != sf.segments[1].averageTime {
-		t.Error("UpdateSplitFile did not set expected splitfile")
+		t.Errorf("UpdateSplitFile want %v\ngot\n%v", s.loadedSplitFile, sf)
 	}
 
 	if p.SaveCalled != 1 {
 		t.Error("session UpdateSplitFile did not save splitfile")
 	}
 
-	if s.loadedSplitFile.version != 1 {
+	if s.loadedSplitFile.version != 2 {
 		t.Error("session UpdateSplitFile did not bump new splitfile version on change")
 	}
 
@@ -306,7 +364,7 @@ func TestUpdateSplitFile(t *testing.T) {
 		t.Error("session UpdateSplitFile did not save splitfile on change")
 	}
 
-	if s.loadedSplitFile.version != 2 {
+	if s.loadedSplitFile.version != 3 {
 		t.Error("session UpdateSplitFile did not bump splitfile version on change")
 	}
 }
@@ -365,6 +423,10 @@ func TestLoadSplitFile(t *testing.T) {
 
 	if s.currentSegment != nil {
 		t.Error("load split file did not reset current segment")
+	}
+
+	if s.loadedSplitFile.runs[0].id != uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4") {
+		t.Error("Load split file did not load runs")
 	}
 }
 

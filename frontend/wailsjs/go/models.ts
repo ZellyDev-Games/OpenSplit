@@ -43,6 +43,8 @@ export namespace session {
 	    }
 	}
 	export class SplitFilePayload {
+	    id: number[];
+	    version: number;
 	    game_name: string;
 	    game_category: string;
 	    segments: SegmentPayload[];
@@ -55,6 +57,8 @@ export namespace session {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.version = source["version"];
 	        this.game_name = source["game_name"];
 	        this.game_category = source["game_category"];
 	        this.segments = this.convertValues(source["segments"], SegmentPayload);

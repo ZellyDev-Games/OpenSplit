@@ -59,6 +59,7 @@ func (s *SplitFile) GetPayload() SplitFilePayload {
 		segmentPayloads = append(segmentPayloads, segment.GetPayload())
 	}
 	return SplitFilePayload{
+		ID:           s.id,
 		GameName:     s.gameName,
 		GameCategory: s.gameCategory,
 		Segments:     segmentPayloads,
@@ -82,7 +83,13 @@ func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
 		segments = append(segments, newSegment)
 	}
 
+	var emptyUUID = uuid.UUID{}
+	if payload.ID == emptyUUID {
+		payload.ID = uuid.New()
+	}
+
 	return &SplitFile{
+		id:           payload.ID,
 		gameName:     payload.GameName,
 		gameCategory: payload.GameCategory,
 		attempts:     payload.Attempts,
