@@ -32,10 +32,10 @@ export namespace session {
 	}
 	export class RunPayload {
 	    id: number[];
-	    splitFileVersion: number;
-	    totalTime: number;
+	    splitfile_version: number;
+	    total_time: number;
 	    completed: boolean;
-	    splitPayloads: SplitPayload[];
+	    split_payloads: SplitPayload[];
 	
 	    static createFrom(source: any = {}) {
 	        return new RunPayload(source);
@@ -44,10 +44,10 @@ export namespace session {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
-	        this.splitFileVersion = source["splitFileVersion"];
-	        this.totalTime = source["totalTime"];
+	        this.splitfile_version = source["splitfile_version"];
+	        this.total_time = source["total_time"];
 	        this.completed = source["completed"];
-	        this.splitPayloads = this.convertValues(source["splitPayloads"], SplitPayload);
+	        this.split_payloads = this.convertValues(source["split_payloads"], SplitPayload);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -136,6 +136,7 @@ export namespace session {
 	    paused: boolean;
 	    current_time: number;
 	    current_time_formatted: string;
+	    current_run?: RunPayload;
 	
 	    static createFrom(source: any = {}) {
 	        return new ServicePayload(source);
@@ -150,6 +151,7 @@ export namespace session {
 	        this.paused = source["paused"];
 	        this.current_time = source["current_time"];
 	        this.current_time_formatted = source["current_time_formatted"];
+	        this.current_run = this.convertValues(source["current_run"], RunPayload);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

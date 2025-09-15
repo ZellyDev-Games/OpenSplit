@@ -42,6 +42,7 @@ type ServicePayload struct {
 	Paused               bool              `json:"paused"`
 	CurrentTime          time.Duration     `json:"current_time"`
 	CurrentTimeFormatted string            `json:"current_time_formatted"`
+	CurrentRun           *RunPayload       `json:"current_run"`
 }
 
 // SplitPayload is a snapshot of split data to communicate information about a split to the frontend, and also the
@@ -185,8 +186,6 @@ func (s *Service) Split() {
 		// Run is in progress
 		splitPayload := s.getSplitPayload()
 		s.currentRun.splitPayloads = append(s.currentRun.splitPayloads, splitPayload)
-		s.emitEvent("session:split", splitPayload)
-
 		s.currentSegmentIndex++
 		s.currentSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
 		s.emitEvent("session:update", s.getServicePayload())
@@ -228,6 +227,7 @@ func (s *Service) Reset() {
 	s.finished = false
 	s.currentSegmentIndex = -1
 	s.currentSegment = nil
+	s.currentRun = nil
 	s.emitEvent("timer:update", 0)
 	s.emitEvent("session:update", s.getServicePayload())
 	if s.loadedSplitFile != nil {
@@ -342,6 +342,12 @@ func (s *Service) getServicePayload() ServicePayload {
 		currentSegmentPayload = &payload
 	}
 
+	var currentRunPayload *RunPayload
+	if s.currentRun != nil {
+		payload := s.currentRun.GetPayload()
+		currentRunPayload = &payload
+	}
+
 	payload := ServicePayload{
 		SplitFile:            loadedSplitFile,
 		CurrentSegmentIndex:  s.currentSegmentIndex,
@@ -350,6 +356,7 @@ func (s *Service) getServicePayload() ServicePayload {
 		CurrentTime:          s.timer.GetCurrentTime(),
 		CurrentTimeFormatted: s.timer.GetCurrentTimeFormatted(),
 		Paused:               !s.timer.IsRunning(),
+		CurrentRun:           currentRunPayload,
 	}
 
 	return payload

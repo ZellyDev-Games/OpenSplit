@@ -35,8 +35,8 @@ func TestGetPayload(t *testing.T) {
 	payload := s.GetPayload()
 	if payload.ID != "4bc1a05c-d4f3-4095-887f-519e2fbb54f3" ||
 		payload.Name != "Test Segment" ||
-		payload.Average != "0:00:02.00" ||
-		payload.BestTime != "0:00:01.00" {
+		payload.Average != "00:00:02.00" ||
+		payload.BestTime != "00:00:01.00" {
 		t.Errorf("GetPayload did not return expected payload got %v", payload)
 	}
 }

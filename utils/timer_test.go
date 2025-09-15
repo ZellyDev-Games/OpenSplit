@@ -8,8 +8,14 @@ import (
 func TestFormatTimeToString(t *testing.T) {
 	d := time.Hour*1 + time.Minute*2 + time.Second*3 + time.Millisecond*400
 	timeString := FormatTimeToString(d)
-	if timeString != "1:02:03.40" {
-		t.Errorf("FormatTimeToString() got %s, want %s", timeString, "1:02:03.40")
+	if timeString != "01:02:03.40" {
+		t.Errorf("FormatTimeToString() got %s, want %s", timeString, "01:02:03.40")
+	}
+
+	d = time.Minute*2 + time.Second*3 + time.Millisecond*400
+	timeString = FormatTimeToString(d)
+	if timeString != "00:02:03.40" {
+		t.Errorf("FormatTimeToString() got %s, want %s", timeString, "00:02:03.40")
 	}
 }
 
