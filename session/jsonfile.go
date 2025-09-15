@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/zellydev-games/opensplit/logger"
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/zellydev-games/opensplit/logger"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -67,11 +68,7 @@ func (j *JsonFile) Startup(ctx context.Context) {
 
 // Save takes a SplitFile payload from the frontend, which modifies the passed in spitFile (or nil if a new file) from
 // the Session Service backend.
-//
-// We originally just sent in the payload, created a new SplitFile from that, and
-// set Sessions Services's loaded SplitFile with that new one, but when we added the concept of run history that
-// no longer scaled.
-func (j *JsonFile) Save(splitFilePayload SplitFilePayload, splitFile SplitFile) error {
+func (j *JsonFile) Save(splitFilePayload SplitFilePayload) error {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		logger.Error("save failed: " + err.Error())

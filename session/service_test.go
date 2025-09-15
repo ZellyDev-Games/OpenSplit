@@ -75,7 +75,7 @@ func (m *MockPersister) Load() (SplitFilePayload, error) {
 	}, nil
 }
 
-func (m *MockPersister) Save(splitFilePayload SplitFilePayload, splitFile SplitFile) error {
+func (m *MockPersister) Save(splitFilePayload SplitFilePayload) error {
 	m.SaveCalled++
 	return nil
 }
@@ -286,6 +286,28 @@ func TestUpdateSplitFile(t *testing.T) {
 
 	if p.SaveCalled != 1 {
 		t.Error("session UpdateSplitFile did not save splitfile")
+	}
+
+	if s.loadedSplitFile.version != 1 {
+		t.Error("session UpdateSplitFile did not bump new splitfile version on change")
+	}
+
+	// Test unchanged
+	newPayload := s.loadedSplitFile.GetPayload()
+	_ = s.UpdateSplitFile(newPayload)
+	if p.SaveCalled != 1 {
+		t.Error("session UpdateSplitFile called Save on unchanged file")
+	}
+
+	// Test changed
+	newPayload.GameName = "new game"
+	_ = s.UpdateSplitFile(newPayload)
+	if p.SaveCalled != 2 {
+		t.Error("session UpdateSplitFile did not save splitfile on change")
+	}
+
+	if s.loadedSplitFile.version != 2 {
+		t.Error("session UpdateSplitFile did not bump splitfile version on change")
 	}
 }
 

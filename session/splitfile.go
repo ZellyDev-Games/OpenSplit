@@ -1,11 +1,17 @@
 package session
 
-import "github.com/google/uuid"
+import (
+	"reflect"
+
+	"github.com/google/uuid"
+)
 
 // SplitFilePayload is a snapshot of a SplitFile
 //
 // Used to communicate the state of a SplitFile to the frontend and Persister implementations without exposing internals.
 type SplitFilePayload struct {
+	ID           uuid.UUID        `json:"id"`
+	Version      int              `json:"version"`
 	GameName     string           `json:"game_name"`
 	GameCategory string           `json:"game_category"`
 	Segments     []SegmentPayload `json:"segments"`
@@ -58,7 +64,12 @@ func (s *SplitFile) GetPayload() SplitFilePayload {
 		Segments:     segmentPayloads,
 		Attempts:     s.attempts,
 		Runs:         s.runs,
+		Version:      s.version,
 	}
+}
+
+func SplitFileChanged(file1 SplitFilePayload, file2 SplitFilePayload) bool {
+	return !reflect.DeepEqual(file1, file2)
 }
 
 func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
@@ -77,5 +88,6 @@ func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
 		attempts:     payload.Attempts,
 		segments:     segments,
 		runs:         payload.Runs,
+		version:      payload.Version,
 	}, nil
 }
