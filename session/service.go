@@ -47,19 +47,17 @@ type ServicePayload struct {
 // SplitPayload is a snapshot of split data to communicate information about a split to the frontend, and also the
 // run history in SplitFile runs
 type SplitPayload struct {
-	SplitIndex   int            `json:"split_index"`
-	NewIndex     int            `json:"new_index"`
-	SplitSegment SegmentPayload `json:"split_segment"`
-	NewSegment   SegmentPayload `json:"new_segment"`
-	Finished     bool           `json:"finished"`
-	CurrentTime  string         `json:"current_time"`
+	SplitIndex      int           `json:"split_index"`
+	SplitSegmentID  string        `json:"split_segment_id"`
+	CurrentTime     string        `json:"current_time"`
+	CurrentDuration time.Duration `json:"current_duration"`
 }
 
 // Persister is an interface that services that save and load splitfiles must implement to be used by session.Service
 type Persister interface {
 	Startup(ctx context.Context)
 	Load() (split SplitFilePayload, err error)
-	Save(split SplitFilePayload, splitFile SplitFile) error
+	Save(split SplitFilePayload) error
 }
 
 // Timer is an interface that a stopwatch service must implement to be used by session.Service
@@ -150,38 +148,48 @@ func (s *Service) Split() {
 	if s.finished {
 		s.Reset()
 		return
-	} else {
-		s.currentSegmentIndex++
 	}
 
-	if s.currentSegmentIndex >= len(s.loadedSplitFile.segments) {
-		s.timer.Pause()
-		s.finished = true
-		s.emitEvent("session:update", s.getServicePayload())
-		s.emitEvent("session:split", s.getSplitPayload())
-		logger.Debug("split called with last segment in loaded split file, run complete")
-		return
-	}
-
-	s.currentSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
-	if s.currentSegmentIndex == 0 {
+	if s.currentSegmentIndex == -1 {
+		// Run is starting
 		s.timer.Reset()
 		s.timer.Start()
 		s.loadedSplitFile.NewAttempt()
 		s.currentRun = &Run{
 			id:               uuid.New(),
-			splitFileID:      s.loadedSplitFile.id,
 			splitFileVersion: s.loadedSplitFile.version,
 		}
+		s.currentSegmentIndex++
+		s.currentSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
 		s.emitEvent("session:update", s.getServicePayload())
-		s.emitEvent("session:split", s.getSplitPayload())
+
 		logger.Debug(fmt.Sprintf("starting new run (%s - %s - %s) attempt #%d",
 			s.loadedSplitFile.gameName,
 			s.loadedSplitFile.gameCategory,
 			s.currentSegment.name,
 			s.loadedSplitFile.attempts))
+		return
+	} else if s.currentSegmentIndex >= len(s.loadedSplitFile.segments)-1 {
+		// Run is finished
+		splitPayload := s.getSplitPayload()
+		s.emitEvent("session:split", splitPayload)
+		s.timer.Pause()
+		s.finished = true
+		s.currentRun.splitPayloads = append(s.currentRun.splitPayloads, splitPayload)
+		s.currentRun.completed = true
+		s.currentRun.totalTime = s.timer.GetCurrentTime()
+		logger.Debug("split called with last segment in loaded split file, run complete")
+		s.emitEvent("session:update", s.getServicePayload())
+		return
 	} else {
-		s.emitEvent("session:split", s.getSplitPayload())
+		// Run is in progress
+		splitPayload := s.getSplitPayload()
+		s.currentRun.splitPayloads = append(s.currentRun.splitPayloads, splitPayload)
+		s.emitEvent("session:split", splitPayload)
+
+		s.currentSegmentIndex++
+		s.currentSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
+		s.emitEvent("session:update", s.getServicePayload())
 		logger.Debug(fmt.Sprintf("segment index %d (%s) completed at %s, loading segment %d (%s)",
 			s.currentSegmentIndex-1,
 			s.loadedSplitFile.segments[s.currentSegmentIndex-1].name,
@@ -213,6 +221,7 @@ func (s *Service) Reset() {
 
 	// If there's a run, add it to the history
 	if s.loadedSplitFile != nil && s.currentRun != nil {
+		logger.Debug("appending run to splitfile")
 		s.loadedSplitFile.runs = append(s.loadedSplitFile.runs, *s.currentRun)
 	}
 
@@ -232,14 +241,32 @@ func (s *Service) Reset() {
 //
 // It creates a SplitFile from the given SplitFilePayload and then sets that SplitFile as the currently loaded one.
 func (s *Service) UpdateSplitFile(payload SplitFilePayload) error {
+	bumpVersion := false
 	newSplitFile, err := newFromPayload(payload)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to parse split file payload: %s", err))
 		return err
 	}
 
+	// If this is a new splitfile, s.loadedSplitFile will be nil at this point, so just set a flag to update the version
+	// once we've loaded the splitfile from the payload to be sure.
+	if s.loadedSplitFile == nil || SplitFileChanged(payload, s.loadedSplitFile.GetPayload()) {
+		logger.Debug("SplitFile changed, bumping version after loading new split file")
+		bumpVersion = true
+	}
+
+	if s.loadedSplitFile != nil {
+		// persist runs and attempts
+		newSplitFile.attempts = s.loadedSplitFile.attempts
+		newSplitFile.runs = s.loadedSplitFile.runs
+	}
 	s.loadedSplitFile = newSplitFile
-	err = s.persister.Save(s.loadedSplitFile.GetPayload(), *s.loadedSplitFile)
+	if bumpVersion {
+		// Splitfile is now loaded for sure, even if this was a brand-new file, it's now safe to access its members
+		s.loadedSplitFile.version++
+	}
+
+	err = s.persister.Save(s.loadedSplitFile.GetPayload())
 	if err != nil {
 		var cancelled = &UserCancelledSave{}
 		if errors.As(err, cancelled) {
@@ -329,22 +356,11 @@ func (s *Service) getServicePayload() ServicePayload {
 }
 
 func (s *Service) getSplitPayload() SplitPayload {
-	loadedSplitFileData := s.loadedSplitFile.GetPayload()
 	var payload = SplitPayload{
-		SplitIndex:  s.currentSegmentIndex - 1,
-		NewIndex:    s.currentSegmentIndex,
-		Finished:    s.finished,
-		CurrentTime: utils.FormatTimeToString(s.timer.GetCurrentTime()),
-	}
-
-	if !s.finished {
-		payload.NewSegment = loadedSplitFileData.Segments[s.currentSegmentIndex]
-		payload.NewIndex = s.currentSegmentIndex
-	}
-
-	if s.currentSegmentIndex != 0 {
-		payload.SplitSegment = loadedSplitFileData.Segments[s.currentSegmentIndex-1]
-		payload.SplitIndex = s.currentSegmentIndex - 1
+		SplitIndex:      s.currentSegmentIndex,
+		SplitSegmentID:  s.loadedSplitFile.segments[s.currentSegmentIndex].id.String(),
+		CurrentTime:     utils.FormatTimeToString(s.timer.GetCurrentTime()),
+		CurrentDuration: s.timer.GetCurrentTime(),
 	}
 
 	return payload

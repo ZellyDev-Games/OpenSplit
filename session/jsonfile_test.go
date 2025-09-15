@@ -53,7 +53,7 @@ func TestSave(t *testing.T) {
 	f := &MockFileProvider{}
 	j := NewJsonFile(m, f)
 	sf := getTestFile()
-	err := j.Save(sf.GetPayload(), *sf)
+	err := j.Save(sf.GetPayload())
 	if err != nil {
 		t.Error(err)
 	}
