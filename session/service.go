@@ -170,7 +170,6 @@ func (s *Service) Split() {
 		s.loadedSplitFile.NewAttempt()
 		s.currentRun = &Run{
 			id:               uuid.New(),
-			splitFileID:      s.loadedSplitFile.id,
 			splitFileVersion: s.loadedSplitFile.version,
 		}
 		s.emitEvent("session:update", s.getServicePayload())
@@ -213,6 +212,7 @@ func (s *Service) Reset() {
 
 	// If there's a run, add it to the history
 	if s.loadedSplitFile != nil && s.currentRun != nil {
+		logger.Debug("appending run to splitfile")
 		s.loadedSplitFile.runs = append(s.loadedSplitFile.runs, *s.currentRun)
 	}
 
@@ -232,19 +232,31 @@ func (s *Service) Reset() {
 //
 // It creates a SplitFile from the given SplitFilePayload and then sets that SplitFile as the currently loaded one.
 func (s *Service) UpdateSplitFile(payload SplitFilePayload) error {
+	bumpVersion := false
 	newSplitFile, err := newFromPayload(payload)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to parse split file payload: %s", err))
 		return err
 	}
 
-	if s.loadedSplitFile != nil && !SplitFileChanged(payload, s.loadedSplitFile.GetPayload()) {
-		logger.Debug("SplitFile unchanged")
-		return nil
+	// If this is a new splitfile, s.loadedSplitFile will be nil at this point, so just set a flag to update the version
+	// once we've loaded the splitfile from the payload to be sure.
+	if s.loadedSplitFile == nil || SplitFileChanged(payload, s.loadedSplitFile.GetPayload()) {
+		logger.Debug("SplitFile changed, bumping version after loading new split file")
+		bumpVersion = true
 	}
 
+	if s.loadedSplitFile != nil {
+		// persist runs and attempts
+		newSplitFile.attempts = s.loadedSplitFile.attempts
+		newSplitFile.runs = s.loadedSplitFile.runs
+	}
 	s.loadedSplitFile = newSplitFile
-	s.loadedSplitFile.version++
+	if bumpVersion {
+		// Splitfile is now loaded for sure, even if this was a brand-new file, it's now safe to access its members
+		s.loadedSplitFile.version++
+	}
+
 	err = s.persister.Save(s.loadedSplitFile.GetPayload())
 	if err != nil {
 		var cancelled = &UserCancelledSave{}

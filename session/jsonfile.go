@@ -111,7 +111,6 @@ func (j *JsonFile) Save(splitFilePayload SplitFilePayload) error {
 		logger.Error(fmt.Sprintf("failed to save split file: %s", err.Error()))
 		return err
 	}
-
 	return err
 }
 

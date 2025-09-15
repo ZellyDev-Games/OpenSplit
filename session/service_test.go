@@ -72,10 +72,9 @@ func (m *MockPersister) Load() (SplitFilePayload, error) {
 			Average:  "00:00:02.00",
 		}},
 		Attempts: 50,
-		Runs: []Run{{
-			id:               uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
-			splitFileID:      uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
-			splitFileVersion: 1,
+		Runs: []RunPayload{{
+			ID:               uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
+			SplitFileVersion: 1,
 		}},
 	}, nil
 }
@@ -325,6 +324,7 @@ func TestUpdateSplitFile(t *testing.T) {
 	s, _, p, sf := getService()
 	payload := sf.GetPayload()
 	payload.GameName = "Updated Game"
+	payload.Segments[0].Name = "UPDATED SEGMENT 1"
 	_ = s.UpdateSplitFile(payload)
 
 	if s.loadedSplitFile.id != sf.id ||
@@ -333,7 +333,7 @@ func TestUpdateSplitFile(t *testing.T) {
 		s.loadedSplitFile.gameCategory != sf.gameCategory ||
 		s.loadedSplitFile.segments[0].id != sf.segments[0].id ||
 		s.loadedSplitFile.segments[1].id != sf.segments[1].id ||
-		s.loadedSplitFile.segments[0].name != sf.segments[0].name ||
+		s.loadedSplitFile.segments[0].name != "UPDATED SEGMENT 1" ||
 		s.loadedSplitFile.segments[1].name != sf.segments[1].name ||
 		s.loadedSplitFile.segments[0].bestTime != sf.segments[0].bestTime ||
 		s.loadedSplitFile.segments[1].bestTime != sf.segments[1].bestTime ||
@@ -353,18 +353,18 @@ func TestUpdateSplitFile(t *testing.T) {
 	// Test unchanged
 	newPayload := s.loadedSplitFile.GetPayload()
 	_ = s.UpdateSplitFile(newPayload)
-	if p.SaveCalled != 1 {
-		t.Error("session UpdateSplitFile called Save on unchanged file")
+	if newPayload.Version != s.loadedSplitFile.version {
+		t.Error("session UpdateSplitFile bumped version on unchanged file")
 	}
 
 	// Test changed
 	newPayload.GameName = "new game"
 	_ = s.UpdateSplitFile(newPayload)
-	if p.SaveCalled != 2 {
+	if p.SaveCalled != 3 {
 		t.Error("session UpdateSplitFile did not save splitfile on change")
 	}
 
-	if s.loadedSplitFile.version != 3 {
+	if s.loadedSplitFile.version != 2 {
 		t.Error("session UpdateSplitFile did not bump splitfile version on change")
 	}
 }

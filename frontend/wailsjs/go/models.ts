@@ -12,6 +12,22 @@ export namespace session {
 	        this.speed_run_API_base = source["speed_run_API_base"];
 	    }
 	}
+	export class RunPayload {
+	    id: number[];
+	    splitFileId: number[];
+	    splitFileVersion: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new RunPayload(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.splitFileId = source["splitFileId"];
+	        this.splitFileVersion = source["splitFileVersion"];
+	    }
+	}
 	export class SegmentPayload {
 	    id: string;
 	    name: string;
@@ -30,18 +46,6 @@ export namespace session {
 	        this.average_time = source["average_time"];
 	    }
 	}
-	export class Run {
-	
-	
-	    static createFrom(source: any = {}) {
-	        return new Run(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	
-	    }
-	}
 	export class SplitFilePayload {
 	    id: number[];
 	    version: number;
@@ -49,7 +53,7 @@ export namespace session {
 	    game_category: string;
 	    segments: SegmentPayload[];
 	    attempts: number;
-	    runs: Run[];
+	    runs: RunPayload[];
 	
 	    static createFrom(source: any = {}) {
 	        return new SplitFilePayload(source);
@@ -63,7 +67,7 @@ export namespace session {
 	        this.game_category = source["game_category"];
 	        this.segments = this.convertValues(source["segments"], SegmentPayload);
 	        this.attempts = source["attempts"];
-	        this.runs = this.convertValues(source["runs"], Run);
+	        this.runs = this.convertValues(source["runs"], RunPayload);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

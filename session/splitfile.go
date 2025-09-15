@@ -16,7 +16,7 @@ type SplitFilePayload struct {
 	GameCategory string           `json:"game_category"`
 	Segments     []SegmentPayload `json:"segments"`
 	Attempts     int              `json:"attempts"`
-	Runs         []Run            `json:"runs"`
+	Runs         []RunPayload     `json:"runs"`
 }
 
 // SplitFile represents the data and history of a game/category combo.
@@ -58,18 +58,32 @@ func (s *SplitFile) GetPayload() SplitFilePayload {
 	for _, segment := range s.segments {
 		segmentPayloads = append(segmentPayloads, segment.GetPayload())
 	}
+
+	var runPayloads []RunPayload
+	for _, run := range s.runs {
+		runPayloads = append(runPayloads, run.GetPayload())
+	}
+
 	return SplitFilePayload{
 		ID:           s.id,
 		GameName:     s.gameName,
 		GameCategory: s.gameCategory,
 		Segments:     segmentPayloads,
 		Attempts:     s.attempts,
-		Runs:         s.runs,
+		Runs:         runPayloads,
 		Version:      s.version,
 	}
 }
 
 func SplitFileChanged(file1 SplitFilePayload, file2 SplitFilePayload) bool {
+	// Set fields that we don't want to cause a version change to be equal
+	// Note: This is a copy of the payloads, so mutation here is safe for the caller.
+	file1.Runs = nil
+	file2.Runs = nil
+	file1.Attempts = 0
+	file2.Attempts = 0
+	file1.GameName = ""
+	file2.GameName = ""
 	return !reflect.DeepEqual(file1, file2)
 }
 
@@ -83,6 +97,12 @@ func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
 		segments = append(segments, newSegment)
 	}
 
+	var runs []Run
+	for _, run := range payload.Runs {
+		newRun := NewRunFromPayload(run)
+		runs = append(runs, newRun)
+	}
+
 	var emptyUUID = uuid.UUID{}
 	if payload.ID == emptyUUID {
 		payload.ID = uuid.New()
@@ -94,7 +114,7 @@ func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
 		gameCategory: payload.GameCategory,
 		attempts:     payload.Attempts,
 		segments:     segments,
-		runs:         payload.Runs,
+		runs:         runs,
 		version:      payload.Version,
 	}, nil
 }
