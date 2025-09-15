@@ -183,8 +183,8 @@ func TestServiceSplit(t *testing.T) {
 
 	// end split
 	s.Split()
-	if s.currentSegmentIndex != 2 {
-		t.Error("end Split didn't increment segment index")
+	if s.currentSegmentIndex != 1 {
+		t.Error("end Split incremented segment index out of range")
 	}
 
 	if s.currentSegment != &sf.segments[1] {
@@ -197,6 +197,10 @@ func TestServiceSplit(t *testing.T) {
 
 	if s.finished != true {
 		t.Error("end Split did not finish session")
+	}
+
+	if s.currentRun.completed != true {
+		t.Error("end Split did not set completed flag on currentRun")
 	}
 
 	// reset split
