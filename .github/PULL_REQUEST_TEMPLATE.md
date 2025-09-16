@@ -1,13 +1,14 @@
-## Summary
+### Summary
 Describe what this PR changes and why.
 
-## Screenshots/GIF (if UI)
+### Screenshots/GIF (if UI)
 <!-- drag & drop here -->
 
-## Checklist
-- [ ] Tests pass (`go test ./...`)
-- [ ] Lint passes (Go/Frontend, if applicable)
+### Checklist
+- [ ] Prettier/fmt run (`task fmt`)
+- [ ] Tests pass (`task test`)
+- [ ] Lint passes (`task lint`)
 - [ ] Docs/README updated (if needed)
 - [ ] Linked issue (if any): Fixes #
 
-## Notes for reviewers
+### Notes for reviewers

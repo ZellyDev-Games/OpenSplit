@@ -131,7 +131,7 @@ export function formatDuration(timeParts: TimeParts): FormattedTimeParts {
 }
 
 export function displayFormattedTimeParts(formattedParts: FormattedTimeParts): string {
-    let timeString = ""
+    let timeString = "";
     if (formattedParts.showHours) {
         timeString += formattedParts.hoursText;
     }
@@ -141,5 +141,5 @@ export function displayFormattedTimeParts(formattedParts: FormattedTimeParts): s
     }
 
     timeString += `${formattedParts.sepMS}${formattedParts.secondsText}${formattedParts.sepSC}${formattedParts.centisText}`;
-    return timeString
+    return timeString;
 }

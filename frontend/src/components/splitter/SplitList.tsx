@@ -1,8 +1,8 @@
-import {session} from "../../../wailsjs/go/models";
-import {displayFormattedTimeParts, formatDuration, stringToParts} from "./Timer";
-import {useEffect, useState} from "react";
-import {GetLoadedSplitFile, GetSessionStatus} from "../../../wailsjs/go/session/Service";
-import {EventsOn} from "../../../wailsjs/runtime";
+import { session } from "../../../wailsjs/go/models";
+import { displayFormattedTimeParts, formatDuration, stringToParts } from "./Timer";
+import { useEffect, useState } from "react";
+import { GetLoadedSplitFile, GetSessionStatus } from "../../../wailsjs/go/session/Service";
+import { EventsOn } from "../../../wailsjs/runtime";
 import SplitFilePayload = session.SplitFilePayload;
 import ServicePayload = session.ServicePayload;
 import SegmentPayload = session.SegmentPayload;
@@ -11,7 +11,7 @@ export type CompareAgainst = "best" | "average";
 
 type Completion = {
     time: string;
-}
+};
 
 export default function SplitList() {
     const [splitFile, setSplitFile] = useState<SplitFilePayload | undefined>(undefined);
@@ -20,7 +20,7 @@ export default function SplitList() {
     const [compareAgainst, setCompareAgainst] = useState<CompareAgainst | null>(null);
 
     useEffect(() => {
-        GetLoadedSplitFile().then(d => setSplitFile(d));
+        GetLoadedSplitFile().then((d) => setSplitFile(d));
     }, []);
 
     useEffect(() => {
@@ -34,40 +34,41 @@ export default function SplitList() {
 
         return EventsOn("session:update", (servicePayload: ServicePayload) => {
             console.log("received service update:", servicePayload);
-            setSplitFile(servicePayload.split_file)
+            setSplitFile(servicePayload.split_file);
             setCurrentSegment(servicePayload.current_segment_index);
             if (servicePayload.current_run) {
                 setCompletions(
                     servicePayload.current_run.split_payloads.map((c, i) => {
-                        return {time: displayFormattedTimeParts(formatDuration(stringToParts(c.current_time)))}
-                    }));
+                        return { time: displayFormattedTimeParts(formatDuration(stringToParts(c.current_time))) };
+                    }),
+                );
             } else {
-                setCompletions([])
+                setCompletions([]);
             }
         });
     }, []);
 
     const getSegmentDisplayTime = (index: number, segment: SegmentPayload): string => {
-        if(index < completions.length) {
+        if (index < completions.length) {
             return completions[index].time;
         } else {
             if (compareAgainst == "average") {
-                const avg = splitFile?.stats.averages.find(p => p.id === segment.id)
+                const avg = splitFile?.stats.averages.find((p) => p.id === segment.id);
                 if (avg) {
                     return displayFormattedTimeParts(formatDuration(stringToParts(avg.time))) ?? "-";
                 } else {
                     return "-";
                 }
             } else {
-                const best = splitFile?.stats.pb?.run?.split_payloads.find(p => p.split_segment_id === segment.id)
-                if(best) {
-                    return displayFormattedTimeParts(formatDuration(stringToParts(best.current_time))) ?? "-"
+                const best = splitFile?.stats.pb?.run?.split_payloads.find((p) => p.split_segment_id === segment.id);
+                if (best) {
+                    return displayFormattedTimeParts(formatDuration(stringToParts(best.current_time))) ?? "-";
                 } else {
                     return "-";
                 }
             }
         }
-    }
+    };
 
     const segmentRows = splitFile?.segments.map((segment, index) => (
         <tr key={segment.id ?? index} className={currentSegment !== null && currentSegment === index ? "selected" : ""}>
