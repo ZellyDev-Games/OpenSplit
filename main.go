@@ -4,12 +4,6 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"github.com/zellydev-games/opensplit/hotkeys"
-	"github.com/zellydev-games/opensplit/logger"
-	"github.com/zellydev-games/opensplit/session"
-	"github.com/zellydev-games/opensplit/skin"
-	"github.com/zellydev-games/opensplit/sysopen"
-	"github.com/zellydev-games/opensplit/timer"
 	"log/slog"
 	"net/http"
 	"os"
@@ -19,6 +13,13 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/zellydev-games/opensplit/hotkeys"
+	"github.com/zellydev-games/opensplit/logger"
+	"github.com/zellydev-games/opensplit/session"
+	"github.com/zellydev-games/opensplit/skin"
+	"github.com/zellydev-games/opensplit/sysopen"
+	"github.com/zellydev-games/opensplit/timer"
 
 	sessionRuntime "github.com/zellydev-games/opensplit/session/runtime"
 
@@ -96,6 +97,7 @@ func main() {
 		OnShutdown: func(ctx context.Context) {
 			gracefulShutdown(hotkeyService)
 		},
+		OnBeforeClose: sessionService.CleanQuit,
 		Bind: []interface{}{
 			sessionService,
 			sysopenService,

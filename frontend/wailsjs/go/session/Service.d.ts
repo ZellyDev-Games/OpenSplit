@@ -17,6 +17,8 @@ export function Pause():Promise<void>;
 
 export function Reset():Promise<void>;
 
+export function SaveSplitFile():Promise<void>;
+
 export function Split():Promise<void>;
 
 export function Startup(arg1:context.Context):Promise<void>;
