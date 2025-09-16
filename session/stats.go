@@ -43,7 +43,7 @@ func (s *SplitFileStats) GetPayload() (SplitFileStatsPayload, error) {
 	}
 
 	for id, average := range s.averages {
-		goldPayloads[id.String()] = utils.FormatTimeToString(average)
+		averagesPayloads[id.String()] = utils.FormatTimeToString(average)
 	}
 
 	var pbPayload *PBStatsPayload
