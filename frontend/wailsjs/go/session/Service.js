@@ -30,6 +30,10 @@ export function Reset() {
   return window['go']['session']['Service']['Reset']();
 }
 
+export function SaveSplitFile() {
+  return window['go']['session']['Service']['SaveSplitFile']();
+}
+
 export function Split() {
   return window['go']['session']['Service']['Split']();
 }

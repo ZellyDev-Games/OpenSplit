@@ -104,8 +104,6 @@ export namespace session {
 	export class SegmentPayload {
 	    id: string;
 	    name: string;
-	    best_time: string;
-	    average_time: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new SegmentPayload(source);
@@ -115,27 +113,11 @@ export namespace session {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.name = source["name"];
-	        this.best_time = source["best_time"];
-	        this.average_time = source["average_time"];
-	    }
-	}
-	export class StatTimePayload {
-	    id: string;
-	    time: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new StatTimePayload(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.time = source["time"];
 	    }
 	}
 	export class SplitFileStatsPayload {
-	    golds: StatTimePayload[];
-	    averages: StatTimePayload[];
+	    golds: Record<string, string>;
+	    averages: Record<string, string>;
 	    sob: string;
 	    pb?: PBStatsPayload;
 	
@@ -145,8 +127,8 @@ export namespace session {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.golds = this.convertValues(source["golds"], StatTimePayload);
-	        this.averages = this.convertValues(source["averages"], StatTimePayload);
+	        this.golds = source["golds"];
+	        this.averages = source["averages"];
 	        this.sob = source["sob"];
 	        this.pb = this.convertValues(source["pb"], PBStatsPayload);
 	    }
@@ -177,7 +159,7 @@ export namespace session {
 	    segments: SegmentPayload[];
 	    attempts: number;
 	    runs: RunPayload[];
-	    stats: SplitFileStatsPayload;
+	    Stats: SplitFileStatsPayload;
 	
 	    static createFrom(source: any = {}) {
 	        return new SplitFilePayload(source);
@@ -192,7 +174,7 @@ export namespace session {
 	        this.segments = this.convertValues(source["segments"], SegmentPayload);
 	        this.attempts = source["attempts"];
 	        this.runs = this.convertValues(source["runs"], RunPayload);
-	        this.stats = this.convertValues(source["stats"], SplitFileStatsPayload);
+	        this.Stats = this.convertValues(source["Stats"], SplitFileStatsPayload);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -257,7 +239,6 @@ export namespace session {
 		    return a;
 		}
 	}
-	
 	
 	
 

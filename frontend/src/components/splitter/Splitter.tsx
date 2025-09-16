@@ -5,7 +5,7 @@ import React, { useEffect } from "react";
 import { MenuItem, useContextMenu } from "../../hooks/useContextMenu";
 import { useNavigate } from "react-router";
 import { Quit, WindowGetPosition, WindowSetPosition } from "../../../wailsjs/runtime";
-import { CloseSplitFile, LoadSplitFile } from "../../../wailsjs/go/session/Service";
+import { CloseSplitFile, LoadSplitFile, SaveSplitFile } from "../../../wailsjs/go/session/Service";
 
 export default function Splitter() {
     const navigate = useNavigate();
@@ -35,7 +35,9 @@ export default function Splitter() {
         },
         {
             label: "Save Session",
-            onClick: () => {},
+            onClick: async () => {
+                await SaveSplitFile().catch((err) => console.log(err));
+            },
         },
         {
             type: "separator",

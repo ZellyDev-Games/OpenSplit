@@ -92,6 +92,7 @@ type Service struct {
 	finished            bool
 	timeUpdatedChannel  chan time.Duration
 	persister           Persister
+	dirty               bool
 }
 
 // NewService creates a new Service from the passed in components.
@@ -135,6 +136,26 @@ func (s *Service) Startup(ctx context.Context) {
 	}()
 }
 
+func (s *Service) CleanQuit(ctx context.Context) bool {
+	if s.dirty {
+		res, _ := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
+			Type:    runtime.QuestionDialog,
+			Title:   "Save Split File",
+			Message: "Would you like to save your updated runs before exiting?",
+		})
+
+		if res == "Yes" {
+			logger.Debug("saving split file on exit")
+			err := s.persister.Save(s.loadedSplitFile.GetPayload())
+			if err != nil {
+				logger.Error(fmt.Sprintf("failed saving split file on exit: %s", err))
+			}
+		}
+	}
+
+	return false
+}
+
 // Split advances the state of a Run
 //
 // Split has several logical branches depending on the state of the Run.  It can start a Run if currentIndex is -1,
@@ -153,6 +174,7 @@ func (s *Service) Split() {
 
 	if s.currentSegmentIndex == -1 {
 		// run is starting
+		s.dirty = true
 		s.timer.Reset()
 		s.timer.Start()
 		s.loadedSplitFile.NewAttempt()
@@ -242,6 +264,31 @@ func (s *Service) Reset() {
 	}
 }
 
+// SaveSplitFile uses the configured Persister to save the SplitFile to the configured storage
+//
+// Use SaveSplitFile instead of UpdateSplitFile when you want to save new runs or Stats without changes to data
+// (e.g. NOT changing the Game Name, Category, or segments).
+// This function will never bump the split file version.
+func (s *Service) SaveSplitFile() error {
+	if s.loadedSplitFile == nil {
+		logger.Debug("SaveSplitFile called with no split file loaded: NO-OP")
+		return nil
+	}
+
+	err := s.persister.Save(s.loadedSplitFile.GetPayload())
+	if err != nil {
+		var cancelled = &UserCancelledSave{}
+		if errors.As(err, cancelled) {
+			logger.Debug("user cancelled save")
+			logger.Error(fmt.Sprintf("failed to save split file with SaveSplitFile: %s", err))
+		}
+	}
+	logger.Debug("sending session update from update split file")
+	s.emitEvent("session:update", s.getServicePayload())
+	s.dirty = false
+	return err
+}
+
 // UpdateSplitFile uses the configured Persister to save the SplitFile to the configured storage.
 //
 // It creates a SplitFile from the given SplitFilePayload and then sets that SplitFile as the currently loaded one.
@@ -285,6 +332,7 @@ func (s *Service) UpdateSplitFile(payload SplitFilePayload) error {
 
 	logger.Debug("sending session update from update split file")
 	s.emitEvent("session:update", s.getServicePayload())
+	s.dirty = false
 	return err
 }
 
@@ -312,6 +360,7 @@ func (s *Service) LoadSplitFile() (SplitFilePayload, error) {
 
 	s.loadedSplitFile = newSplitFile
 	s.Reset()
+	s.dirty = false
 	return newSplitFilePayload, nil
 }
 

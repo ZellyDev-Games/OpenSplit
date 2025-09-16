@@ -66,10 +66,8 @@ func (m *MockPersister) Load() (SplitFilePayload, error) {
 		GameName:     "Test Loaded Game",
 		GameCategory: "Test Loaded Category",
 		Segments: []SegmentPayload{{
-			ID:       "037ba872-2fdd-4531-aaee-101d777408b4",
-			Name:     "Test Loaded Segment",
-			BestTime: "00:00:01.00",
-			Average:  "00:00:02.00",
+			ID:   "037ba872-2fdd-4531-aaee-101d777408b4",
+			Name: "Test Loaded Segment",
 		}},
 		Attempts: 50,
 		Runs: []RunPayload{{
@@ -97,15 +95,11 @@ func getSplitFile() *SplitFile {
 		gameName:     "Test Game",
 		gameCategory: "Test Category",
 		segments: []Segment{{
-			id:          uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
-			name:        "Test Segment 1",
-			bestTime:    time.Second * 1,
-			averageTime: time.Second * 2,
+			id:   uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
+			name: "Test Segment 1",
 		}, {
-			id:          uuid.MustParse("4bc1a05c-d4f3-4095-887f-519e2fbb54f3"),
-			name:        "Test Segment 2",
-			bestTime:    time.Second * 3,
-			averageTime: time.Second * 4,
+			id:   uuid.MustParse("4bc1a05c-d4f3-4095-887f-519e2fbb54f3"),
+			name: "Test Segment 2",
 		}},
 		attempts: 0,
 		version:  1,
@@ -338,11 +332,7 @@ func TestUpdateSplitFile(t *testing.T) {
 		s.loadedSplitFile.segments[0].id != sf.segments[0].id ||
 		s.loadedSplitFile.segments[1].id != sf.segments[1].id ||
 		s.loadedSplitFile.segments[0].name != "UPDATED SEGMENT 1" ||
-		s.loadedSplitFile.segments[1].name != sf.segments[1].name ||
-		s.loadedSplitFile.segments[0].bestTime != sf.segments[0].bestTime ||
-		s.loadedSplitFile.segments[1].bestTime != sf.segments[1].bestTime ||
-		s.loadedSplitFile.segments[0].averageTime != sf.segments[0].averageTime ||
-		s.loadedSplitFile.segments[1].averageTime != sf.segments[1].averageTime {
+		s.loadedSplitFile.segments[1].name != sf.segments[1].name {
 		t.Errorf("UpdateSplitFile want %v\ngot\n%v", s.loadedSplitFile, sf)
 	}
 
@@ -395,14 +385,6 @@ func TestLoadSplitFile(t *testing.T) {
 
 	if s.loadedSplitFile.segments[0].name != "Test Loaded Segment" {
 		t.Errorf("load split file segment name want: %s, got: %s", "Test Loaded Segment", s.loadedSplitFile.segments[0].name)
-	}
-
-	if s.loadedSplitFile.segments[0].bestTime != time.Second*1 {
-		t.Errorf("load split file segment bestTime want: %s, got: %s", time.Second*1, s.loadedSplitFile.segments[0].bestTime)
-	}
-
-	if s.loadedSplitFile.segments[0].averageTime != time.Second*2 {
-		t.Errorf("load split file segment averageTime want: %s, got: %s", time.Second*2, s.loadedSplitFile.segments[0].averageTime)
 	}
 
 	if s.loadedSplitFile.attempts != 50 {

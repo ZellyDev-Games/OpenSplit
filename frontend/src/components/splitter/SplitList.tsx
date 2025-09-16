@@ -17,7 +17,7 @@ export default function SplitList() {
     const [splitFile, setSplitFile] = useState<SplitFilePayload | undefined>(undefined);
     const [currentSegment, setCurrentSegment] = useState<number | null>(null);
     const [completions, setCompletions] = useState<Completion[]>([]);
-    const [compareAgainst, setCompareAgainst] = useState<CompareAgainst | null>(null);
+    const [compareAgainst, setCompareAgainst] = useState<CompareAgainst>("average");
 
     useEffect(() => {
         GetLoadedSplitFile().then((d) => setSplitFile(d));
@@ -53,14 +53,14 @@ export default function SplitList() {
             return completions[index].time;
         } else {
             if (compareAgainst == "average") {
-                const avg = splitFile?.stats.averages.find((p) => p.id === segment.id);
+                const avg = splitFile?.Stats.averages[segment.id];
                 if (avg) {
-                    return displayFormattedTimeParts(formatDuration(stringToParts(avg.time))) ?? "-";
+                    return displayFormattedTimeParts(formatDuration(stringToParts(avg))) ?? "-";
                 } else {
                     return "-";
                 }
             } else {
-                const best = splitFile?.stats.pb?.run?.split_payloads.find((p) => p.split_segment_id === segment.id);
+                const best = splitFile?.Stats.pb?.run?.split_payloads.find((p) => p.split_segment_id === segment.id);
                 if (best) {
                     return displayFormattedTimeParts(formatDuration(stringToParts(best.current_time))) ?? "-";
                 } else {
