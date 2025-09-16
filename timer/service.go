@@ -39,7 +39,7 @@ func NewService(t TickerInterface) (*Service, chan time.Duration) {
 	}, timeUpdatedChannel
 }
 
-// Startup receives a context.Context from Wails.Run
+// Startup receives a context.Context from Wails.run
 func (s *Service) Startup(ctx context.Context) {
 	s.ctx = ctx
 	s.Run()

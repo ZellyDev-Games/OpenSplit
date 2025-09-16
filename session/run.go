@@ -8,10 +8,10 @@ import (
 
 type RunPayload struct {
 	ID               uuid.UUID      `json:"id"`
-	SplitFileVersion int            `json:"splitFileVersion"`
-	TotalTime        time.Duration  `json:"totalTime"`
+	SplitFileVersion int            `json:"splitfile_version"`
+	TotalTime        time.Duration  `json:"total_time"`
 	Completed        bool           `json:"completed"`
-	SplitPayloads    []SplitPayload `json:"splitPayloads"`
+	SplitPayloads    []SplitPayload `json:"split_payloads"`
 }
 
 // Run maintains the history attempts in a SplitFile.
@@ -25,7 +25,10 @@ type Run struct {
 	splitPayloads    []SplitPayload
 }
 
-func (r *Run) GetPayload() RunPayload {
+// getPayload returns a snapshot of a Run
+//
+// getPayload, modify the payload, then send it to newRunFromPayload and persist the result of that to make changes.
+func (r *Run) getPayload() RunPayload {
 	return RunPayload{
 		ID:               r.id,
 		SplitFileVersion: r.splitFileVersion,
@@ -35,7 +38,10 @@ func (r *Run) GetPayload() RunPayload {
 	}
 }
 
-func NewRunFromPayload(payload RunPayload) Run {
+// newRunFromPayload creates a new Run from a RunPayload.
+//
+// Useful for making stateful updates to a Run without exposing internal data structure or presentation.
+func newRunFromPayload(payload RunPayload) Run {
 	return Run{
 		id:               payload.ID,
 		splitFileVersion: payload.SplitFileVersion,

@@ -1,67 +1,79 @@
-import { session } from "../../../wailsjs/go/models";
-import { formatDuration, stringToParts } from "./Timer";
-import { useEffect, useState } from "react";
-import { GetLoadedSplitFile, GetSessionStatus } from "../../../wailsjs/go/session/Service";
-import { EventsOn } from "../../../wailsjs/runtime";
+import {session} from "../../../wailsjs/go/models";
+import {displayFormattedTimeParts, formatDuration, stringToParts} from "./Timer";
+import {useEffect, useState} from "react";
+import {GetLoadedSplitFile, GetSessionStatus} from "../../../wailsjs/go/session/Service";
+import {EventsOn} from "../../../wailsjs/runtime";
 import SplitFilePayload = session.SplitFilePayload;
+import ServicePayload = session.ServicePayload;
 import SegmentPayload = session.SegmentPayload;
 
 export type CompareAgainst = "best" | "average";
 
-type SplitPayload = {
-    split_index: number;
-    new_index: number;
-    split_segment: SegmentPayload;
-    new_segment: SegmentPayload;
-    finished: boolean;
-    current_time: string;
-};
+type Completion = {
+    time: string;
+}
 
 export default function SplitList() {
+    const [splitFile, setSplitFile] = useState<SplitFilePayload | undefined>(undefined);
     const [currentSegment, setCurrentSegment] = useState<number | null>(null);
-    const [splitFile, setSplitFile] = useState<session.SplitFilePayload | null>(null);
+    const [completions, setCompletions] = useState<Completion[]>([]);
     const [compareAgainst, setCompareAgainst] = useState<CompareAgainst | null>(null);
 
     useEffect(() => {
-        (async () => {
-            console.log("fetching loaded splitfile...");
-            setSplitFile(await GetLoadedSplitFile());
-        })();
+        GetLoadedSplitFile().then(d => setSplitFile(d));
+    }, []);
 
+    useEffect(() => {
         (async () => {
             console.log("fetching session data...");
             const session = await GetSessionStatus();
-            if (session.current_segment) {
+            if (session.current_segment !== undefined) {
                 setCurrentSegment(session.current_segment_index);
             }
         })();
 
-        const unsubscribeFromSplitUpdates = EventsOn("session:split", (splitPayload: SplitPayload) => {
-            setCurrentSegment(splitPayload.new_index);
+        return EventsOn("session:update", (servicePayload: ServicePayload) => {
+            console.log("received service update:", servicePayload);
+            setSplitFile(servicePayload.split_file)
+            setCurrentSegment(servicePayload.current_segment_index);
+            if (servicePayload.current_run) {
+                setCompletions(
+                    servicePayload.current_run.split_payloads.map((c, i) => {
+                        return {time: displayFormattedTimeParts(formatDuration(stringToParts(c.current_time)))}
+                    }));
+            } else {
+                setCompletions([])
+            }
         });
-
-        const unsubscribeFromSplitFileUpdates = EventsOn("splitfile:update", (splitFilePayload: SplitFilePayload) => {
-            console.log("received splitfile update", splitFilePayload);
-            setSplitFile(splitFilePayload);
-        });
-
-        return () => {
-            unsubscribeFromSplitFileUpdates();
-            unsubscribeFromSplitUpdates();
-        };
     }, []);
 
-    const formattedSegments = splitFile?.segments.map((segment, index) => {
-        const time = compareAgainst === "average" ? segment.average_time : segment.best_time;
-        const formattedParts = formatDuration(stringToParts(time));
-        return `${formattedParts.hoursText}${formattedParts.sepHM}${formattedParts.minutesText}${formattedParts.sepMS}${formattedParts.secondsText}`;
-    });
+    const getSegmentDisplayTime = (index: number, segment: SegmentPayload): string => {
+        if(index < completions.length) {
+            return completions[index].time;
+        } else {
+            if (compareAgainst == "average") {
+                const avg = splitFile?.stats.averages.find(p => p.id === segment.id)
+                if (avg) {
+                    return displayFormattedTimeParts(formatDuration(stringToParts(avg.time))) ?? "-";
+                } else {
+                    return "-";
+                }
+            } else {
+                const best = splitFile?.stats.pb?.run?.split_payloads.find(p => p.split_segment_id === segment.id)
+                if(best) {
+                    return displayFormattedTimeParts(formatDuration(stringToParts(best.current_time))) ?? "-"
+                } else {
+                    return "-";
+                }
+            }
+        }
+    }
 
     const segmentRows = splitFile?.segments.map((segment, index) => (
         <tr key={segment.id ?? index} className={currentSegment !== null && currentSegment === index ? "selected" : ""}>
             <td className="splitName">{segment.name}</td>
             <td className="splitComparison">
-                <strong>{formattedSegments && formattedSegments[index]}</strong>
+                <strong>{getSegmentDisplayTime(index, segment)}</strong>
             </td>
         </tr>
     ));

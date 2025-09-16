@@ -21,7 +21,7 @@ func FormatTimeToString(d time.Duration) string {
 	s := d / time.Second
 	cs := (d - s*time.Second) / (10 * time.Millisecond) // centiseconds
 
-	return fmt.Sprintf("%s%d:%02d:%02d.%02d", sign, h, m, s, cs)
+	return fmt.Sprintf("%s%02d:%02d:%02d.%02d", sign, h, m, s, cs)
 }
 
 // ParseStringToTime unserializes a string, usually from the frontend, into a time.Duration.

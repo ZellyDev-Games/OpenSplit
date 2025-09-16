@@ -15,7 +15,7 @@ type Service struct {
 	skinDir string
 }
 
-// Startup takes a context.Context passed by Wails.Run OnStartup and sets it to this Service.
+// Startup takes a context.Context passed by Wails.run OnStartup and sets it to this Service.
 func (s *Service) Startup(ctx context.Context, skinDir string) {
 	s.ctx = ctx
 	s.skinDir = skinDir

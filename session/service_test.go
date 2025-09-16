@@ -156,7 +156,7 @@ func TestServiceSplit(t *testing.T) {
 	}
 
 	if len(sf.runs) > 0 {
-		t.Error("first split on new file added Run prematurely")
+		t.Error("first split on new file added run prematurely")
 	}
 
 	// second split
@@ -312,7 +312,7 @@ func TestNewSplitFile(t *testing.T) {
 	_ = s.UpdateSplitFile(payload)
 	emptyUUID := uuid.UUID{}
 	if s.loadedSplitFile.id == emptyUUID {
-		t.Error("session UpdateSplitFile did not create a new ID with a new splitfile")
+		t.Error("session UpdateSplitFile did not create a new id with a new splitfile")
 	}
 
 	if s.loadedSplitFile.version != 1 {

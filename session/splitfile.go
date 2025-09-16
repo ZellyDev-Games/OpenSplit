@@ -1,22 +1,25 @@
 package session
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/google/uuid"
+	"github.com/zellydev-games/opensplit/logger"
 )
 
 // SplitFilePayload is a snapshot of a SplitFile
 //
 // Used to communicate the state of a SplitFile to the frontend and Persister implementations without exposing internals.
 type SplitFilePayload struct {
-	ID           uuid.UUID        `json:"id"`
-	Version      int              `json:"version"`
-	GameName     string           `json:"game_name"`
-	GameCategory string           `json:"game_category"`
-	Segments     []SegmentPayload `json:"segments"`
-	Attempts     int              `json:"attempts"`
-	Runs         []RunPayload     `json:"runs"`
+	ID           uuid.UUID             `json:"id"`
+	Version      int                   `json:"version"`
+	GameName     string                `json:"game_name"`
+	GameCategory string                `json:"game_category"`
+	Segments     []SegmentPayload      `json:"segments"`
+	Attempts     int                   `json:"attempts"`
+	Runs         []RunPayload          `json:"runs"`
+	Stats        SplitFileStatsPayload `json:"stats"`
 }
 
 // SplitFile represents the data and history of a game/category combo.
@@ -61,9 +64,14 @@ func (s *SplitFile) GetPayload() SplitFilePayload {
 
 	var runPayloads []RunPayload
 	for _, run := range s.runs {
-		runPayloads = append(runPayloads, run.GetPayload())
+		runPayloads = append(runPayloads, run.getPayload())
 	}
 
+	stats := s.stats()
+	statsPayload, err := stats.GetPayload()
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to get stats payload: %s", err))
+	}
 	return SplitFilePayload{
 		ID:           s.id,
 		GameName:     s.gameName,
@@ -72,19 +80,12 @@ func (s *SplitFile) GetPayload() SplitFilePayload {
 		Attempts:     s.attempts,
 		Runs:         runPayloads,
 		Version:      s.version,
+		Stats:        statsPayload,
 	}
 }
 
 func SplitFileChanged(file1 SplitFilePayload, file2 SplitFilePayload) bool {
-	// Set fields that we don't want to cause a version change to be equal
-	// Note: This is a copy of the payloads, so mutation here is safe for the caller.
-	file1.Runs = nil
-	file2.Runs = nil
-	file1.Attempts = 0
-	file2.Attempts = 0
-	file1.GameName = ""
-	file2.GameName = ""
-	return !reflect.DeepEqual(file1, file2)
+	return !reflect.DeepEqual(file1.Segments, file2.Segments) || !reflect.DeepEqual(file1.GameCategory, file2.GameCategory)
 }
 
 func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
@@ -99,7 +100,7 @@ func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
 
 	var runs []Run
 	for _, run := range payload.Runs {
-		newRun := NewRunFromPayload(run)
+		newRun := newRunFromPayload(run)
 		runs = append(runs, newRun)
 	}
 

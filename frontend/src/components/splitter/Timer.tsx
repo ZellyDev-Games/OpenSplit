@@ -129,3 +129,17 @@ export function formatDuration(timeParts: TimeParts): FormattedTimeParts {
         centisText: centisText,
     };
 }
+
+export function displayFormattedTimeParts(formattedParts: FormattedTimeParts): string {
+    let timeString = ""
+    if (formattedParts.showHours) {
+        timeString += formattedParts.hoursText;
+    }
+
+    if (formattedParts.showMinutes) {
+        timeString += `${formattedParts.sepHM}${formattedParts.minutesText}`;
+    }
+
+    timeString += `${formattedParts.sepMS}${formattedParts.secondsText}${formattedParts.sepSC}${formattedParts.centisText}`;
+    return timeString
+}

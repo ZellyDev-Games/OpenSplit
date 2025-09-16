@@ -21,7 +21,7 @@ export default function Splitter() {
         {
             label: "Load Splits",
             onClick: async () => {
-                await LoadSplitFile();
+                await LoadSplitFile().catch((err) => console.log(err));
             },
         },
         {
