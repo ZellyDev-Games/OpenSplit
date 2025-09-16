@@ -100,9 +100,9 @@ tasks:
             - |
                 cd frontend
                 {{if eq OS "windows"}}
-                powershell -NoProfile -Command "if (Test-Path 'package.json') { if (npm -s run | Select-String '^  fmt') { npm run -s fmt } else { npx -y prettier@latest --loglevel warn --write '**/*.{ts,tsx,js,jsx,css,scss,html,json,md}' } }"
+                powershell -NoProfile -Command "if (Test-Path 'package.json') { if (npm -s run | Select-String '^  fmt') { npm run -s fmt } else { npx -y prettier@latest --log-level warn --write '**/*.{ts,tsx,js,jsx,css,scss,html,json,md}' } }"
                 {{else}}
-                bash -lc 'if [ -f "package.json" ] && npm -s run | grep -q "^  fmt"; then npm run -s fmt; else npx -y prettier@latest --loglevel warn --write "**/*.{ts,tsx,js,jsx,css,scss,html,json,md}"; fi'
+                bash -lc 'if [ -f "package.json" ] && npm -s run | grep -q "^  fmt"; then npm run -s fmt; else npx -y prettier@latest --log-level warn --write "**/*.{ts,tsx,js,jsx,css,scss,html,json,md}"; fi'
                 {{end}}
 
     release:
