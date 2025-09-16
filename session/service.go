@@ -46,7 +46,7 @@ type ServicePayload struct {
 }
 
 // SplitPayload is a snapshot of split data to communicate information about a split to the frontend, and also the
-// run history in SplitFile runs
+// Run history in SplitFile runs
 type SplitPayload struct {
 	SplitIndex      int           `json:"split_index"`
 	SplitSegmentID  string        `json:"split_segment_id"`
@@ -78,7 +78,7 @@ type Timer interface {
 // current Run / SplitFile.  If there's one struct that's key to understand in OpenSplit, it's this one.
 //
 // Service contains the authoritative state of the system, and communicates parts of that state to the front end both by
-// imperative functions that are bound to the frontend with Wails.Run, and events sent to the frontend via Service.emitEvent
+// imperative functions that are bound to the frontend with Wails.run, and events sent to the frontend via Service.emitEvent
 //
 // It communicates timer updates to the frontend, and passes along frontend calls to bound functions to
 // the OpenSplit backend systems
@@ -110,7 +110,7 @@ func NewService(timer Timer, timeUpdatedChannel chan time.Duration, splitFile *S
 	return service
 }
 
-// Startup is designed to be called by Wails.Run OnStartup to supply the proper context.Context that allows the
+// Startup is designed to be called by Wails.run OnStartup to supply the proper context.Context that allows the
 // session.Service to call Wails runtime functions that do things like open file dialogs.
 //
 // It also provides the context to the configured Persister so that it may also open file dialogs, calls Reset to ensure
@@ -135,11 +135,11 @@ func (s *Service) Startup(ctx context.Context) {
 	}()
 }
 
-// Split advances the state of a run
+// Split advances the state of a Run
 //
-// Split has several logical branches depending on the state of the run.  It can start a run if currentIndex is -1,
-// advance to the next split and generate split information if in the middle of a run, end a run once the last segment is
-// split, and Reset for a new run if called when the run is over.
+// Split has several logical branches depending on the state of the Run.  It can start a Run if currentIndex is -1,
+// advance to the next split and generate split information if in the middle of a Run, end a Run once the last segment is
+// split, and Reset for a new Run if called when the Run is over.
 func (s *Service) Split() {
 	if s.loadedSplitFile == nil {
 		logger.Debug("split called with no split file loaded: NO-OP")
@@ -152,7 +152,7 @@ func (s *Service) Split() {
 	}
 
 	if s.currentSegmentIndex == -1 {
-		// Run is starting
+		// run is starting
 		s.timer.Reset()
 		s.timer.Start()
 		s.loadedSplitFile.NewAttempt()
@@ -162,6 +162,7 @@ func (s *Service) Split() {
 		}
 		s.currentSegmentIndex++
 		s.currentSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
+		logger.Debug("sending session update from run start split")
 		s.emitEvent("session:update", s.getServicePayload())
 
 		logger.Debug(fmt.Sprintf("starting new run (%s - %s - %s) attempt #%d",
@@ -171,23 +172,24 @@ func (s *Service) Split() {
 			s.loadedSplitFile.attempts))
 		return
 	} else if s.currentSegmentIndex >= len(s.loadedSplitFile.segments)-1 {
-		// Run is finished
+		// run is finished
 		splitPayload := s.getSplitPayload()
-		s.emitEvent("session:split", splitPayload)
 		s.timer.Pause()
 		s.finished = true
 		s.currentRun.splitPayloads = append(s.currentRun.splitPayloads, splitPayload)
 		s.currentRun.completed = true
 		s.currentRun.totalTime = s.timer.GetCurrentTime()
 		logger.Debug("split called with last segment in loaded split file, run complete")
+		logger.Debug("sending session update from run complete split")
 		s.emitEvent("session:update", s.getServicePayload())
 		return
 	} else {
-		// Run is in progress
+		// run is in progress
 		splitPayload := s.getSplitPayload()
 		s.currentRun.splitPayloads = append(s.currentRun.splitPayloads, splitPayload)
 		s.currentSegmentIndex++
 		s.currentSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
+		logger.Debug("sending session update from mid run split")
 		s.emitEvent("session:update", s.getServicePayload())
 		logger.Debug(fmt.Sprintf("segment index %d (%s) completed at %s, loading segment %d (%s)",
 			s.currentSegmentIndex-1,
@@ -202,10 +204,12 @@ func (s *Service) Split() {
 func (s *Service) Pause() {
 	if s.timer.IsRunning() {
 		s.timer.Pause()
+		logger.Debug("sending session update from pause timer")
 		s.emitEvent("session:update", s.getServicePayload())
 		logger.Debug(fmt.Sprintf("pausing timer at %s", s.timer.GetCurrentTimeFormatted()))
 	} else {
 		s.timer.Start()
+		logger.Debug("sending session update from start timer")
 		s.emitEvent("session:update", s.getServicePayload())
 		logger.Debug(fmt.Sprintf("restarting timer at %s", s.timer.GetCurrentTimeFormatted()))
 	}
@@ -213,14 +217,14 @@ func (s *Service) Pause() {
 
 // Reset brings the system back to a default state.
 //
-// If there was a current run loaded, information about that run is added to the SplitFile history.
+// If there was a current Run loaded, information about that Run is added to the SplitFile history.
 func (s *Service) Reset() {
 	s.timer.Pause()
 	s.timer.Reset()
 
 	// If there's a run, add it to the history
 	if s.loadedSplitFile != nil && s.currentRun != nil {
-		logger.Debug("appending run to splitfile")
+		logger.Debug(fmt.Sprintf("appending run to splitfile: %v", s.currentRun))
 		s.loadedSplitFile.runs = append(s.loadedSplitFile.runs, *s.currentRun)
 	}
 
@@ -229,6 +233,7 @@ func (s *Service) Reset() {
 	s.currentSegment = nil
 	s.currentRun = nil
 	s.emitEvent("timer:update", 0)
+	logger.Debug("sending session update from reset session")
 	s.emitEvent("session:update", s.getServicePayload())
 	if s.loadedSplitFile != nil {
 		logger.Debug(fmt.Sprintf("session reset (%s - %s)", s.loadedSplitFile.gameName, s.loadedSplitFile.gameCategory))
@@ -278,7 +283,8 @@ func (s *Service) UpdateSplitFile(payload SplitFilePayload) error {
 		return err
 	}
 
-	s.emitEvent("splitfile:update", s.loadedSplitFile.GetPayload())
+	logger.Debug("sending session update from update split file")
+	s.emitEvent("session:update", s.getServicePayload())
 	return err
 }
 
@@ -290,18 +296,22 @@ func (s *Service) LoadSplitFile() (SplitFilePayload, error) {
 	newSplitFilePayload, err := s.persister.Load()
 	if err != nil {
 		s.loadedSplitFile = nil
+		var userCancelled = &UserCancelledSave{}
+		if !errors.As(err, userCancelled) {
+			logger.Error(fmt.Sprintf("failed to load split file: %s", err))
+		}
 		return SplitFilePayload{}, err
 	}
 
 	newSplitFile, err := newFromPayload(newSplitFilePayload)
 	if err != nil {
+		logger.Error(fmt.Sprintf("failed to create split file from payload: %s", err))
 		s.loadedSplitFile = nil
 		return SplitFilePayload{}, err
 	}
 
 	s.loadedSplitFile = newSplitFile
 	s.Reset()
-	s.emitEvent("splitfile:update", s.loadedSplitFile.GetPayload())
 	return newSplitFilePayload, nil
 }
 
@@ -314,7 +324,8 @@ func (s *Service) GetSessionStatus() ServicePayload {
 func (s *Service) CloseSplitFile() {
 	s.loadedSplitFile = nil
 	s.Reset()
-	s.emitEvent("splitfile:update", nil)
+	logger.Debug("sending session update from close split file")
+	s.emitEvent("session:update", nil)
 }
 
 // GetLoadedSplitFile returns the SplitFilePayload representation of the currently loaded SplitFile
@@ -330,10 +341,10 @@ func (s *Service) GetLoadedSplitFile() *SplitFilePayload {
 }
 
 func (s *Service) getServicePayload() ServicePayload {
-	var loadedSplitFile *SplitFilePayload
+	var loadedSplitFilePayload *SplitFilePayload
 	if s.loadedSplitFile != nil {
 		payload := s.loadedSplitFile.GetPayload()
-		loadedSplitFile = &payload
+		loadedSplitFilePayload = &payload
 	}
 
 	var currentSegmentPayload *SegmentPayload
@@ -344,12 +355,12 @@ func (s *Service) getServicePayload() ServicePayload {
 
 	var currentRunPayload *RunPayload
 	if s.currentRun != nil {
-		payload := s.currentRun.GetPayload()
+		payload := s.currentRun.getPayload()
 		currentRunPayload = &payload
 	}
 
 	payload := ServicePayload{
-		SplitFile:            loadedSplitFile,
+		SplitFile:            loadedSplitFilePayload,
 		CurrentSegmentIndex:  s.currentSegmentIndex,
 		CurrentSegment:       currentSegmentPayload,
 		Finished:             s.finished,
@@ -374,7 +385,7 @@ func (s *Service) getSplitPayload() SplitPayload {
 }
 
 // emitEvent wraps the runtime.EventsEmit from Wails so that it no-ops if there is no context.Context provided by
-// Wails.Run OnStartup callback, a requirement to use the function.  This allows for no-ops in unit testing.
+// Wails.run OnStartup callback, a requirement to use the function.  This allows for no-ops in unit testing.
 func (s *Service) emitEvent(event string, optional interface{}) {
 	if s.ctx != nil {
 		runtime.EventsEmit(s.ctx, event, optional)

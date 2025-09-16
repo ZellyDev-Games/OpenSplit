@@ -37,6 +37,6 @@ func TestGetPayload(t *testing.T) {
 		payload.Name != "Test Segment" ||
 		payload.Average != "00:00:02.00" ||
 		payload.BestTime != "00:00:01.00" {
-		t.Errorf("GetPayload did not return expected payload got %v", payload)
+		t.Errorf("getPayload did not return expected payload got %v", payload)
 	}
 }

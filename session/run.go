@@ -25,10 +25,10 @@ type Run struct {
 	splitPayloads    []SplitPayload
 }
 
-// GetPayload returns a snapshot of a Run
+// getPayload returns a snapshot of a Run
 //
-// GetPayload, modify the payload, then send it to NewRunFromPayload and persist the result of that to make changes.
-func (r *Run) GetPayload() RunPayload {
+// getPayload, modify the payload, then send it to newRunFromPayload and persist the result of that to make changes.
+func (r *Run) getPayload() RunPayload {
 	return RunPayload{
 		ID:               r.id,
 		SplitFileVersion: r.splitFileVersion,
@@ -38,10 +38,10 @@ func (r *Run) GetPayload() RunPayload {
 	}
 }
 
-// NewRunFromPayload creates a new Run from a RunPayload.
+// newRunFromPayload creates a new Run from a RunPayload.
 //
 // Useful for making stateful updates to a Run without exposing internal data structure or presentation.
-func NewRunFromPayload(payload RunPayload) Run {
+func newRunFromPayload(payload RunPayload) Run {
 	return Run{
 		id:               payload.ID,
 		splitFileVersion: payload.SplitFileVersion,

@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -59,9 +60,9 @@ func NewJsonFile(runtime RuntimeProvider, fileProvider FileProvider) *JsonFile {
 	}
 }
 
-// Startup is called either directly by Wails.Run OnStartup, or by something else in that chain.
+// Startup is called either directly by Wails.run OnStartup, or by something else in that chain.
 //
-// The specific context.Context must be provided by Wails.Run OnStartup or opening save/load file dialogs will panic.
+// The specific context.Context must be provided by Wails.run OnStartup or opening save/load file dialogs will panic.
 func (j *JsonFile) Startup(ctx context.Context) {
 	j.ctx = ctx
 }
@@ -94,7 +95,7 @@ func (j *JsonFile) Save(splitFilePayload SplitFilePayload) error {
 
 		if filename == "" {
 			logger.Debug("user cancelled save")
-			return UserCancelledSave{}
+			return UserCancelledSave{errors.New("user cancelled save")}
 		}
 
 		j.fileName = filename
@@ -138,8 +139,8 @@ func (j *JsonFile) Load() (SplitFilePayload, error) {
 	}
 
 	if filename == "" {
-		logger.Debug("user cancelled save")
-		return SplitFilePayload{}, UserCancelledSave{}
+		logger.Debug("user cancelled load")
+		return SplitFilePayload{}, UserCancelledSave{errors.New("user cancelled load")}
 	}
 
 	j.fileName = filename

@@ -23,7 +23,7 @@ func NewService(skinFolder string) *Service {
 	}
 }
 
-// Startup passes in a context from Wails.Run to allow the exec call to open a file explorer.
+// Startup passes in a context from Wails.run to allow the exec call to open a file explorer.
 //
 // Any other context will cause OpenFolder and OpenSkinsFolder to panic.
 func (s *Service) Startup(ctx context.Context) {
