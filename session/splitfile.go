@@ -19,7 +19,7 @@ type SplitFilePayload struct {
 	Segments     []SegmentPayload      `json:"segments"`
 	Attempts     int                   `json:"attempts"`
 	Runs         []RunPayload          `json:"runs"`
-	Stats        SplitFileStatsPayload `json:"stats"`
+	Stats        SplitFileStatsPayload `json:"Stats"`
 }
 
 // SplitFile represents the data and history of a game/category combo.
@@ -67,10 +67,10 @@ func (s *SplitFile) GetPayload() SplitFilePayload {
 		runPayloads = append(runPayloads, run.getPayload())
 	}
 
-	stats := s.stats()
+	stats := s.Stats()
 	statsPayload, err := stats.GetPayload()
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to get stats payload: %s", err))
+		logger.Error(fmt.Sprintf("failed to get Stats payload: %s", err))
 	}
 	return SplitFilePayload{
 		ID:           s.id,
@@ -91,11 +91,7 @@ func SplitFileChanged(file1 SplitFilePayload, file2 SplitFilePayload) bool {
 func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
 	var segments []Segment
 	for _, segment := range payload.Segments {
-		newSegment, err := NewFromPayload(segment)
-		if err != nil {
-			return nil, err
-		}
-		segments = append(segments, newSegment)
+		segments = append(segments, NewFromPayload(segment))
 	}
 
 	var runs []Run

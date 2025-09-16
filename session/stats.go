@@ -10,16 +10,6 @@ import (
 	"github.com/zellydev-games/opensplit/utils"
 )
 
-type StatTimePayload struct {
-	ID   string `json:"id"`
-	Time string `json:"time"`
-}
-
-type StatTime struct {
-	id   uuid.UUID
-	time time.Duration
-}
-
 type PBStatsPayload struct {
 	Run   *RunPayload `json:"run"`
 	Total string      `json:"total"`
@@ -31,35 +21,29 @@ type PBStats struct {
 }
 
 type SplitFileStatsPayload struct {
-	Golds    []StatTimePayload `json:"golds"`
-	Averages []StatTimePayload `json:"averages"`
+	Golds    map[string]string `json:"golds"`
+	Averages map[string]string `json:"averages"`
 	SoB      string            `json:"sob"`
 	PB       *PBStatsPayload   `json:"pb"`
 }
 
 type SplitFileStats struct {
-	golds    []StatTime
-	averages []StatTime
+	golds    map[uuid.UUID]time.Duration
+	averages map[uuid.UUID]time.Duration
 	sob      time.Duration
 	pb       *PBStats
 }
 
 func (s *SplitFileStats) GetPayload() (SplitFileStatsPayload, error) {
-	var goldPayloads []StatTimePayload
-	var averagesPayloads []StatTimePayload
+	var goldPayloads = make(map[string]string)
+	var averagesPayloads = make(map[string]string)
 
-	for _, gold := range s.golds {
-		goldPayloads = append(goldPayloads, StatTimePayload{
-			ID:   gold.id.String(),
-			Time: utils.FormatTimeToString(gold.time),
-		})
+	for id, gold := range s.golds {
+		goldPayloads[id.String()] = utils.FormatTimeToString(gold)
 	}
 
-	for _, average := range s.averages {
-		averagesPayloads = append(averagesPayloads, StatTimePayload{
-			ID:   average.id.String(),
-			Time: utils.FormatTimeToString(average.time),
-		})
+	for id, average := range s.averages {
+		goldPayloads[id.String()] = utils.FormatTimeToString(average)
 	}
 
 	var pbPayload *PBStatsPayload
@@ -78,22 +62,18 @@ func (s *SplitFileStats) GetPayload() (SplitFileStatsPayload, error) {
 	}, nil
 }
 
-func (s *SplitFile) stats() SplitFileStats {
-	goldMap, sumMap, countMap := perSegmentAggregates(s.runs)
-
-	golds := make([]StatTime, 0, len(s.segments))
-	averages := make([]StatTime, 0, len(s.segments))
+func (s *SplitFile) Stats() SplitFileStats {
+	golds, sumMap, countMap := s.perSegmentAggregates(s.runs)
+	averages := make(map[uuid.UUID]time.Duration)
 	var sob time.Duration
+	for _, t := range golds {
+		sob += t
+	}
 
 	for _, seg := range s.segments {
-		if g, ok := goldMap[seg.id]; ok {
-			golds = append(golds, StatTime{seg.id, g})
-			sob += g
-		}
-
 		if sum, ok := sumMap[seg.id]; ok {
 			avg := sum / time.Duration(countMap[seg.id])
-			averages = append(averages, StatTime{seg.id, avg})
+			averages[seg.id] = avg
 		}
 	}
 
@@ -144,32 +124,32 @@ func getPB(runs []Run) (*PBStats, error) {
 	}, nil
 }
 
-func perSegmentAggregates(runs []Run) (golds, sums map[uuid.UUID]time.Duration, counts map[uuid.UUID]int) {
+func (s *SplitFile) perSegmentAggregates(runs []Run) (golds map[uuid.UUID]time.Duration, sums map[uuid.UUID]time.Duration, counts map[uuid.UUID]int) {
 	golds = make(map[uuid.UUID]time.Duration)
 	sums = make(map[uuid.UUID]time.Duration)
 	counts = make(map[uuid.UUID]int)
 
 	for _, run := range runs {
 		var last time.Duration
-		for i, s := range run.splitPayloads {
-			id, err := uuid.Parse(s.SplitSegmentID)
+		for i, sp := range run.splitPayloads {
+			id, err := uuid.Parse(sp.SplitSegmentID)
 			if err != nil {
 				logger.Error(fmt.Sprintf("failed to parse uuid for split payload in perSegmentAggregates: %s", err))
 				continue
 			}
 
-			segmentDuration := s.CurrentDuration - last
+			segmentDuration := sp.CurrentDuration - last
 			if segmentDuration < 0 {
 				logger.Warn(fmt.Sprintf("non-monotonic cumulative at split %d", i))
 				continue
 			}
 
-			last = s.CurrentDuration
+			last = sp.CurrentDuration
 			if cur, ok := golds[id]; !ok || segmentDuration < cur {
 				golds[id] = segmentDuration
 			}
 
-			sums[id] += s.CurrentDuration
+			sums[id] += sp.CurrentDuration
 			counts[id]++
 		}
 	}

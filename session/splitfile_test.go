@@ -11,10 +11,8 @@ func getTestFile() *SplitFile {
 		gameName:     "Test Game",
 		gameCategory: "Test Category",
 		segments: []Segment{{
-			id:          uuid.UUID{},
-			name:        "Test Segment 1",
-			bestTime:    1,
-			averageTime: 2,
+			id:   uuid.UUID{},
+			name: "Test Segment 1",
 		}},
 		attempts: 0,
 	}

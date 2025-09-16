@@ -266,7 +266,7 @@ func (s *Service) Reset() {
 
 // SaveSplitFile uses the configured Persister to save the SplitFile to the configured storage
 //
-// Use SaveSplitFile instead of UpdateSplitFile when you want to save new runs or stats without changes to data
+// Use SaveSplitFile instead of UpdateSplitFile when you want to save new runs or Stats without changes to data
 // (e.g. NOT changing the Game Name, Category, or segments).
 // This function will never bump the split file version.
 func (s *Service) SaveSplitFile() error {
