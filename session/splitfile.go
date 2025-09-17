@@ -1,25 +1,25 @@
 package session
 
 import (
-	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/google/uuid"
-	"github.com/zellydev-games/opensplit/logger"
+	"github.com/zellydev-games/opensplit/utils"
 )
 
 // SplitFilePayload is a snapshot of a SplitFile
 //
 // Used to communicate the state of a SplitFile to the frontend and Persister implementations without exposing internals.
 type SplitFilePayload struct {
-	ID           string                `json:"id"`
-	Version      int                   `json:"version"`
-	GameName     string                `json:"game_name"`
-	GameCategory string                `json:"game_category"`
-	Segments     []SegmentPayload      `json:"segments"`
-	Attempts     int                   `json:"attempts"`
-	Runs         []RunPayload          `json:"runs"`
-	Stats        SplitFileStatsPayload `json:"stats"`
+	ID           string           `json:"id"`
+	Version      int              `json:"version"`
+	GameName     string           `json:"game_name"`
+	GameCategory string           `json:"game_category"`
+	Segments     []SegmentPayload `json:"segments"`
+	Attempts     int              `json:"attempts"`
+	Runs         []RunPayload     `json:"runs"`
+	SOB          StatTime         `json:"SOB"`
 }
 
 // SplitFile represents the data and history of a game/category combo.
@@ -31,17 +31,7 @@ type SplitFile struct {
 	segments     []Segment
 	attempts     int
 	runs         []Run
-}
-
-// NewSplitFile constructor for SplitFile
-func NewSplitFile(gameName string, gameCategory string, segments []Segment, attempts int, runs []Run) *SplitFile {
-	return &SplitFile{
-		gameName:     gameName,
-		gameCategory: gameCategory,
-		segments:     segments,
-		attempts:     attempts,
-		runs:         runs,
-	}
+	sob          time.Duration
 }
 
 // NewAttempt provides a public function to increment the attempts count
@@ -57,21 +47,16 @@ func (s *SplitFile) SetAttempts(attempts int) {
 // GetPayload gets a snapshot of the SplitFile.  Useful for communicating the state of the file while protecting the
 // internal data.
 func (s *SplitFile) GetPayload() SplitFilePayload {
-	var segmentPayloads []SegmentPayload
-	for _, segment := range s.segments {
-		segmentPayloads = append(segmentPayloads, segment.GetPayload())
+	var segmentPayloads = make([]SegmentPayload, len(s.segments))
+	for i, segment := range s.segments {
+		segmentPayloads[i] = segment.GetPayload()
 	}
 
-	var runPayloads []RunPayload
-	for _, run := range s.runs {
-		runPayloads = append(runPayloads, run.getPayload())
+	var runPayloads = make([]RunPayload, len(s.runs))
+	for i, run := range s.runs {
+		runPayloads[i] = run.getPayload()
 	}
 
-	stats := s.Stats()
-	statsPayload, err := stats.GetPayload()
-	if err != nil {
-		logger.Error(fmt.Sprintf("failed to get Stats payload: %s", err))
-	}
 	return SplitFilePayload{
 		ID:           s.id.String(),
 		GameName:     s.gameName,
@@ -80,7 +65,10 @@ func (s *SplitFile) GetPayload() SplitFilePayload {
 		Attempts:     s.attempts,
 		Runs:         runPayloads,
 		Version:      s.version,
-		Stats:        statsPayload,
+		SOB: StatTime{
+			Raw:       s.sob.Milliseconds(),
+			Formatted: utils.FormatTimeToString(s.sob),
+		},
 	}
 }
 
@@ -89,22 +77,21 @@ func SplitFileChanged(file1 SplitFilePayload, file2 SplitFilePayload) bool {
 }
 
 func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
-	var segments []Segment
-	for _, segment := range payload.Segments {
-		segments = append(segments, NewFromPayload(segment))
+	var segments = make([]Segment, len(payload.Segments))
+	for i, segment := range payload.Segments {
+		segments[i] = NewFromPayload(segment)
 	}
 
-	var runs []Run
-	for _, run := range payload.Runs {
-		newRun := newRunFromPayload(run)
-		runs = append(runs, newRun)
+	var runs = make([]Run, len(payload.Runs))
+	for i, run := range payload.Runs {
+		runs[i] = newRunFromPayload(run)
 	}
 
 	if payload.ID == uuid.Nil.String() || payload.ID == "" {
 		payload.ID = uuid.New().String()
 	}
 
-	return &SplitFile{
+	sf := SplitFile{
 		id:           uuid.MustParse(payload.ID),
 		gameName:     payload.GameName,
 		gameCategory: payload.GameCategory,
@@ -112,5 +99,8 @@ func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
 		segments:     segments,
 		runs:         runs,
 		version:      payload.Version,
-	}, nil
+	}
+
+	sf.BuildStats()
+	return &sf, nil
 }

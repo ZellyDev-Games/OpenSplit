@@ -98,42 +98,12 @@ export namespace session {
 		    return a;
 		}
 	}
-	export class PBStatsPayload {
-	    run?: RunPayload;
-	    total: StatTime;
-	
-	    static createFrom(source: any = {}) {
-	        return new PBStatsPayload(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.run = this.convertValues(source["run"], RunPayload);
-	        this.total = this.convertValues(source["total"], StatTime);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	
 	export class SegmentPayload {
 	    id: string;
 	    name: string;
+	    gold: StatTime;
+	    average: StatTime;
+	    pb: StatTime;
 	
 	    static createFrom(source: any = {}) {
 	        return new SegmentPayload(source);
@@ -143,24 +113,9 @@ export namespace session {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.name = source["name"];
-	    }
-	}
-	export class SplitFileStatsPayload {
-	    golds: Record<string, StatTime>;
-	    averages: Record<string, StatTime>;
-	    sob: StatTime;
-	    pb?: PBStatsPayload;
-	
-	    static createFrom(source: any = {}) {
-	        return new SplitFileStatsPayload(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.golds = this.convertValues(source["golds"], StatTime, true);
-	        this.averages = this.convertValues(source["averages"], StatTime, true);
-	        this.sob = this.convertValues(source["sob"], StatTime);
-	        this.pb = this.convertValues(source["pb"], PBStatsPayload);
+	        this.gold = this.convertValues(source["gold"], StatTime);
+	        this.average = this.convertValues(source["average"], StatTime);
+	        this.pb = this.convertValues(source["pb"], StatTime);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -189,7 +144,7 @@ export namespace session {
 	    segments: SegmentPayload[];
 	    attempts: number;
 	    runs: RunPayload[];
-	    stats: SplitFileStatsPayload;
+	    SOB: StatTime;
 	
 	    static createFrom(source: any = {}) {
 	        return new SplitFilePayload(source);
@@ -204,7 +159,7 @@ export namespace session {
 	        this.segments = this.convertValues(source["segments"], SegmentPayload);
 	        this.attempts = source["attempts"];
 	        this.runs = this.convertValues(source["runs"], RunPayload);
-	        this.stats = this.convertValues(source["stats"], SplitFileStatsPayload);
+	        this.SOB = this.convertValues(source["SOB"], StatTime);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -267,7 +222,6 @@ export namespace session {
 		    return a;
 		}
 	}
-	
 	
 	
 

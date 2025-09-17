@@ -70,7 +70,7 @@ func main() {
 		Title:     "OpenSplit",
 		Width:     1024,
 		Height:    768,
-		Frameless: true,
+		Frameless: false,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

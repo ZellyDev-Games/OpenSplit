@@ -88,7 +88,7 @@ export function stringToParts(time: string): TimeParts {
     };
 }
 
-export function msToParts(ms: number) {
+export function msToParts(ms: number) : TimeParts {
     const negative = ms < 0
     const abs = Math.abs(ms)
     const totalSeconds = Math.floor(abs / 1000);
@@ -104,6 +104,17 @@ export function msToParts(ms: number) {
         centis: centis,
         negative : negative,
     };
+}
+
+export function partsToMS(parts: TimeParts) : number {
+    const negative = parts.negative;
+    let abs = 0
+    abs += parts.hours * 3600000
+    abs += parts.minutes * 60000
+    abs += parts.seconds * 1000
+    abs += parts.centis * 10
+
+    return negative ? abs * -1 : abs
 }
 
 export function formatDuration(timeParts: TimeParts, showSign: boolean = false): FormattedTimeParts {
@@ -150,7 +161,7 @@ export function displayFormattedTimeParts(formattedParts: FormattedTimeParts): s
     if (formattedParts.showSign) {
         timeString = formattedParts.isNegative ? "-" : "+";
     }
-    
+
     if (formattedParts.showHours) {
         timeString += formattedParts.hoursText;
     }
@@ -162,3 +173,5 @@ export function displayFormattedTimeParts(formattedParts: FormattedTimeParts): s
     timeString += `${formattedParts.sepMS}${formattedParts.secondsText}${formattedParts.sepSC}${formattedParts.centisText}`;
     return timeString;
 }
+
+export const numeric = (s: string) => /^[+-]?\d+$/.test(s);

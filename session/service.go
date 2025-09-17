@@ -152,6 +152,12 @@ func (s *Service) Split() {
 		return
 	}
 
+	// TODO: Handle the case where the user just wants a stopwatch (i.e. no segments in a split file, or no split file loaded at all)
+	if len(s.loadedSplitFile.segments) == 0 {
+		logger.Debug("split called on a split file with no segments: NO-OP")
+		return
+	}
+
 	if s.finished {
 		s.Reset()
 		return
@@ -167,6 +173,7 @@ func (s *Service) Split() {
 			id:               uuid.New(),
 			splitFileVersion: s.loadedSplitFile.version,
 		}
+
 		s.currentSegmentIndex++
 		s.currentSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
 		logger.Debug("sending session update from run start split")
@@ -257,7 +264,7 @@ func (s *Service) Reset() {
 
 // SaveSplitFile uses the configured Persister to save the SplitFile to the configured storage
 //
-// Use SaveSplitFile instead of UpdateSplitFile when you want to save new runs or Stats without changes to data
+// Use SaveSplitFile instead of UpdateSplitFile when you want to save new runs or BuildStats without changes to data
 // (e.g. NOT changing the Game Name, Category, or segments).
 // This function will never bump the split file version.
 func (s *Service) SaveSplitFile() error {

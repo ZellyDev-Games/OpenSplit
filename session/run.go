@@ -30,9 +30,9 @@ type Run struct {
 //
 // getPayload, modify the payload, then send it to newRunFromPayload and persist the result of that to make changes.
 func (r *Run) getPayload() RunPayload {
-	splitPayloads := make([]SplitPayload, 0)
-	for _, s := range r.splits {
-		splitPayloads = append(splitPayloads, s.getPayload())
+	splitPayloads := make([]SplitPayload, len(r.splits))
+	for i, s := range r.splits {
+		splitPayloads[i] = s.getPayload()
 	}
 
 	return RunPayload{

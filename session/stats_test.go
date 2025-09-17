@@ -58,37 +58,43 @@ func TestGetStatsPayload(t *testing.T) {
 		}},
 	}}
 
-	stats := sf.Stats()
+	sf.BuildStats()
 	want := (sf.runs[0].splits[0].currentDuration +
 		sf.runs[1].splits[0].currentDuration +
 		sf.runs[2].splits[0].currentDuration) / 3
-	if stats.averages[sf.segments[0].id] != want {
-		t.Errorf("segment 1 average time: want %s got %s", want, stats.averages[sf.segments[0].id])
+	if sf.segments[0].average != want {
+		t.Errorf("segment 1 average time: want %s got %s", want, sf.segments[0].average)
 	}
 
 	want = (sf.runs[0].splits[1].currentDuration +
 		sf.runs[1].splits[1].currentDuration +
 		sf.runs[2].splits[1].currentDuration) / 3
-	if stats.averages[sf.segments[1].id] != want {
-		t.Errorf("segment 2 average time: want %s got %s", want, stats.averages[sf.segments[1].id])
+	if sf.segments[1].average != want {
+		t.Errorf("segment 2 average time: want %s got %s", want, sf.segments[1].average)
 	}
 
 	want = time.Second * 25
-	if stats.golds[sf.segments[0].id] != want {
-		t.Errorf("segment 1 gold want: %s got %s", want, stats.golds[sf.segments[0].id])
+	if sf.segments[0].gold != want {
+		t.Errorf("segment 1 gold want: %s got %s", want, sf.segments[0].gold)
 	}
 
 	want = time.Second * 4
-	if stats.golds[sf.segments[1].id] != want {
-		t.Errorf("segment 2 gold want: %s got %s", want, stats.golds[sf.segments[1].id])
+	if sf.segments[1].gold != want {
+		t.Errorf("segment 2 gold want: %s got %s", want, sf.segments[1].gold)
 	}
 
-	if stats.pb.run.id != rID3 {
-		t.Errorf("fastest run (PB) want id %s got %s", rID, stats.pb.run.id)
+	want = time.Second * 30
+	if sf.segments[0].pb != want {
+		t.Errorf("fastest run (PB) split 1 time want %s got %s", want, sf.segments[0].pb)
+	}
+
+	want = time.Second * 34
+	if sf.segments[1].pb != want {
+		t.Errorf("fastest run (PB) split 2 time want %s got %s", want, sf.segments[1].pb)
 	}
 
 	want = time.Second * 29
-	if stats.sob != want {
-		t.Errorf("sob want %s got %s", want, stats.sob)
+	if sf.sob != want {
+		t.Errorf("sob want %s got %s", want, sf.sob)
 	}
 }

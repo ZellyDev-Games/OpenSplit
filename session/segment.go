@@ -1,19 +1,28 @@
 package session
 
 import (
+	"time"
+
 	"github.com/google/uuid"
+	"github.com/zellydev-games/opensplit/utils"
 )
 
 // SegmentPayload is a snapshot of a given Segment useful for communicating state while protecting internal data.
 type SegmentPayload struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID      string   `json:"id"`
+	Name    string   `json:"name"`
+	Gold    StatTime `json:"gold"`
+	Average StatTime `json:"average"`
+	PB      StatTime `json:"pb"`
 }
 
 // Segment represents a portion of a game that you want to time (e.g. "Level 1")
 type Segment struct {
-	id   uuid.UUID
-	name string
+	id      uuid.UUID
+	name    string
+	gold    time.Duration
+	average time.Duration
+	pb      time.Duration
 }
 
 // NewFromPayload creates a new Segment from the given SegmentPayload.
@@ -24,7 +33,13 @@ func NewFromPayload(payload SegmentPayload) Segment {
 	if payload.ID == "" {
 		payload.ID = uuid.New().String()
 	}
-	return Segment{id: uuid.MustParse(payload.ID), name: payload.Name}
+
+	return Segment{
+		id:      uuid.MustParse(payload.ID),
+		name:    payload.Name,
+		average: time.Duration(payload.Average.Raw) * time.Millisecond,
+		pb:      time.Duration(payload.PB.Raw) * time.Millisecond,
+	}
 }
 
 // GetPayload retrieves a SegmentPayload representing the state of the Segment
@@ -32,5 +47,17 @@ func (s *Segment) GetPayload() SegmentPayload {
 	return SegmentPayload{
 		ID:   s.id.String(),
 		Name: s.name,
+		Average: StatTime{
+			s.average.Milliseconds(),
+			utils.FormatTimeToString(s.average),
+		},
+		PB: StatTime{
+			s.pb.Milliseconds(),
+			utils.FormatTimeToString(s.pb),
+		},
+		Gold: StatTime{
+			s.gold.Milliseconds(),
+			utils.FormatTimeToString(s.gold),
+		},
 	}
 }
