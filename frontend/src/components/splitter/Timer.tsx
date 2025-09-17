@@ -3,6 +3,7 @@ import { EventsOn } from "../../../wailsjs/runtime";
 import useWindowResize from "../../hooks/useWindowResize";
 
 export type TimeParts = {
+    negative: boolean;
     hours: number;
     minutes: number;
     seconds: number;
@@ -10,6 +11,8 @@ export type TimeParts = {
 };
 
 export type FormattedTimeParts = {
+    isNegative : boolean;
+    showSign : boolean;
     showHours: boolean;
     showMinutes: boolean;
     padMinutes: boolean;
@@ -69,8 +72,15 @@ export default function Timer() {
 }
 
 export function stringToParts(time: string): TimeParts {
+    let negative = false;
+    if (time[0] === "-") {
+        negative = true;
+        time = time.slice(1)
+    }
+
     const timeParts = time.split(":");
     return {
+        negative: negative,
         hours: Number(timeParts[0]),
         minutes: Number(timeParts[1]),
         seconds: Number(timeParts[2].split(".")[0]),
@@ -79,21 +89,24 @@ export function stringToParts(time: string): TimeParts {
 }
 
 export function msToParts(ms: number) {
-    const totalSeconds = Math.floor(ms / 1000);
+    const negative = ms < 0
+    const abs = Math.abs(ms)
+    const totalSeconds = Math.floor(abs / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-    const centis = Math.floor((ms % 1000) / 10);
+    const centis = Math.floor((abs % 1000) / 10);
 
     return {
         hours: hours,
         minutes: minutes,
         seconds: seconds,
         centis: centis,
+        negative : negative,
     };
 }
 
-export function formatDuration(timeParts: TimeParts): FormattedTimeParts {
+export function formatDuration(timeParts: TimeParts, showSign: boolean = false): FormattedTimeParts {
     // What to show
     const showHours = timeParts.hours > 0;
     const showMinutes = showHours ? true : timeParts.minutes > 0; // if hours>0 we show minutes (padded); else show only if minutes>0
@@ -116,6 +129,8 @@ export function formatDuration(timeParts: TimeParts): FormattedTimeParts {
     const sepSC = "."; // always show dot before centis
 
     return {
+        isNegative: timeParts.negative,
+        showSign: timeParts.negative || showSign,
         showHours: showHours,
         showMinutes: showMinutes,
         padMinutes: padMinutes,
@@ -132,6 +147,10 @@ export function formatDuration(timeParts: TimeParts): FormattedTimeParts {
 
 export function displayFormattedTimeParts(formattedParts: FormattedTimeParts): string {
     let timeString = "";
+    if (formattedParts.showSign) {
+        timeString = formattedParts.isNegative ? "-" : "+";
+    }
+    
     if (formattedParts.showHours) {
         timeString += formattedParts.hoursText;
     }

@@ -2,4 +2,17 @@
     .time-container {
         font-size: 50px;
     }
+
+    .timer-ahead {
+        color: greenyellow;
+    }
+
+    .timer-behind {
+        background-color: #000;
+        color: #f00;
+    }
+
+    .timer-gold {
+        color: gold;
+    }
 }

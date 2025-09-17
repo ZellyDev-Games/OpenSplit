@@ -1,6 +1,6 @@
 import { session } from "../../../wailsjs/go/models";
 import {displayFormattedTimeParts, formatDuration, msToParts, stringToParts} from "./Timer";
-import { useEffect, useState } from "react";
+import {JSX, useEffect, useState} from "react";
 import { GetLoadedSplitFile, GetSessionStatus } from "../../../wailsjs/go/session/Service";
 import { EventsOn } from "../../../wailsjs/runtime";
 import SplitFilePayload = session.SplitFilePayload;
@@ -11,13 +11,14 @@ export type CompareAgainst = "best" | "average";
 
 type Completion = {
     time: string;
+    raw: number;
 };
 
 export default function SplitList() {
     const [splitFile, setSplitFile] = useState<SplitFilePayload | undefined>(undefined);
     const [currentSegment, setCurrentSegment] = useState<number | null>(null);
     const [completions, setCompletions] = useState<Completion[]>([]);
-    const [compareAgainst, setCompareAgainst] = useState<CompareAgainst>("average");
+    const [compareAgainst, _] = useState<CompareAgainst>("average");
     const [time, setTime] = useState(0);
 
     useEffect(() => {
@@ -45,8 +46,11 @@ export default function SplitList() {
             setCurrentSegment(servicePayload.current_segment_index);
             if (servicePayload.current_run) {
                 setCompletions(
-                    servicePayload.current_run.split_payloads.map((c, i) => {
-                        return { time: displayFormattedTimeParts(formatDuration(stringToParts(c.current_time))) };
+                    servicePayload.current_run.split_payloads.map((c, _) => {
+                        return {
+                            time: displayFormattedTimeParts(formatDuration(stringToParts(c.current_time.formatted))),
+                            raw: c.current_time.raw
+                        };
                     }),
                 );
             } else {
@@ -55,45 +59,71 @@ export default function SplitList() {
         });
     }, []);
 
-    const getSegmentDisplayTime = (index: number, segment: SegmentPayload): string => {
+    const getSegmentDisplayTime = (index: number, segment: SegmentPayload): JSX.Element => {
         if (index < completions.length) {
-            return completions[index].time;
-        } else {
-            if (compareAgainst == "average") {
-                const avg = splitFile?.stats.averages[segment.id]?.raw;
-                const avgFormatted = splitFile?.stats.averages[segment.id]?.formatted;
-                if (avg) {
-                    if (time >= avg - 30000) {
-                        console.log(time >= avg - 30000)
-                        return `${time < avg ? "-" : "+"}${displayFormattedTimeParts(formatDuration(msToParts(time - avg)))}`
-                    } else {
-                        if (avgFormatted) {
-                            return displayFormattedTimeParts(formatDuration(stringToParts(avgFormatted))) ?? "-";
-                        } else {
-                            return "-";
+            let className = ""
+            if(splitFile && completions[index].raw < splitFile.stats.golds[segment.id]?.raw)
+            {
+                className = "timer-gold"
+            } else {
+                if (splitFile) {
+                    const target = compareAgainst == "average" ?
+                        splitFile.stats.averages[segment.id].raw :
+                        splitFile.stats.pb?.run?.split_payloads.find(s =>
+                            s.split_segment_id === segment.id)?.current_time.raw
+                    if (target) {
+                        if (completions[index].raw > target) {
+                            className = "timer-behind";
+                        }
+
+                        if (completions[index].raw < target) {
+                            className = "timer-ahead";
                         }
                     }
+                }
+            }
+
+            return (<strong className={className}>
+                {completions[index].time}
+            </strong>)
+        } else {
+            let val = ""
+            let raw = 0
+            if (compareAgainst == "average") {
+                if (splitFile && splitFile.stats.averages[segment.id]) {
+                    raw = splitFile.stats.averages[segment.id].raw;
+                    val = splitFile.stats.averages[segment.id].formatted;
                 } else {
-                    return "-";
+                    return <strong>-</strong>
                 }
             } else {
                 const best = splitFile?.stats.pb?.run?.split_payloads.find((p) => p.split_segment_id === segment.id);
                 if (best) {
-                    displayFormattedTimeParts(formatDuration(stringToParts(best.current_time))) ?? "-";
+                    raw = best.current_time.raw
+                    val = best.current_time.formatted;
                 } else {
-                    return "-";
+                    return <strong>-</strong>;
                 }
             }
-        }
 
-        return "-"
+            const diff = time - raw;
+            let className = ""
+            if(index === currentSegment && diff < 30000) {
+                if (time < raw) {className = "timer-ahead"}
+                if (time > raw) {className = "timer-behind"}
+                return <strong className={className}>
+                    {displayFormattedTimeParts(formatDuration(msToParts(diff), true))}
+                </strong>
+            }
+            return <strong className={className}>{displayFormattedTimeParts(formatDuration(stringToParts(val)))}</strong>
+        }
     };
 
     const segmentRows = splitFile?.segments.map((segment, index) => (
         <tr key={segment.id ?? index} className={currentSegment !== null && currentSegment === index ? "selected" : ""}>
             <td className="splitName">{segment.name}</td>
             <td className="splitComparison">
-                <strong>{getSegmentDisplayTime(index, segment)}</strong>
+                {getSegmentDisplayTime(index, segment)}
             </td>
         </tr>
     ));

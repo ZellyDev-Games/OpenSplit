@@ -100,7 +100,7 @@ func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
 		runs = append(runs, newRun)
 	}
 
-	if payload.ID == uuid.Nil.String() {
+	if payload.ID == uuid.Nil.String() || payload.ID == "" {
 		payload.ID = uuid.New().String()
 	}
 
