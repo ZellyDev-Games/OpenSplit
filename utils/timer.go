@@ -50,3 +50,7 @@ func ParseStringToTime(s string) (time.Duration, error) {
 	}
 	return d, nil
 }
+
+func PayloadRawTimeToDuration(ms int64) time.Duration {
+	return time.Duration(ms) * time.Millisecond
+}

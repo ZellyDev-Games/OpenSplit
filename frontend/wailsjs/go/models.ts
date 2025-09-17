@@ -12,6 +12,20 @@ export namespace session {
 	        this.speed_run_API_base = source["speed_run_API_base"];
 	    }
 	}
+	export class StatTime {
+	    raw: number;
+	    formatted: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StatTime(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.raw = source["raw"];
+	        this.formatted = source["formatted"];
+	    }
+	}
 	export class SplitPayload {
 	    split_index: number;
 	    split_segment_id: string;
@@ -70,7 +84,7 @@ export namespace session {
 	}
 	export class PBStatsPayload {
 	    run?: RunPayload;
-	    total: string;
+	    total: StatTime;
 	
 	    static createFrom(source: any = {}) {
 	        return new PBStatsPayload(source);
@@ -79,7 +93,7 @@ export namespace session {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.run = this.convertValues(source["run"], RunPayload);
-	        this.total = source["total"];
+	        this.total = this.convertValues(source["total"], StatTime);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -116,9 +130,9 @@ export namespace session {
 	    }
 	}
 	export class SplitFileStatsPayload {
-	    golds: Record<string, string>;
-	    averages: Record<string, string>;
-	    sob: string;
+	    golds: Record<string, StatTime>;
+	    averages: Record<string, StatTime>;
+	    sob: StatTime;
 	    pb?: PBStatsPayload;
 	
 	    static createFrom(source: any = {}) {
@@ -127,9 +141,9 @@ export namespace session {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.golds = source["golds"];
-	        this.averages = source["averages"];
-	        this.sob = source["sob"];
+	        this.golds = this.convertValues(source["golds"], StatTime, true);
+	        this.averages = this.convertValues(source["averages"], StatTime, true);
+	        this.sob = this.convertValues(source["sob"], StatTime);
 	        this.pb = this.convertValues(source["pb"], PBStatsPayload);
 	    }
 	
@@ -159,7 +173,7 @@ export namespace session {
 	    segments: SegmentPayload[];
 	    attempts: number;
 	    runs: RunPayload[];
-	    Stats: SplitFileStatsPayload;
+	    stats: SplitFileStatsPayload;
 	
 	    static createFrom(source: any = {}) {
 	        return new SplitFilePayload(source);
@@ -174,7 +188,7 @@ export namespace session {
 	        this.segments = this.convertValues(source["segments"], SegmentPayload);
 	        this.attempts = source["attempts"];
 	        this.runs = this.convertValues(source["runs"], RunPayload);
-	        this.Stats = this.convertValues(source["Stats"], SplitFileStatsPayload);
+	        this.stats = this.convertValues(source["stats"], SplitFileStatsPayload);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -239,6 +253,7 @@ export namespace session {
 		    return a;
 		}
 	}
+	
 	
 	
 

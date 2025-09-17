@@ -4,12 +4,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/zellydev-games/opensplit/utils"
 )
 
 type RunPayload struct {
-	ID               uuid.UUID      `json:"id"`
+	ID               string         `json:"id"`
 	SplitFileVersion int            `json:"splitfile_version"`
-	TotalTime        time.Duration  `json:"total_time"`
+	TotalTime        StatTime       `json:"total_time"`
 	Completed        bool           `json:"completed"`
 	SplitPayloads    []SplitPayload `json:"split_payloads"`
 }
@@ -22,19 +23,27 @@ type Run struct {
 	splitFileVersion int
 	totalTime        time.Duration
 	completed        bool
-	splitPayloads    []SplitPayload
+	splits           []Split
 }
 
 // getPayload returns a snapshot of a Run
 //
 // getPayload, modify the payload, then send it to newRunFromPayload and persist the result of that to make changes.
 func (r *Run) getPayload() RunPayload {
+	splitPayloads := make([]SplitPayload, 0)
+	for _, s := range r.splits {
+		splitPayloads = append(splitPayloads, s.getPayload())
+	}
+
 	return RunPayload{
-		ID:               r.id,
+		ID:               r.id.String(),
 		SplitFileVersion: r.splitFileVersion,
-		TotalTime:        r.totalTime,
-		Completed:        r.completed,
-		SplitPayloads:    r.splitPayloads,
+		TotalTime: StatTime{
+			Raw:       r.totalTime.Milliseconds(),
+			Formatted: utils.FormatTimeToString(r.totalTime),
+		},
+		Completed:     r.completed,
+		SplitPayloads: splitPayloads,
 	}
 }
 
@@ -42,11 +51,20 @@ func (r *Run) getPayload() RunPayload {
 //
 // Useful for making stateful updates to a Run without exposing internal data structure or presentation.
 func newRunFromPayload(payload RunPayload) Run {
+	var splits []Split
+	for _, s := range payload.SplitPayloads {
+		splits = append(splits, Split{
+			splitIndex:      s.SplitIndex,
+			splitSegmentID:  uuid.MustParse(s.SplitSegmentID),
+			currentDuration: utils.PayloadRawTimeToDuration(s.CurrentTime.Raw),
+		})
+	}
+
 	return Run{
-		id:               payload.ID,
+		id:               uuid.MustParse(payload.ID),
 		splitFileVersion: payload.SplitFileVersion,
-		totalTime:        payload.TotalTime,
+		totalTime:        time.Duration(payload.TotalTime.Raw) * time.Millisecond,
 		completed:        payload.Completed,
-		splitPayloads:    payload.SplitPayloads,
+		splits:           splits,
 	}
 }

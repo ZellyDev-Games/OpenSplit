@@ -10,21 +10,26 @@ import (
 	"github.com/zellydev-games/opensplit/utils"
 )
 
+type StatTime struct {
+	Raw       int64  `json:"raw"`
+	Formatted string `json:"formatted"`
+}
+
 type PBStatsPayload struct {
 	Run   *RunPayload `json:"run"`
-	Total string      `json:"total"`
+	Total StatTime    `json:"total"`
 }
 
 type PBStats struct {
-	run   *RunPayload
+	run   *Run
 	total time.Duration
 }
 
 type SplitFileStatsPayload struct {
-	Golds    map[string]string `json:"golds"`
-	Averages map[string]string `json:"averages"`
-	SoB      string            `json:"sob"`
-	PB       *PBStatsPayload   `json:"pb"`
+	Golds    map[string]StatTime `json:"golds"`
+	Averages map[string]StatTime `json:"averages"`
+	SoB      StatTime            `json:"sob"`
+	PB       *PBStatsPayload     `json:"pb"`
 }
 
 type SplitFileStats struct {
@@ -35,30 +40,37 @@ type SplitFileStats struct {
 }
 
 func (s *SplitFileStats) GetPayload() (SplitFileStatsPayload, error) {
-	var goldPayloads = make(map[string]string)
-	var averagesPayloads = make(map[string]string)
+	var goldPayloads = make(map[string]StatTime)
+	var averagesPayloads = make(map[string]StatTime)
 
 	for id, gold := range s.golds {
-		goldPayloads[id.String()] = utils.FormatTimeToString(gold)
+		goldPayloads[id.String()] = StatTime{gold.Milliseconds(), utils.FormatTimeToString(gold)}
 	}
 
 	for id, average := range s.averages {
-		averagesPayloads[id.String()] = utils.FormatTimeToString(average)
+		averagesPayloads[id.String()] = StatTime{average.Milliseconds(), utils.FormatTimeToString(average)}
 	}
 
 	var pbPayload *PBStatsPayload
 	if s.pb != nil {
+		payload := s.pb.run.getPayload()
 		pbPayload = &PBStatsPayload{
-			Run:   s.pb.run,
-			Total: utils.FormatTimeToString(s.pb.total),
+			Run: &payload,
+			Total: StatTime{
+				Raw:       s.pb.total.Milliseconds(),
+				Formatted: utils.FormatTimeToString(s.pb.total),
+			},
 		}
 	}
 
 	return SplitFileStatsPayload{
 		Golds:    goldPayloads,
 		Averages: averagesPayloads,
-		SoB:      utils.FormatTimeToString(s.sob),
-		PB:       pbPayload,
+		SoB: StatTime{
+			Raw:       s.sob.Milliseconds(),
+			Formatted: utils.FormatTimeToString(s.sob),
+		},
+		PB: pbPayload,
 	}, nil
 }
 
@@ -99,11 +111,11 @@ func getPB(runs []Run) (*PBStats, error) {
 	var fastestRun *Run = nil
 	fastestTotal := time.Duration(0)
 	for i, run := range runs {
-		if !run.completed || len(run.splitPayloads) == 0 {
+		if !run.completed || len(run.splits) == 0 {
 			continue
 		}
 
-		total := run.splitPayloads[len(run.splitPayloads)-1].CurrentDuration
+		total := run.splits[len(run.splits)-1].currentDuration
 		if fastestRun == nil || total < fastestTotal {
 			fastestRun = &runs[i]
 			fastestTotal = total
@@ -114,12 +126,8 @@ func getPB(runs []Run) (*PBStats, error) {
 		return nil, errors.New("no completed runs found")
 	}
 
-	segsInBestRun := make([]SplitPayload, len(fastestRun.splitPayloads))
-	copy(segsInBestRun, fastestRun.splitPayloads)
-
-	payload := fastestRun.getPayload()
 	return &PBStats{
-		run:   &payload,
+		run:   fastestRun,
 		total: fastestTotal,
 	}, nil
 }
@@ -131,26 +139,20 @@ func (s *SplitFile) perSegmentAggregates(runs []Run) (golds map[uuid.UUID]time.D
 
 	for _, run := range runs {
 		var last time.Duration
-		for i, sp := range run.splitPayloads {
-			id, err := uuid.Parse(sp.SplitSegmentID)
-			if err != nil {
-				logger.Error(fmt.Sprintf("failed to parse uuid for split payload in perSegmentAggregates: %s", err))
-				continue
-			}
-
-			segmentDuration := sp.CurrentDuration - last
+		for i, sp := range run.splits {
+			segmentDuration := sp.currentDuration - last
 			if segmentDuration < 0 {
 				logger.Warn(fmt.Sprintf("non-monotonic cumulative at split %d", i))
 				continue
 			}
 
-			last = sp.CurrentDuration
-			if cur, ok := golds[id]; !ok || segmentDuration < cur {
-				golds[id] = segmentDuration
+			last = sp.currentDuration
+			if cur, ok := golds[sp.splitSegmentID]; !ok || segmentDuration < cur {
+				golds[sp.splitSegmentID] = segmentDuration
 			}
 
-			sums[id] += sp.CurrentDuration
-			counts[id]++
+			sums[sp.splitSegmentID] += sp.currentDuration
+			counts[sp.splitSegmentID]++
 		}
 	}
 

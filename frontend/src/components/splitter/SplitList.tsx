@@ -1,5 +1,5 @@
 import { session } from "../../../wailsjs/go/models";
-import { displayFormattedTimeParts, formatDuration, stringToParts } from "./Timer";
+import {displayFormattedTimeParts, formatDuration, msToParts, stringToParts} from "./Timer";
 import { useEffect, useState } from "react";
 import { GetLoadedSplitFile, GetSessionStatus } from "../../../wailsjs/go/session/Service";
 import { EventsOn } from "../../../wailsjs/runtime";
@@ -18,9 +18,16 @@ export default function SplitList() {
     const [currentSegment, setCurrentSegment] = useState<number | null>(null);
     const [completions, setCompletions] = useState<Completion[]>([]);
     const [compareAgainst, setCompareAgainst] = useState<CompareAgainst>("average");
+    const [time, setTime] = useState(0);
 
     useEffect(() => {
         GetLoadedSplitFile().then((d) => setSplitFile(d));
+    }, []);
+
+    useEffect(() => {
+        return EventsOn("timer:update", (val: number) => {
+            setTime(val);
+        });
     }, []);
 
     useEffect(() => {
@@ -53,21 +60,33 @@ export default function SplitList() {
             return completions[index].time;
         } else {
             if (compareAgainst == "average") {
-                const avg = splitFile?.Stats.averages[segment.id];
+                const avg = splitFile?.stats.averages[segment.id]?.raw;
+                const avgFormatted = splitFile?.stats.averages[segment.id]?.formatted;
                 if (avg) {
-                    return displayFormattedTimeParts(formatDuration(stringToParts(avg))) ?? "-";
+                    if (time >= avg - 30000) {
+                        console.log(time >= avg - 30000)
+                        return `${time < avg ? "-" : "+"}${displayFormattedTimeParts(formatDuration(msToParts(time - avg)))}`
+                    } else {
+                        if (avgFormatted) {
+                            return displayFormattedTimeParts(formatDuration(stringToParts(avgFormatted))) ?? "-";
+                        } else {
+                            return "-";
+                        }
+                    }
                 } else {
                     return "-";
                 }
             } else {
-                const best = splitFile?.Stats.pb?.run?.split_payloads.find((p) => p.split_segment_id === segment.id);
+                const best = splitFile?.stats.pb?.run?.split_payloads.find((p) => p.split_segment_id === segment.id);
                 if (best) {
-                    return displayFormattedTimeParts(formatDuration(stringToParts(best.current_time))) ?? "-";
+                    displayFormattedTimeParts(formatDuration(stringToParts(best.current_time))) ?? "-";
                 } else {
                     return "-";
                 }
             }
         }
+
+        return "-"
     };
 
     const segmentRows = splitFile?.segments.map((segment, index) => (

@@ -19,62 +19,56 @@ func TestGetStatsPayload(t *testing.T) {
 		splitFileVersion: 1,
 		totalTime:        time.Second * 35,
 		completed:        true,
-		splitPayloads: []SplitPayload{{
-			SplitIndex:      0,
-			SplitSegmentID:  sf.segments[0].id.String(),
-			CurrentTime:     "00:00:25.00",
-			CurrentDuration: time.Second * 25,
+		splits: []Split{{
+			splitIndex:      0,
+			splitSegmentID:  sf.segments[0].id,
+			currentDuration: time.Second * 25,
 		}, {
-			SplitIndex:      1,
-			SplitSegmentID:  sf.segments[1].id.String(),
-			CurrentTime:     "00:00:35.00",
-			CurrentDuration: time.Second * 35,
+			splitIndex:      1,
+			splitSegmentID:  sf.segments[1].id,
+			currentDuration: time.Second * 35,
 		}},
 	}, {
 		id:               rID2,
 		splitFileVersion: 1,
 		totalTime:        time.Second * 90,
 		completed:        true,
-		splitPayloads: []SplitPayload{{
-			SplitIndex:      0,
-			SplitSegmentID:  sf.segments[0].id.String(),
-			CurrentTime:     "00:01:00.00",
-			CurrentDuration: time.Second * 60,
+		splits: []Split{{
+			splitIndex:      0,
+			splitSegmentID:  sf.segments[0].id,
+			currentDuration: time.Second * 60,
 		}, {
-			SplitIndex:      1,
-			SplitSegmentID:  sf.segments[1].id.String(),
-			CurrentTime:     "00:01:30.00",
-			CurrentDuration: time.Second * 90,
+			splitIndex:      1,
+			splitSegmentID:  sf.segments[1].id,
+			currentDuration: time.Second * 90,
 		}},
 	}, {
 		id:               rID3,
 		splitFileVersion: 1,
 		totalTime:        time.Second * 34,
 		completed:        true,
-		splitPayloads: []SplitPayload{{
-			SplitIndex:      0,
-			SplitSegmentID:  sf.segments[0].id.String(),
-			CurrentTime:     "00:00:30.00",
-			CurrentDuration: time.Second * 30,
+		splits: []Split{{
+			splitIndex:      0,
+			splitSegmentID:  sf.segments[0].id,
+			currentDuration: time.Second * 30,
 		}, {
-			SplitIndex:      1,
-			SplitSegmentID:  sf.segments[1].id.String(),
-			CurrentTime:     "00:00:34.00",
-			CurrentDuration: time.Second * 34,
+			splitIndex:      1,
+			splitSegmentID:  sf.segments[1].id,
+			currentDuration: time.Second * 34,
 		}},
 	}}
 
 	stats := sf.Stats()
-	want := (sf.runs[0].splitPayloads[0].CurrentDuration +
-		sf.runs[1].splitPayloads[0].CurrentDuration +
-		sf.runs[2].splitPayloads[0].CurrentDuration) / 3
+	want := (sf.runs[0].splits[0].currentDuration +
+		sf.runs[1].splits[0].currentDuration +
+		sf.runs[2].splits[0].currentDuration) / 3
 	if stats.averages[sf.segments[0].id] != want {
 		t.Errorf("segment 1 average time: want %s got %s", want, stats.averages[sf.segments[0].id])
 	}
 
-	want = (sf.runs[0].splitPayloads[1].CurrentDuration +
-		sf.runs[1].splitPayloads[1].CurrentDuration +
-		sf.runs[2].splitPayloads[1].CurrentDuration) / 3
+	want = (sf.runs[0].splits[1].currentDuration +
+		sf.runs[1].splits[1].currentDuration +
+		sf.runs[2].splits[1].currentDuration) / 3
 	if stats.averages[sf.segments[1].id] != want {
 		t.Errorf("segment 2 average time: want %s got %s", want, stats.averages[sf.segments[1].id])
 	}
@@ -89,8 +83,8 @@ func TestGetStatsPayload(t *testing.T) {
 		t.Errorf("segment 2 gold want: %s got %s", want, stats.golds[sf.segments[1].id])
 	}
 
-	if stats.pb.run.ID != rID3 {
-		t.Errorf("fastest run (PB) want id %s got %s", rID, stats.pb.run.ID)
+	if stats.pb.run.id != rID3 {
+		t.Errorf("fastest run (PB) want id %s got %s", rID, stats.pb.run.id)
 	}
 
 	want = time.Second * 29

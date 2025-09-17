@@ -12,14 +12,14 @@ import (
 //
 // Used to communicate the state of a SplitFile to the frontend and Persister implementations without exposing internals.
 type SplitFilePayload struct {
-	ID           uuid.UUID             `json:"id"`
+	ID           string                `json:"id"`
 	Version      int                   `json:"version"`
 	GameName     string                `json:"game_name"`
 	GameCategory string                `json:"game_category"`
 	Segments     []SegmentPayload      `json:"segments"`
 	Attempts     int                   `json:"attempts"`
 	Runs         []RunPayload          `json:"runs"`
-	Stats        SplitFileStatsPayload `json:"Stats"`
+	Stats        SplitFileStatsPayload `json:"stats"`
 }
 
 // SplitFile represents the data and history of a game/category combo.
@@ -73,7 +73,7 @@ func (s *SplitFile) GetPayload() SplitFilePayload {
 		logger.Error(fmt.Sprintf("failed to get Stats payload: %s", err))
 	}
 	return SplitFilePayload{
-		ID:           s.id,
+		ID:           s.id.String(),
 		GameName:     s.gameName,
 		GameCategory: s.gameCategory,
 		Segments:     segmentPayloads,
@@ -100,13 +100,12 @@ func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
 		runs = append(runs, newRun)
 	}
 
-	var emptyUUID = uuid.UUID{}
-	if payload.ID == emptyUUID {
-		payload.ID = uuid.New()
+	if payload.ID == uuid.Nil.String() {
+		payload.ID = uuid.New().String()
 	}
 
 	return &SplitFile{
-		id:           payload.ID,
+		id:           uuid.MustParse(payload.ID),
 		gameName:     payload.GameName,
 		gameCategory: payload.GameCategory,
 		attempts:     payload.Attempts,

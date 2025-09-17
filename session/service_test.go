@@ -63,6 +63,7 @@ func (m *MockPersister) Startup(ctx context.Context) {
 func (m *MockPersister) Load() (SplitFilePayload, error) {
 	m.LoadCalled++
 	return SplitFilePayload{
+		ID:           uuid.New().String(),
 		GameName:     "Test Loaded Game",
 		GameCategory: "Test Loaded Category",
 		Segments: []SegmentPayload{{
@@ -71,7 +72,7 @@ func (m *MockPersister) Load() (SplitFilePayload, error) {
 		}},
 		Attempts: 50,
 		Runs: []RunPayload{{
-			ID:               uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
+			ID:               "037ba872-2fdd-4531-aaee-101d777408b4",
 			SplitFileVersion: 1,
 		}},
 	}, nil
@@ -293,7 +294,7 @@ func TestReset(t *testing.T) {
 func TestNewSplitFile(t *testing.T) {
 	s, _, _, _ := getService()
 	payload := SplitFilePayload{
-		ID:           uuid.UUID{},
+		ID:           uuid.New().String(),
 		Version:      0,
 		GameName:     "Test New Game",
 		GameCategory: "Test New Category",
@@ -304,8 +305,7 @@ func TestNewSplitFile(t *testing.T) {
 
 	s.loadedSplitFile = nil
 	_ = s.UpdateSplitFile(payload)
-	emptyUUID := uuid.UUID{}
-	if s.loadedSplitFile.id == emptyUUID {
+	if s.loadedSplitFile.id == uuid.Nil {
 		t.Error("session UpdateSplitFile did not create a new id with a new splitfile")
 	}
 
