@@ -1,8 +1,9 @@
-import { session } from "../../../wailsjs/go/models";
-import { displayFormattedTimeParts, formatDuration, msToParts, stringToParts } from "./Timer";
 import { JSX, useEffect, useState } from "react";
+
+import { session } from "../../../wailsjs/go/models";
 import { GetLoadedSplitFile, GetSessionStatus } from "../../../wailsjs/go/session/Service";
 import { EventsOn } from "../../../wailsjs/runtime";
+import { displayFormattedTimeParts, formatDuration, msToParts, stringToParts } from "./Timer";
 import SplitFilePayload = session.SplitFilePayload;
 import ServicePayload = session.ServicePayload;
 import SegmentPayload = session.SegmentPayload;
@@ -18,7 +19,7 @@ export default function SplitList() {
     const [splitFile, setSplitFile] = useState<SplitFilePayload | undefined>(undefined);
     const [currentSegment, setCurrentSegment] = useState<number | null>(null);
     const [completions, setCompletions] = useState<Completion[]>([]);
-    const [compareAgainst, _] = useState<CompareAgainst>("average");
+    const [compareAgainst] = useState<CompareAgainst>("average");
     const [time, setTime] = useState(0);
 
     useEffect(() => {
@@ -46,7 +47,7 @@ export default function SplitList() {
             setCurrentSegment(servicePayload.current_segment_index);
             if (servicePayload.current_run) {
                 setCompletions(
-                    servicePayload.current_run.split_payloads.map((c, _) => {
+                    servicePayload.current_run.split_payloads.map((c) => {
                         const time = displayFormattedTimeParts(formatDuration(stringToParts(c.current_time.formatted)));
                         return {
                             time: `${time[0]}${time[1]}`,

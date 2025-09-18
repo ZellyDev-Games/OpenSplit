@@ -1,8 +1,9 @@
-import zdgLogo from "../../assets/images/ZG512.png";
-import { LoadSplitFile } from "../../../wailsjs/go/session/Service";
-import useWindowResize from "../../hooks/useWindowResize";
 import { useNavigate } from "react-router";
+
+import { LoadSplitFile } from "../../../wailsjs/go/session/Service";
 import { Quit } from "../../../wailsjs/runtime";
+import zdgLogo from "../../assets/images/ZG512.png";
+import useWindowResize from "../../hooks/useWindowResize";
 
 export default function Welcome() {
     const navigate = useNavigate();
@@ -27,6 +28,15 @@ export default function Welcome() {
                 }}
             >
                 Exit OpenSplit
+            </button>
+
+            <button
+                style={{ marginTop: 30 }}
+                onClick={async () => {
+                    localStorage.clear();
+                }}
+            >
+                Reset All Preferences
             </button>
 
             <div id="cw">

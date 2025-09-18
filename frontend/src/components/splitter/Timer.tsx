@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
+
 import { EventsOn } from "../../../wailsjs/runtime";
-import useWindowResize from "../../hooks/useWindowResize";
 
 export type TimeParts = {
     negative: boolean;

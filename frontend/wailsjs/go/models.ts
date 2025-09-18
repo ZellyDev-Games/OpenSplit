@@ -136,6 +136,24 @@ export namespace session {
 		    return a;
 		}
 	}
+	export class WindowParams {
+	    width: number;
+	    height: number;
+	    x: number;
+	    y: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new WindowParams(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.width = source["width"];
+	        this.height = source["height"];
+	        this.x = source["x"];
+	        this.y = source["y"];
+	    }
+	}
 	export class SplitFilePayload {
 	    id: string;
 	    version: number;
@@ -145,6 +163,7 @@ export namespace session {
 	    attempts: number;
 	    runs: RunPayload[];
 	    SOB: StatTime;
+	    window_params: WindowParams;
 	
 	    static createFrom(source: any = {}) {
 	        return new SplitFilePayload(source);
@@ -160,6 +179,7 @@ export namespace session {
 	        this.attempts = source["attempts"];
 	        this.runs = this.convertValues(source["runs"], RunPayload);
 	        this.SOB = this.convertValues(source["SOB"], StatTime);
+	        this.window_params = this.convertValues(source["window_params"], WindowParams);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -222,6 +242,7 @@ export namespace session {
 		    return a;
 		}
 	}
+	
 	
 	
 

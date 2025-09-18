@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { setActiveSkin } from "../skinLoader";
-import { OpenSkinsFolder } from "../../wailsjs/go/sysopen/Service";
+
 import { GetAvailableSkins } from "../../wailsjs/go/skin/Service";
+import { OpenSkinsFolder } from "../../wailsjs/go/sysopen/Service";
+import { setActiveSkin } from "../skinLoader";
 
 export default function SkinPicker() {
     const [active, setActive] = useState<string>("default");
