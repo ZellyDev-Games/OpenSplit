@@ -15,8 +15,7 @@ export namespace session {
 	export class SplitPayload {
 	    split_index: number;
 	    split_segment_id: string;
-	    current_time: string;
-	    current_duration: number;
+	    current_time: StatTime;
 	
 	    static createFrom(source: any = {}) {
 	        return new SplitPayload(source);
@@ -26,14 +25,45 @@ export namespace session {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.split_index = source["split_index"];
 	        this.split_segment_id = source["split_segment_id"];
-	        this.current_time = source["current_time"];
-	        this.current_duration = source["current_duration"];
+	        this.current_time = this.convertValues(source["current_time"], StatTime);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StatTime {
+	    raw: number;
+	    formatted: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StatTime(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.raw = source["raw"];
+	        this.formatted = source["formatted"];
 	    }
 	}
 	export class RunPayload {
-	    id: number[];
+	    id: string;
 	    splitfile_version: number;
-	    total_time: number;
+	    total_time: StatTime;
 	    completed: boolean;
 	    split_payloads: SplitPayload[];
 	
@@ -45,7 +75,7 @@ export namespace session {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.splitfile_version = source["splitfile_version"];
-	        this.total_time = source["total_time"];
+	        this.total_time = this.convertValues(source["total_time"], StatTime);
 	        this.completed = source["completed"];
 	        this.split_payloads = this.convertValues(source["split_payloads"], SplitPayload);
 	    }
@@ -68,42 +98,12 @@ export namespace session {
 		    return a;
 		}
 	}
-	export class PBStatsPayload {
-	    run?: RunPayload;
-	    total: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new PBStatsPayload(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.run = this.convertValues(source["run"], RunPayload);
-	        this.total = source["total"];
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	
 	export class SegmentPayload {
 	    id: string;
 	    name: string;
+	    gold: StatTime;
+	    average: StatTime;
+	    pb: StatTime;
 	
 	    static createFrom(source: any = {}) {
 	        return new SegmentPayload(source);
@@ -113,24 +113,9 @@ export namespace session {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.name = source["name"];
-	    }
-	}
-	export class SplitFileStatsPayload {
-	    golds: Record<string, string>;
-	    averages: Record<string, string>;
-	    sob: string;
-	    pb?: PBStatsPayload;
-	
-	    static createFrom(source: any = {}) {
-	        return new SplitFileStatsPayload(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.golds = source["golds"];
-	        this.averages = source["averages"];
-	        this.sob = source["sob"];
-	        this.pb = this.convertValues(source["pb"], PBStatsPayload);
+	        this.gold = this.convertValues(source["gold"], StatTime);
+	        this.average = this.convertValues(source["average"], StatTime);
+	        this.pb = this.convertValues(source["pb"], StatTime);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -152,14 +137,14 @@ export namespace session {
 		}
 	}
 	export class SplitFilePayload {
-	    id: number[];
+	    id: string;
 	    version: number;
 	    game_name: string;
 	    game_category: string;
 	    segments: SegmentPayload[];
 	    attempts: number;
 	    runs: RunPayload[];
-	    Stats: SplitFileStatsPayload;
+	    SOB: StatTime;
 	
 	    static createFrom(source: any = {}) {
 	        return new SplitFilePayload(source);
@@ -174,7 +159,7 @@ export namespace session {
 	        this.segments = this.convertValues(source["segments"], SegmentPayload);
 	        this.attempts = source["attempts"];
 	        this.runs = this.convertValues(source["runs"], RunPayload);
-	        this.Stats = this.convertValues(source["Stats"], SplitFileStatsPayload);
+	        this.SOB = this.convertValues(source["SOB"], StatTime);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -201,8 +186,7 @@ export namespace session {
 	    current_segment?: SegmentPayload;
 	    finished: boolean;
 	    paused: boolean;
-	    current_time: number;
-	    current_time_formatted: string;
+	    current_time: StatTime;
 	    current_run?: RunPayload;
 	
 	    static createFrom(source: any = {}) {
@@ -216,8 +200,7 @@ export namespace session {
 	        this.current_segment = this.convertValues(source["current_segment"], SegmentPayload);
 	        this.finished = source["finished"];
 	        this.paused = source["paused"];
-	        this.current_time = source["current_time"];
-	        this.current_time_formatted = source["current_time_formatted"];
+	        this.current_time = this.convertValues(source["current_time"], StatTime);
 	        this.current_run = this.convertValues(source["current_run"], RunPayload);
 	    }
 	

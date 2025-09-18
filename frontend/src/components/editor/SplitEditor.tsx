@@ -8,8 +8,10 @@ import SplitFilePayload = session.SplitFilePayload;
 import TimeRow from "./TimeRow";
 import { useNavigate } from "react-router";
 import { useClickOutside } from "../../hooks/useClickOutside";
-import { WindowSetPosition, WindowSetSize } from "../../../wailsjs/runtime";
+import { WindowCenter, WindowSetSize } from "../../../wailsjs/runtime";
 import useWindowResize from "../../hooks/useWindowResize";
+import { msToParts, partsToMS, TimeParts } from "../splitter/Timer";
+import StatTime = session.StatTime;
 
 type Game = {
     id: string;
@@ -18,48 +20,37 @@ type Game = {
     released: string;
 };
 
-type Segment = {
-    id: string;
-    name: string;
-    average_time: string;
-    best_time: string;
-};
-
 export default function SplitEditor() {
+    // Set default window size and persist updates
     useWindowResize("edit");
+
+    // Clear model results which will close the modal when we click outside the modal
     const clickOutsideRef = useRef<HTMLDivElement | null>(null);
-    const navigate = useNavigate();
-    const [gameName, setGameName] = React.useState<string>("");
-    const [gameCategory, setGameCategory] = React.useState<string>("");
-    const [segments, setSegments] = React.useState<Segment[]>([]);
-    const [attempts, setAttempts] = React.useState<number>(0);
-    const [speedrunAPIBase, setSpeedrunAPIBase] = React.useState<string>("");
-    const [gameResults, setGameResults] = React.useState<Game[]>([]);
-    const timeoutID = useRef<number>(0);
     useClickOutside(clickOutsideRef, () => {
-        console.log("Click outside handler fired");
         setGameResults([]);
     });
 
-    useEffect(() => WindowSetSize(1000, 900), []);
+    // Allow us to change pages
+    const navigate = useNavigate();
 
+    // Segment stats
+    const [gameName, setGameName] = React.useState<string>("");
+    const [gameCategory, setGameCategory] = React.useState<string>("");
+    const [segments, setSegments] = React.useState<SegmentPayload[]>([]);
+    const [attempts, setAttempts] = React.useState<number>(0);
+
+    // Speedrun search
+    const [speedrunAPIBase, setSpeedrunAPIBase] = React.useState<string>("");
+    const [gameResults, setGameResults] = React.useState<Game[]>([]);
+    const timeoutID = useRef<number>(0);
+
+    // Position and size the edit window
     useEffect(() => {
-        (async () => {
-            const loadedSplitFile = await GetLoadedSplitFile();
-            if (loadedSplitFile === null) return;
-            setGameName(loadedSplitFile.game_name);
-            setGameCategory(loadedSplitFile.game_category);
-            setAttempts(loadedSplitFile.attempts);
-            setSegments(
-                loadedSplitFile
-                    ? loadedSplitFile?.segments.map((s, i) => {
-                          return { ...s, idx: i, average_time: s.average_time, best_time: s.best_time };
-                      })
-                    : [],
-            );
-        })();
+        WindowSetSize(1000, 900);
+        WindowCenter();
     }, []);
 
+    // Get configuration, namely the speedrun API base URL
     useEffect(() => {
         (async () => {
             const config = await GetConfig();
@@ -67,8 +58,16 @@ export default function SplitEditor() {
         })();
     }, []);
 
+    // Pull apart the segment times from the split file in a way our UI can use them.
     useEffect(() => {
-        WindowSetPosition(400, 100);
+        (async () => {
+            const loadedSplitFile = await GetLoadedSplitFile();
+            if (loadedSplitFile === null) return;
+            setGameName(loadedSplitFile.game_name);
+            setGameCategory(loadedSplitFile.game_category);
+            setAttempts(loadedSplitFile.attempts);
+            setSegments(loadedSplitFile.segments);
+        })();
     }, []);
 
     const searchSpeedrun = async () => {
@@ -96,17 +95,34 @@ export default function SplitEditor() {
     const addSegment = () => {
         setSegments((prev) => [
             ...prev,
-            {
-                average_time: "00:00:00.00",
-                best_time: "00:00:00.00",
+            SegmentPayload.createFrom({
                 id: "",
                 name: "",
-            },
+                gold: StatTime.createFrom({
+                    formatted: "",
+                    raw: 0,
+                }),
+                average: StatTime.createFrom({
+                    formatted: "",
+                    raw: 0,
+                }),
+                pb: StatTime.createFrom({
+                    formatted: "",
+                    raw: 0,
+                }),
+            }),
         ]);
     };
 
     const updateSegments = (idx: number, attrName: string, attrVal: string) => {
-        setSegments((prev) => prev.map((s, i) => (i === idx ? { ...s, [attrName]: attrVal } : s)));
+        setSegments((prev) =>
+            prev.map((s, i) => {
+                if (idx === i) {
+                    return SegmentPayload.createFrom({ ...s, [attrName]: attrVal });
+                }
+                return s;
+            }),
+        );
     };
 
     const deleteSegment = (idx: number) => {
@@ -123,6 +139,8 @@ export default function SplitEditor() {
             attempts: Number(attempts),
         });
 
+        console.log(splitFilePayload);
+
         UpdateSplitFile(splitFilePayload)
             .then(() => {
                 navigate("/");
@@ -130,18 +148,29 @@ export default function SplitEditor() {
             .catch((err) => console.log(err));
     };
 
-    const handleTimeChange = (idx: number, time: string, isBest: boolean) => {
-        setSegments((prev) =>
-            prev.map((s, i) =>
-                i === idx
-                    ? {
-                          ...s,
-                          best_time: isBest ? time : s.best_time,
-                          average_time: isBest ? s.average_time : time,
-                      }
-                    : s,
-            ),
-        );
+    const handleTimeChange = (idx: number, time: TimeParts, isBest: boolean) => {
+        const ms = partsToMS(time);
+        const newSegments = [];
+        for (let i = 0; i < segments.length; i++) {
+            if (idx != i) {
+                newSegments.push(SegmentPayload.createFrom(segments[i]));
+            } else {
+                const s = { ...segments[i] };
+                const pb = isBest ? StatTime.createFrom({ raw: ms }) : s.pb;
+                const avg = isBest ? s.average : StatTime.createFrom({ raw: ms });
+                newSegments.push(
+                    SegmentPayload.createFrom({
+                        id: s.id,
+                        name: s.name,
+                        gold: s.gold,
+                        pb: pb,
+                        average: avg,
+                    }),
+                );
+            }
+        }
+
+        setSegments(newSegments);
     };
 
     return (
@@ -223,7 +252,7 @@ export default function SplitEditor() {
                 </div>
                 <div className="datagrid-container">
                     <div className="datagrid">
-                        {segments.length > 0 && (
+                        {segments && segments.length > 0 && (
                             <table cellSpacing={0} className="datagrid" id="tbl-segments">
                                 <thead>
                                     <tr>
@@ -245,20 +274,20 @@ export default function SplitEditor() {
                                             <td>
                                                 <input
                                                     onChange={(e) => updateSegments(idx, "name", e.target.value)}
-                                                    value={segment.name ?? ""}
+                                                    value={segment.name}
                                                 />
                                             </td>
                                             <td>
                                                 <TimeRow
                                                     idx={idx}
-                                                    time={segment.average_time}
+                                                    time={segment.average ? msToParts(segment.average.raw) : null}
                                                     onChangeCallback={(idx, ts) => handleTimeChange(idx, ts, false)}
                                                 />
                                             </td>
                                             <td>
                                                 <TimeRow
                                                     idx={idx}
-                                                    time={segment.best_time}
+                                                    time={segment.pb ? msToParts(segment.pb.raw) : null}
                                                     onChangeCallback={(idx, ts) => handleTimeChange(idx, ts, true)}
                                                 />
                                             </td>

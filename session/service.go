@@ -14,11 +14,6 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// Config holds configuration options so that Service.GetConfig can work for both backend and frontend.
-type Config struct {
-	SpeedRunAPIBase string `json:"speed_run_API_base"`
-}
-
 // GetConfig is designed to expose configuration options from the environment or other sources (config files) to the
 // frontend.  Go services can just read the environment, but the frontend has no reliable way to do so, so this func
 // is bound to the app in main which generates a typescript function for the frontend.
@@ -30,28 +25,6 @@ func (s *Service) GetConfig() *Config {
 	return &Config{
 		SpeedRunAPIBase: speedRunBase,
 	}
-}
-
-// ServicePayload is a snapshot of the session.Service, useful for communicating the state of the service to the frontend
-// without exposing internal data.
-type ServicePayload struct {
-	SplitFile            *SplitFilePayload `json:"split_file"`
-	CurrentSegmentIndex  int               `json:"current_segment_index"`
-	CurrentSegment       *SegmentPayload   `json:"current_segment"`
-	Finished             bool              `json:"finished"`
-	Paused               bool              `json:"paused"`
-	CurrentTime          time.Duration     `json:"current_time"`
-	CurrentTimeFormatted string            `json:"current_time_formatted"`
-	CurrentRun           *RunPayload       `json:"current_run"`
-}
-
-// SplitPayload is a snapshot of split data to communicate information about a split to the frontend, and also the
-// Run history in SplitFile runs
-type SplitPayload struct {
-	SplitIndex      int           `json:"split_index"`
-	SplitSegmentID  string        `json:"split_segment_id"`
-	CurrentTime     string        `json:"current_time"`
-	CurrentDuration time.Duration `json:"current_duration"`
 }
 
 // Persister is an interface that services that save and load splitfiles must implement to be used by session.Service
@@ -70,6 +43,18 @@ type Timer interface {
 	Reset()
 	GetCurrentTimeFormatted() string
 	GetCurrentTime() time.Duration
+}
+
+// ServicePayload is a snapshot of the session.Service, useful for communicating the state of the service to the frontend
+// without exposing internal data.
+type ServicePayload struct {
+	SplitFile           *SplitFilePayload `json:"split_file"`
+	CurrentSegmentIndex int               `json:"current_segment_index"`
+	CurrentSegment      *SegmentPayload   `json:"current_segment"`
+	Finished            bool              `json:"finished"`
+	Paused              bool              `json:"paused"`
+	CurrentTime         StatTime          `json:"current_time"`
+	CurrentRun          *RunPayload       `json:"current_run"`
 }
 
 // Service represents the interface from the backend Go system to the frontend React system.
@@ -167,6 +152,12 @@ func (s *Service) Split() {
 		return
 	}
 
+	// TODO: Handle the case where the user just wants a stopwatch (i.e. no segments in a split file, or no split file loaded at all)
+	if len(s.loadedSplitFile.segments) == 0 {
+		logger.Debug("split called on a split file with no segments: NO-OP")
+		return
+	}
+
 	if s.finished {
 		s.Reset()
 		return
@@ -182,6 +173,7 @@ func (s *Service) Split() {
 			id:               uuid.New(),
 			splitFileVersion: s.loadedSplitFile.version,
 		}
+
 		s.currentSegmentIndex++
 		s.currentSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
 		logger.Debug("sending session update from run start split")
@@ -195,10 +187,13 @@ func (s *Service) Split() {
 		return
 	} else if s.currentSegmentIndex >= len(s.loadedSplitFile.segments)-1 {
 		// run is finished
-		splitPayload := s.getSplitPayload()
 		s.timer.Pause()
 		s.finished = true
-		s.currentRun.splitPayloads = append(s.currentRun.splitPayloads, splitPayload)
+		s.currentRun.splits = append(s.currentRun.splits, Split{
+			splitIndex:      s.currentSegmentIndex,
+			splitSegmentID:  s.currentSegment.id,
+			currentDuration: s.timer.GetCurrentTime(),
+		})
 		s.currentRun.completed = true
 		s.currentRun.totalTime = s.timer.GetCurrentTime()
 		logger.Debug("split called with last segment in loaded split file, run complete")
@@ -207,8 +202,11 @@ func (s *Service) Split() {
 		return
 	} else {
 		// run is in progress
-		splitPayload := s.getSplitPayload()
-		s.currentRun.splitPayloads = append(s.currentRun.splitPayloads, splitPayload)
+		s.currentRun.splits = append(s.currentRun.splits, Split{
+			splitIndex:      s.currentSegmentIndex,
+			splitSegmentID:  s.currentSegment.id,
+			currentDuration: s.timer.GetCurrentTime(),
+		})
 		s.currentSegmentIndex++
 		s.currentSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
 		logger.Debug("sending session update from mid run split")
@@ -248,6 +246,7 @@ func (s *Service) Reset() {
 	if s.loadedSplitFile != nil && s.currentRun != nil {
 		logger.Debug(fmt.Sprintf("appending run to splitfile: %v", s.currentRun))
 		s.loadedSplitFile.runs = append(s.loadedSplitFile.runs, *s.currentRun)
+		s.loadedSplitFile.BuildStats()
 	}
 
 	s.finished = false
@@ -266,7 +265,7 @@ func (s *Service) Reset() {
 
 // SaveSplitFile uses the configured Persister to save the SplitFile to the configured storage
 //
-// Use SaveSplitFile instead of UpdateSplitFile when you want to save new runs or Stats without changes to data
+// Use SaveSplitFile instead of UpdateSplitFile when you want to save new runs or BuildStats without changes to data
 // (e.g. NOT changing the Game Name, Category, or segments).
 // This function will never bump the split file version.
 func (s *Service) SaveSplitFile() error {
@@ -409,25 +408,16 @@ func (s *Service) getServicePayload() ServicePayload {
 	}
 
 	payload := ServicePayload{
-		SplitFile:            loadedSplitFilePayload,
-		CurrentSegmentIndex:  s.currentSegmentIndex,
-		CurrentSegment:       currentSegmentPayload,
-		Finished:             s.finished,
-		CurrentTime:          s.timer.GetCurrentTime(),
-		CurrentTimeFormatted: s.timer.GetCurrentTimeFormatted(),
-		Paused:               !s.timer.IsRunning(),
-		CurrentRun:           currentRunPayload,
-	}
-
-	return payload
-}
-
-func (s *Service) getSplitPayload() SplitPayload {
-	var payload = SplitPayload{
-		SplitIndex:      s.currentSegmentIndex,
-		SplitSegmentID:  s.loadedSplitFile.segments[s.currentSegmentIndex].id.String(),
-		CurrentTime:     utils.FormatTimeToString(s.timer.GetCurrentTime()),
-		CurrentDuration: s.timer.GetCurrentTime(),
+		SplitFile:           loadedSplitFilePayload,
+		CurrentSegmentIndex: s.currentSegmentIndex,
+		CurrentSegment:      currentSegmentPayload,
+		Finished:            s.finished,
+		CurrentTime: StatTime{
+			Raw:       s.timer.GetCurrentTime().Milliseconds(),
+			Formatted: utils.FormatTimeToString(s.timer.GetCurrentTime()),
+		},
+		Paused:     !s.timer.IsRunning(),
+		CurrentRun: currentRunPayload,
 	}
 
 	return payload
