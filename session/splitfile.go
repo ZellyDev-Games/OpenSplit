@@ -8,6 +8,24 @@ import (
 	"github.com/zellydev-games/opensplit/utils"
 )
 
+// WindowParams stores the last size and position the user set splitter window while this file was loaded
+type WindowParams struct {
+	Width  int `json:"width"`
+	Height int `json:"height"`
+	X      int `json:"x"`
+	Y      int `json:"y"`
+}
+
+// NewDefaultWindowParams returns a WindowParams with sensible defaults
+func NewDefaultWindowParams() WindowParams {
+	return WindowParams{
+		Width:  350,
+		Height: 530,
+		X:      200,
+		Y:      200,
+	}
+}
+
 // SplitFilePayload is a snapshot of a SplitFile
 //
 // Used to communicate the state of a SplitFile to the frontend and Persister implementations without exposing internals.
@@ -20,6 +38,7 @@ type SplitFilePayload struct {
 	Attempts     int              `json:"attempts"`
 	Runs         []RunPayload     `json:"runs"`
 	SOB          StatTime         `json:"SOB"`
+	WindowParams WindowParams     `json:"window_params"`
 }
 
 // SplitFile represents the data and history of a game/category combo.
@@ -32,6 +51,7 @@ type SplitFile struct {
 	attempts     int
 	runs         []Run
 	sob          time.Duration
+	windowParams WindowParams
 }
 
 // NewAttempt provides a public function to increment the attempts count
@@ -69,6 +89,7 @@ func (s *SplitFile) GetPayload() SplitFilePayload {
 			Raw:       s.sob.Milliseconds(),
 			Formatted: utils.FormatTimeToString(s.sob),
 		},
+		WindowParams: s.windowParams,
 	}
 }
 
@@ -99,6 +120,7 @@ func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
 		segments:     segments,
 		runs:         runs,
 		version:      payload.Version,
+		windowParams: payload.WindowParams,
 	}
 
 	sf.BuildStats()
