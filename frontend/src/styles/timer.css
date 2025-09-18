@@ -1,5 +1,6 @@
 @layer componenets {
     .time-container {
+        font-family: "Monofonto", sans-serif;
         font-size: 50px;
     }
 

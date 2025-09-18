@@ -1,8 +1,39 @@
 @layer components {
+    @font-face {
+        font-family: "Sublima";
+        src: url("Sublima-ExtraBold.otf") format("opentype");
+        font-weight: normal;
+        font-style: normal;
+    }
+
+    @font-face {
+        font-family: "Hack";
+        src: url("Hack-Bold.ttf") format("truetype");
+        font-weight: bold;
+        font-style: normal;
+    }
+
+    @font-face {
+        font-family: "Techna";
+        src: url("TechnaSans-Regular.otf") format("opentype");
+        font-weight: normal;
+        font-style: normal;
+    }
+
+    @font-face {
+        font-family: "Monofonto";
+        src: url("mf.otf") format("opentype");
+        font-weight: normal;
+        font-style: normal;
+    }
+
     :root {
         background-color: #282828;
-        font-family: sans-serif;
+        font-family: Techna, sans-serif;
         color: #d9d9f0;
+        transition:
+            width,
+            height 0.2s ease-in-out;
     }
 
     hr {
@@ -27,23 +58,24 @@
     }
 
     button {
+        font-family: Techna, sans-serif;
         --wails-draggable: no-drag;
-        background-color: #222;
+        background-color: #1f1f1f;
         border-radius: 4px;
-        border-color: #333;
+        border-color: #3f3f3f;
         border-style: solid;
         color: #d9d9f0;
         cursor: pointer;
         font-size: 16px;
-        font-weight: 700;
+        font-weight: 600;
         min-height: 44px;
         min-width: 10px;
         padding: 9px 20px 8px;
         text-align: center;
+        transition: background-color 0.1s ease-in-out;
     }
 
-    .button:hover,
-    .button:focus {
-        opacity: 0.75;
+    button:hover {
+        background-color: #640199;
     }
 }
