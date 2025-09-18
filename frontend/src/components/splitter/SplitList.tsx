@@ -47,7 +47,7 @@ export default function SplitList() {
             if (servicePayload.current_run) {
                 setCompletions(
                     servicePayload.current_run.split_payloads.map((c, _) => {
-                        const time = displayFormattedTimeParts(formatDuration(stringToParts(c.current_time.formatted)))
+                        const time = displayFormattedTimeParts(formatDuration(stringToParts(c.current_time.formatted)));
                         return {
                             time: `${time[0]}${time[1]}`,
                             raw: c.current_time.raw,
@@ -94,15 +94,21 @@ export default function SplitList() {
                 if (time > target) {
                     className = "timer-behind";
                 }
-                const t = displayFormattedTimeParts(formatDuration(msToParts(diff), true))
+                const t = displayFormattedTimeParts(formatDuration(msToParts(diff), true));
                 return (
-                    <strong className={className}>{`${t[0]}`}<small>{`${t[1]}`   }</small></strong>
+                    <strong className={className}>
+                        {`${t[0]}`}
+                        <small>{`${t[1]}`}</small>
+                    </strong>
                 );
             }
 
-            const t = displayFormattedTimeParts(formatDuration(msToParts(target)))
+            const t = displayFormattedTimeParts(formatDuration(msToParts(target)));
             return (
-                <strong className={className}>{`${t[0]}`}<small>{`${t[1]}`}</small></strong>
+                <strong className={className}>
+                    {`${t[0]}`}
+                    <small>{`${t[1]}`}</small>
+                </strong>
             );
         }
     };

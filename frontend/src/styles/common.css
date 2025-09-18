@@ -1,28 +1,28 @@
 @layer components {
     @font-face {
-        font-family: 'Sublima';
-        src: url('Sublima-ExtraBold.otf') format('opentype');
+        font-family: "Sublima";
+        src: url("Sublima-ExtraBold.otf") format("opentype");
         font-weight: normal;
         font-style: normal;
     }
 
     @font-face {
-        font-family: 'Hack';
-        src: url('Hack-Bold.ttf') format('truetype');
+        font-family: "Hack";
+        src: url("Hack-Bold.ttf") format("truetype");
         font-weight: bold;
         font-style: normal;
     }
 
     @font-face {
-        font-family: 'Techna';
-        src: url('TechnaSans-Regular.otf') format('opentype');
+        font-family: "Techna";
+        src: url("TechnaSans-Regular.otf") format("opentype");
         font-weight: normal;
         font-style: normal;
     }
 
     @font-face {
-        font-family: 'Monofonto';
-        src: url('mf.otf') format('opentype');
+        font-family: "Monofonto";
+        src: url("mf.otf") format("opentype");
         font-weight: normal;
         font-style: normal;
     }
@@ -31,7 +31,9 @@
         background-color: #282828;
         font-family: Techna, sans-serif;
         color: #d9d9f0;
-        transition: width,height 0.2s ease-in-out;
+        transition:
+            width,
+            height 0.2s ease-in-out;
     }
 
     hr {

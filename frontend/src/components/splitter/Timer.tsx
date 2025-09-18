@@ -170,7 +170,7 @@ export function displayFormattedTimeParts(formattedParts: FormattedTimeParts): s
     }
 
     timeString += `${formattedParts.sepMS}${formattedParts.secondsText}`;
-    const centisString = `${formattedParts.sepSC}${formattedParts.centisText}`
+    const centisString = `${formattedParts.sepSC}${formattedParts.centisText}`;
     return [timeString, centisString];
 }
 

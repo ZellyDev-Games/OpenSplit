@@ -1,5 +1,5 @@
 import { session } from "../../../wailsjs/go/models";
-import React, {useEffect, useRef, useState} from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { GetConfig, GetLoadedSplitFile, UpdateSplitFile } from "../../../wailsjs/go/session/Service";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
@@ -175,11 +175,11 @@ export default function SplitEditor() {
     };
 
     useEffect(() => {
-        (async() => {
+        (async () => {
             const sf = await GetLoadedSplitFile();
             console.log(sf);
             setSplitFileLoaded(sf !== null);
-        })()
+        })();
     }, []);
 
     return (
