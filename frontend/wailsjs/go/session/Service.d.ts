@@ -3,6 +3,8 @@
 import {session} from '../models';
 import {context} from '../models';
 
+export function AddCallback(arg1:any):Promise<void>;
+
 export function CloseSplitFile():Promise<void>;
 
 export function GetConfig():Promise<session.Config>;

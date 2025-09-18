@@ -29,7 +29,7 @@ func (s *Service) GetConfig() *Config {
 
 // Persister is an interface that services that save and load splitfiles must implement to be used by session.Service
 type Persister interface {
-	Startup(ctx context.Context)
+	Startup(ctx context.Context, service *Service) error
 	Load() (split SplitFilePayload, err error)
 	Save(split SplitFilePayload) error
 }
@@ -78,6 +78,7 @@ type Service struct {
 	timeUpdatedChannel  chan time.Duration
 	persister           Persister
 	dirty               bool
+	updateCallbacks     []func(context.Context, ServicePayload)
 }
 
 // NewService creates a new Service from the passed in components.
@@ -96,6 +97,11 @@ func NewService(timer Timer, timeUpdatedChannel chan time.Duration, splitFile *S
 	return service
 }
 
+// AddCallback adds a callback that is invoked when eventsEmit is called with "session:update"
+func (s *Service) AddCallback(cb func(context.Context, ServicePayload)) {
+	s.updateCallbacks = append(s.updateCallbacks, cb)
+}
+
 // Startup is designed to be called by Wails.run OnStartup to supply the proper context.Context that allows the
 // session.Service to call Wails runtime functions that do things like open file dialogs.
 //
@@ -104,7 +110,7 @@ func NewService(timer Timer, timeUpdatedChannel chan time.Duration, splitFile *S
 // frontend to update the visual timer.
 func (s *Service) Startup(ctx context.Context) {
 	s.ctx = ctx
-	s.persister.Startup(ctx)
+	s.persister.Startup(ctx, s)
 	s.Reset()
 	go func() {
 		for {
@@ -437,6 +443,11 @@ func (s *Service) getServicePayload() ServicePayload {
 // Wails.run OnStartup callback, a requirement to use the function.  This allows for no-ops in unit testing.
 func (s *Service) emitEvent(event string, optional interface{}) {
 	if s.ctx != nil {
+		if sp, ok := optional.(ServicePayload); ok && event == "session:update" {
+			for _, cb := range s.updateCallbacks {
+				cb(s.ctx, sp)
+			}
+		}
 		runtime.EventsEmit(s.ctx, event, optional)
 	}
 }
