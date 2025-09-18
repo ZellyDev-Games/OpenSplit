@@ -1,5 +1,5 @@
 import { session } from "../../../wailsjs/go/models";
-import React, { useEffect, useRef } from "react";
+import React, {useEffect, useRef, useState} from "react";
 import { GetConfig, GetLoadedSplitFile, UpdateSplitFile } from "../../../wailsjs/go/session/Service";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
@@ -34,6 +34,7 @@ export default function SplitEditor() {
     const navigate = useNavigate();
 
     // Segment stats
+    const [splitFileLoaded, setSplitFileLoaded] = useState<boolean>(false);
     const [gameName, setGameName] = React.useState<string>("");
     const [gameCategory, setGameCategory] = React.useState<string>("");
     const [segments, setSegments] = React.useState<SegmentPayload[]>([]);
@@ -173,9 +174,17 @@ export default function SplitEditor() {
         setSegments(newSegments);
     };
 
+    useEffect(() => {
+        (async() => {
+            const sf = await GetLoadedSplitFile();
+            console.log(sf);
+            setSplitFileLoaded(sf !== null);
+        })()
+    }, []);
+
     return (
         <div className="container form-container">
-            <h2>Edit Split File</h2>
+            <h2>{splitFileLoaded ? "Editing Split File" : "New Split File"}</h2>
             <form id="split-form" noValidate>
                 <div className="row">
                     <label htmlFor="game_name">Game Name</label>

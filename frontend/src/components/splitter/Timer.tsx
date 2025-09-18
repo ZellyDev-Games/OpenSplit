@@ -27,7 +27,6 @@ export type FormattedTimeParts = {
 };
 
 export default function Timer() {
-    useWindowResize("app");
     const [time, setTime] = useState(0);
 
     useEffect(() => {
@@ -156,7 +155,7 @@ export function formatDuration(timeParts: TimeParts, showSign: boolean = false):
     };
 }
 
-export function displayFormattedTimeParts(formattedParts: FormattedTimeParts): string {
+export function displayFormattedTimeParts(formattedParts: FormattedTimeParts): string[] {
     let timeString = "";
     if (formattedParts.showSign) {
         timeString = formattedParts.isNegative ? "-" : "+";
@@ -170,8 +169,9 @@ export function displayFormattedTimeParts(formattedParts: FormattedTimeParts): s
         timeString += `${formattedParts.sepHM}${formattedParts.minutesText}`;
     }
 
-    timeString += `${formattedParts.sepMS}${formattedParts.secondsText}${formattedParts.sepSC}${formattedParts.centisText}`;
-    return timeString;
+    timeString += `${formattedParts.sepMS}${formattedParts.secondsText}`;
+    const centisString = `${formattedParts.sepSC}${formattedParts.centisText}`
+    return [timeString, centisString];
 }
 
 export const numeric = (s: string) => /^[+-]?\d+$/.test(s);

@@ -20,6 +20,7 @@
     }
 
     .cm-list {
+        font-family: Sublima, sans-serif;
         list-style: none;
         margin: 0;
         padding: 6px 0; /* similar to py-1.5 */
@@ -35,6 +36,7 @@
         display: block;
         width: 100%;
         text-align: left;
+        font-family: Sublima, sans-serif;
         font-size: 14px; /* ~ text-sm */
         padding: 8px 12px; /* px-3 py-2 */
         color: #222;

@@ -3,8 +3,9 @@ import { WindowGetSize, WindowSetSize } from "../../wailsjs/runtime";
 
 export default function useWindowResize(pageKey: string) {
     const defaults = {
-        app: { w: 500, h: 900 },
         edit: { w: 500, h: 900 },
+        splitter: {w: 320, h: 530 },
+        welcome: {w: 320, h: 530 },
     };
 
     const MIN_W = 100;
