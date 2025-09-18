@@ -1,5 +1,6 @@
-import { ContextMenuProps, MenuAction, MenuSeparator } from "../hooks/useContextMenu";
 import React from "react";
+
+import { ContextMenuProps, MenuAction, MenuSeparator } from "../hooks/useContextMenu";
 
 export function ContextMenu({ state, close, items = [] }: ContextMenuProps) {
     if (!state.open) return null;

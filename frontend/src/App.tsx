@@ -1,10 +1,9 @@
-import { Route, Routes, useNavigate } from "react-router";
-import Splitter from "./components/splitter/Splitter";
+import { Route, Routes } from "react-router";
+
 import SplitEditor from "./components/editor/SplitEditor";
+import Splitter from "./components/splitter/Splitter";
 
 function App() {
-    const navigate = useNavigate();
-
     return (
         <div id="App" className="app">
             <Routes>

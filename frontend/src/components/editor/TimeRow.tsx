@@ -1,4 +1,5 @@
-import React, { ChangeEventHandler, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
+
 import { numeric, TimeParts } from "../splitter/Timer";
 
 type timeRowParams = {

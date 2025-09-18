@@ -268,12 +268,17 @@ func (s *Service) Reset() {
 // Use SaveSplitFile instead of UpdateSplitFile when you want to save new runs or BuildStats without changes to data
 // (e.g. NOT changing the Game Name, Category, or segments).
 // This function will never bump the split file version.
-func (s *Service) SaveSplitFile() error {
+func (s *Service) SaveSplitFile(width int, height int, x int, y int) error {
 	if s.loadedSplitFile == nil {
 		logger.Debug("SaveSplitFile called with no split file loaded: NO-OP")
 		return nil
 	}
 
+	s.loadedSplitFile.windowParams.Width = width
+	s.loadedSplitFile.windowParams.Height = height
+	s.loadedSplitFile.windowParams.X = x
+	s.loadedSplitFile.windowParams.Y = y
+	fmt.Println(s.loadedSplitFile.windowParams.Width, s.loadedSplitFile.windowParams.Height)
 	err := s.persister.Save(s.loadedSplitFile.GetPayload())
 	if err != nil {
 		var cancelled = &UserCancelledSave{}
@@ -304,6 +309,11 @@ func (s *Service) UpdateSplitFile(payload SplitFilePayload) error {
 	if s.loadedSplitFile == nil || SplitFileChanged(payload, s.loadedSplitFile.GetPayload()) {
 		logger.Debug("SplitFile changed, bumping version after loading new split file")
 		bumpVersion = true
+	}
+
+	// This is a new splitfile so lets build WindowParams with sensible defaults
+	if s.loadedSplitFile == nil {
+		newSplitFile.windowParams = NewDefaultWindowParams()
 	}
 
 	if s.loadedSplitFile != nil {

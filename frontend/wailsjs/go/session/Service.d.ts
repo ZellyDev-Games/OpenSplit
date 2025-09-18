@@ -17,7 +17,7 @@ export function Pause():Promise<void>;
 
 export function Reset():Promise<void>;
 
-export function SaveSplitFile():Promise<void>;
+export function SaveSplitFile(arg1:number,arg2:number,arg3:number,arg4:number):Promise<void>;
 
 export function Split():Promise<void>;
 

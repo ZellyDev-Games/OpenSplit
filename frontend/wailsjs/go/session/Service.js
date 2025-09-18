@@ -30,8 +30,8 @@ export function Reset() {
   return window['go']['session']['Service']['Reset']();
 }
 
-export function SaveSplitFile() {
-  return window['go']['session']['Service']['SaveSplitFile']();
+export function SaveSplitFile(arg1, arg2, arg3, arg4) {
+  return window['go']['session']['Service']['SaveSplitFile'](arg1, arg2, arg3, arg4);
 }
 
 export function Split() {

@@ -83,7 +83,7 @@ tasks:
             - |
                 cd frontend
                 {{if eq OS "windows"}}
-                powershell -NoProfile -Command "if (Test-Path 'package.json') { if (npm -s run | Select-String '^  lint') { npm run -s lint } else { Write-Host 'frontend: no lint script' } } else { Write-Host 'no frontend dir' }"
+                powershell -NoProfile -Command "if (Test-Path 'package.json') { npm run -s lint --if-present } else { Write-Host 'no frontend dir' }"
                 {{else}}
                 bash -lc 'if [ -f "package.json" ] && npm -s run | grep -q "^  lint"; then npm run -s lint; else echo "frontend: no lint script"; fi'
                 {{end}}

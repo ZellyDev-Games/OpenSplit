@@ -1,16 +1,17 @@
-import { session } from "../../../wailsjs/go/models";
-import React, { useEffect, useRef, useState } from "react";
-import { GetConfig, GetLoadedSplitFile, UpdateSplitFile } from "../../../wailsjs/go/session/Service";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
-import SegmentPayload = session.SegmentPayload;
-import SplitFilePayload = session.SplitFilePayload;
-import TimeRow from "./TimeRow";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { useClickOutside } from "../../hooks/useClickOutside";
+
+import { session } from "../../../wailsjs/go/models";
+import { GetConfig, GetLoadedSplitFile, UpdateSplitFile } from "../../../wailsjs/go/session/Service";
 import { WindowCenter, WindowSetSize } from "../../../wailsjs/runtime";
+import { useClickOutside } from "../../hooks/useClickOutside";
 import useWindowResize from "../../hooks/useWindowResize";
 import { msToParts, partsToMS, TimeParts } from "../splitter/Timer";
+import TimeRow from "./TimeRow";
+import SegmentPayload = session.SegmentPayload;
+import SplitFilePayload = session.SplitFilePayload;
 import StatTime = session.StatTime;
 
 type Game = {
@@ -140,8 +141,6 @@ export default function SplitEditor() {
             attempts: Number(attempts),
         });
 
-        console.log(splitFilePayload);
-
         UpdateSplitFile(splitFilePayload)
             .then(() => {
                 navigate("/");
@@ -191,7 +190,7 @@ export default function SplitEditor() {
                     <input
                         value={gameName}
                         onChange={(e) => setGameName(e.target.value)}
-                        onBlur={(e) => {
+                        onBlur={() => {
                             clearTimeout(timeoutID.current);
                         }}
                         onKeyUp={searchSpeedrun}
