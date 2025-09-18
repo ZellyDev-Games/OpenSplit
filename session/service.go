@@ -110,7 +110,11 @@ func (s *Service) AddCallback(cb func(context.Context, ServicePayload)) {
 // frontend to update the visual timer.
 func (s *Service) Startup(ctx context.Context) {
 	s.ctx = ctx
-	s.persister.Startup(ctx, s)
+	err := s.persister.Startup(ctx, s)
+	if err != nil {
+		logger.Error("Session Service failed to Startup persister: " + err.Error())
+		os.Exit(3)
+	}
 	s.Reset()
 	go func() {
 		for {

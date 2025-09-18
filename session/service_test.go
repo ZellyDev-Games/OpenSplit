@@ -56,8 +56,9 @@ type MockPersister struct {
 	LoadCalled int
 }
 
-func (m *MockPersister) Startup(ctx context.Context) {
+func (m *MockPersister) Startup(ctx context.Context, payload *Service) error {
 	m.ctx = ctx
+	return nil
 }
 
 func (m *MockPersister) Load() (SplitFilePayload, error) {
