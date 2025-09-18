@@ -1,6 +1,6 @@
 import { session } from "../../../wailsjs/go/models";
-import {displayFormattedTimeParts, formatDuration, msToParts, stringToParts} from "./Timer";
-import {JSX, useEffect, useState} from "react";
+import { displayFormattedTimeParts, formatDuration, msToParts, stringToParts } from "./Timer";
+import { JSX, useEffect, useState } from "react";
 import { GetLoadedSplitFile, GetSessionStatus } from "../../../wailsjs/go/session/Service";
 import { EventsOn } from "../../../wailsjs/runtime";
 import SplitFilePayload = session.SplitFilePayload;
@@ -49,7 +49,7 @@ export default function SplitList() {
                     servicePayload.current_run.split_payloads.map((c, _) => {
                         return {
                             time: displayFormattedTimeParts(formatDuration(stringToParts(c.current_time.formatted))),
-                            raw: c.current_time.raw
+                            raw: c.current_time.raw,
                         };
                     }),
                 );
@@ -60,16 +60,15 @@ export default function SplitList() {
     }, []);
 
     const getSegmentDisplayTime = (index: number, segment: SegmentPayload): JSX.Element => {
-        const gold = segment.gold?.raw
-        const average = segment.average?.raw
-        const best  = segment.pb?.raw
-        const target = compareAgainst == "average" ? average : best
+        const gold = segment.gold?.raw;
+        const average = segment.average?.raw;
+        const best = segment.pb?.raw;
+        const target = compareAgainst == "average" ? average : best;
 
         if (index < completions.length) {
-            let className = ""
-            if(gold && completions[index].raw < gold)
-            {
-                className = "timer-gold"
+            let className = "";
+            if (gold && completions[index].raw < gold) {
+                className = "timer-gold";
             } else {
                 if (target) {
                     if (completions[index].raw > target) {
@@ -82,32 +81,35 @@ export default function SplitList() {
                 }
             }
 
-            return (<strong className={className}>
-                {completions[index].time}
-            </strong>)
+            return <strong className={className}>{completions[index].time}</strong>;
         } else {
-            const diff = target - time;
-            console.log(diff)
-            let className = ""
+            const diff = time - target;
+            let className = "";
 
-            if(index === currentSegment && diff < 30000) {
-                if (time < target) {className = "timer-ahead"}
-                if (time > target) {className = "timer-behind"}
-                return <strong className={className}>
-                    {displayFormattedTimeParts(formatDuration(msToParts(diff), true))}
-                </strong>
+            if (index === currentSegment && diff > -30000) {
+                if (time < target) {
+                    className = "timer-ahead";
+                }
+                if (time > target) {
+                    className = "timer-behind";
+                }
+                return (
+                    <strong className={className}>
+                        {displayFormattedTimeParts(formatDuration(msToParts(diff), true))}
+                    </strong>
+                );
             }
 
-            return <strong className={className}>{displayFormattedTimeParts(formatDuration(msToParts(target)))}</strong>
+            return (
+                <strong className={className}>{displayFormattedTimeParts(formatDuration(msToParts(target)))}</strong>
+            );
         }
     };
 
     const segmentRows = splitFile?.segments?.map((segment, index) => (
         <tr key={segment.id ?? index} className={currentSegment !== null && currentSegment === index ? "selected" : ""}>
             <td className="splitName">{segment.name}</td>
-            <td className="splitComparison">
-                {getSegmentDisplayTime(index, segment)}
-            </td>
+            <td className="splitComparison">{getSegmentDisplayTime(index, segment)}</td>
         </tr>
     ));
 

@@ -1,5 +1,5 @@
 import { session } from "../../../wailsjs/go/models";
-import React, {useEffect, useRef} from "react";
+import React, { useEffect, useRef } from "react";
 import { GetConfig, GetLoadedSplitFile, UpdateSplitFile } from "../../../wailsjs/go/session/Service";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
@@ -8,9 +8,9 @@ import SplitFilePayload = session.SplitFilePayload;
 import TimeRow from "./TimeRow";
 import { useNavigate } from "react-router";
 import { useClickOutside } from "../../hooks/useClickOutside";
-import {WindowCenter, WindowSetSize} from "../../../wailsjs/runtime";
+import { WindowCenter, WindowSetSize } from "../../../wailsjs/runtime";
 import useWindowResize from "../../hooks/useWindowResize";
-import {msToParts, partsToMS, TimeParts} from "../splitter/Timer";
+import { msToParts, partsToMS, TimeParts } from "../splitter/Timer";
 import StatTime = session.StatTime;
 
 type Game = {
@@ -46,7 +46,7 @@ export default function SplitEditor() {
 
     // Position and size the edit window
     useEffect(() => {
-        WindowSetSize(1000, 900)
+        WindowSetSize(1000, 900);
         WindowCenter();
     }, []);
 
@@ -100,27 +100,29 @@ export default function SplitEditor() {
                 name: "",
                 gold: StatTime.createFrom({
                     formatted: "",
-                    raw: 0
+                    raw: 0,
                 }),
                 average: StatTime.createFrom({
                     formatted: "",
-                    raw: 0
+                    raw: 0,
                 }),
                 pb: StatTime.createFrom({
                     formatted: "",
-                    raw: 0
+                    raw: 0,
                 }),
-            })
+            }),
         ]);
     };
 
     const updateSegments = (idx: number, attrName: string, attrVal: string) => {
-        setSegments((prev) => prev.map((s, i) => {
-            if (idx === i) {
-                return SegmentPayload.createFrom({...s, [attrName]: attrVal});
-            }
-            return s
-        }));
+        setSegments((prev) =>
+            prev.map((s, i) => {
+                if (idx === i) {
+                    return SegmentPayload.createFrom({ ...s, [attrName]: attrVal });
+                }
+                return s;
+            }),
+        );
     };
 
     const deleteSegment = (idx: number) => {
@@ -137,7 +139,7 @@ export default function SplitEditor() {
             attempts: Number(attempts),
         });
 
-        console.log(splitFilePayload)
+        console.log(splitFilePayload);
 
         UpdateSplitFile(splitFilePayload)
             .then(() => {
@@ -147,20 +149,28 @@ export default function SplitEditor() {
     };
 
     const handleTimeChange = (idx: number, time: TimeParts, isBest: boolean) => {
-        const ms = partsToMS(time)
-        setSegments((prev) => prev.map((s, i) => {
-            if (idx === i) {
-                return SegmentPayload.createFrom(
-                    {
-                        ...s,
-                        ...(isBest ? {average: StatTime.createFrom({
-                                raw: partsToMS(time)
-                            }) } : {best: StatTime.createFrom({
-                                raw: partsToMS(time)
-                            }) })});
+        const ms = partsToMS(time);
+        const newSegments = [];
+        for (let i = 0; i < segments.length; i++) {
+            if (idx != i) {
+                newSegments.push(SegmentPayload.createFrom(segments[i]));
+            } else {
+                const s = { ...segments[i] };
+                const pb = isBest ? StatTime.createFrom({ raw: ms }) : s.pb;
+                const avg = isBest ? s.average : StatTime.createFrom({ raw: ms });
+                newSegments.push(
+                    SegmentPayload.createFrom({
+                        id: s.id,
+                        name: s.name,
+                        gold: s.gold,
+                        pb: pb,
+                        average: avg,
+                    }),
+                );
             }
-            return s
-        }))
+        }
+
+        setSegments(newSegments);
     };
 
     return (
@@ -263,9 +273,7 @@ export default function SplitEditor() {
                                             <td style={{ textAlign: "center" }}>{idx + 1}</td>
                                             <td>
                                                 <input
-                                                    onChange={
-                                                        (e) => updateSegments(idx, "name", e.target.value)
-                                                    }
+                                                    onChange={(e) => updateSegments(idx, "name", e.target.value)}
                                                     value={segment.name}
                                                 />
                                             </td>

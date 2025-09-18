@@ -1,5 +1,5 @@
-import React, {ChangeEventHandler, useEffect, useRef} from "react";
-import {numeric, TimeParts} from "../splitter/Timer";
+import React, { ChangeEventHandler, useEffect, useRef } from "react";
+import { numeric, TimeParts } from "../splitter/Timer";
 
 type timeRowParams = {
     idx: number;
@@ -12,7 +12,7 @@ type timeRowElements = {
     minutes: HTMLInputElement | null;
     seconds: HTMLInputElement | null;
     centis: HTMLInputElement | null;
-}
+};
 
 export default function TimeRow({ idx, time, onChangeCallback }: timeRowParams) {
     // Get refs to all the parts so we can update all at once
@@ -20,29 +20,29 @@ export default function TimeRow({ idx, time, onChangeCallback }: timeRowParams) 
         hours: null,
         minutes: null,
         seconds: null,
-        centis: null
+        centis: null,
     });
 
     // Set initial values from the passed in timeParts
     useEffect(() => {
         let el = timeRef.current.hours;
         if (el) {
-            el.value = time?.hours.toString() ?? ""
+            el.value = time?.hours.toString() ?? "";
         }
 
         el = timeRef.current.minutes;
         if (el) {
-            el.value = time?.minutes.toString() ?? ""
+            el.value = time?.minutes.toString() ?? "";
         }
 
         el = timeRef.current.seconds;
         if (el) {
-            el.value = time?.seconds.toString() ?? ""
+            el.value = time?.seconds.toString() ?? "";
         }
 
         el = timeRef.current.centis;
         if (el) {
-            el.value = time?.centis.toString() ?? ""
+            el.value = time?.centis.toString() ?? "";
         }
     }, []);
 
@@ -52,37 +52,37 @@ export default function TimeRow({ idx, time, onChangeCallback }: timeRowParams) 
         let seconds = timeRef.current.seconds?.value ?? "0";
         let centis = timeRef.current.centis?.value ?? "0";
 
-        hours = numeric(hours) ? hours : ""
-        minutes = numeric(minutes) ? minutes : ""
-        seconds = numeric(seconds) ? seconds : ""
-        centis = numeric(centis) ? centis : ""
+        hours = numeric(hours) ? hours : "";
+        minutes = numeric(minutes) ? minutes : "";
+        seconds = numeric(seconds) ? seconds : "";
+        centis = numeric(centis) ? centis : "";
 
-        const hoursNum = numeric(hours.trim()) ? Number(hours) : 0
-        const minutesNum = Math.min(Math.max(numeric(minutes.trim()) ? Number(minutes) : 0, 0), 59)
-        const secondsNum = Math.min(Math.max(numeric(seconds.trim()) ? Number(seconds) : 0, 0), 59)
-        const centisNum = Math.min(Math.max(numeric(centis.trim()) ? Number(centis) : 0, 0), 99)
+        const hoursNum = numeric(hours.trim()) ? Number(hours) : 0;
+        const minutesNum = Math.min(Math.max(numeric(minutes.trim()) ? Number(minutes) : 0, 0), 59);
+        const secondsNum = Math.min(Math.max(numeric(seconds.trim()) ? Number(seconds) : 0, 0), 59);
+        const centisNum = Math.min(Math.max(numeric(centis.trim()) ? Number(centis) : 0, 0), 99);
 
         let el = timeRef.current.hours;
         if (el) {
-            el.value = hoursNum.toString() ?? ""
+            el.value = hoursNum.toString() ?? "";
         }
 
         el = timeRef.current.minutes;
         if (el) {
-            el.value = minutesNum.toString() ?? ""
+            el.value = minutesNum.toString() ?? "";
         }
 
         el = timeRef.current.seconds;
         if (el) {
-            el.value = secondsNum.toString() ?? ""
+            el.value = secondsNum.toString() ?? "";
         }
 
         el = timeRef.current.centis;
         if (el) {
-            el.value = centisNum.toString() ?? ""
+            el.value = centisNum.toString() ?? "";
         }
 
-        onChangeCallback(idx,{
+        onChangeCallback(idx, {
             negative: false,
             hours: hoursNum,
             minutes: minutesNum,
@@ -93,13 +93,37 @@ export default function TimeRow({ idx, time, onChangeCallback }: timeRowParams) 
 
     return (
         <div className="segment-time">
-            <input ref={(el) => { timeRef.current.hours = el }} placeholder="H" onChange={handleChange} />
+            <input
+                ref={(el) => {
+                    timeRef.current.hours = el;
+                }}
+                placeholder="H"
+                onChange={handleChange}
+            />
             <span>:</span>
-            <input ref={(el) => { timeRef.current.minutes = el }} placeholder="MM" onChange={handleChange} />
+            <input
+                ref={(el) => {
+                    timeRef.current.minutes = el;
+                }}
+                placeholder="MM"
+                onChange={handleChange}
+            />
             <span>:</span>
-            <input ref={(el) => { timeRef.current.seconds = el }} placeholder="SS" onChange={handleChange} />
+            <input
+                ref={(el) => {
+                    timeRef.current.seconds = el;
+                }}
+                placeholder="SS"
+                onChange={handleChange}
+            />
             <span>.</span>
-            <input ref={(el) => { timeRef.current.centis = el }} placeholder={"cc"} onChange={handleChange} />
+            <input
+                ref={(el) => {
+                    timeRef.current.centis = el;
+                }}
+                placeholder={"cc"}
+                onChange={handleChange}
+            />
         </div>
     );
 }

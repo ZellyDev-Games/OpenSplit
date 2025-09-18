@@ -246,6 +246,7 @@ func (s *Service) Reset() {
 	if s.loadedSplitFile != nil && s.currentRun != nil {
 		logger.Debug(fmt.Sprintf("appending run to splitfile: %v", s.currentRun))
 		s.loadedSplitFile.runs = append(s.loadedSplitFile.runs, *s.currentRun)
+		s.loadedSplitFile.BuildStats()
 	}
 
 	s.finished = false

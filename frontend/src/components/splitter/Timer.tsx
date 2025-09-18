@@ -11,8 +11,8 @@ export type TimeParts = {
 };
 
 export type FormattedTimeParts = {
-    isNegative : boolean;
-    showSign : boolean;
+    isNegative: boolean;
+    showSign: boolean;
     showHours: boolean;
     showMinutes: boolean;
     padMinutes: boolean;
@@ -75,7 +75,7 @@ export function stringToParts(time: string): TimeParts {
     let negative = false;
     if (time[0] === "-") {
         negative = true;
-        time = time.slice(1)
+        time = time.slice(1);
     }
 
     const timeParts = time.split(":");
@@ -88,9 +88,9 @@ export function stringToParts(time: string): TimeParts {
     };
 }
 
-export function msToParts(ms: number) : TimeParts {
-    const negative = ms < 0
-    const abs = Math.abs(ms)
+export function msToParts(ms: number): TimeParts {
+    const negative = ms < 0;
+    const abs = Math.abs(ms);
     const totalSeconds = Math.floor(abs / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -102,19 +102,19 @@ export function msToParts(ms: number) : TimeParts {
         minutes: minutes,
         seconds: seconds,
         centis: centis,
-        negative : negative,
+        negative: negative,
     };
 }
 
-export function partsToMS(parts: TimeParts) : number {
+export function partsToMS(parts: TimeParts): number {
     const negative = parts.negative;
-    let abs = 0
-    abs += parts.hours * 3600000
-    abs += parts.minutes * 60000
-    abs += parts.seconds * 1000
-    abs += parts.centis * 10
+    let abs = 0;
+    abs += parts.hours * 3600000;
+    abs += parts.minutes * 60000;
+    abs += parts.seconds * 1000;
+    abs += parts.centis * 10;
 
-    return negative ? abs * -1 : abs
+    return negative ? abs * -1 : abs;
 }
 
 export function formatDuration(timeParts: TimeParts, showSign: boolean = false): FormattedTimeParts {
