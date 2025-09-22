@@ -42,6 +42,8 @@ func (m *MockRuntimeProvider) EventsEmit(string, ...any) {
 	m.EventsEmitCalled++
 }
 
+func (m *MockRuntimeProvider) Quit() {}
+
 func (m *MockRuntimeProvider) SaveFileDialog(runtime.SaveDialogOptions) (string, error) {
 	m.SaveCalled++
 	return "testfile", nil

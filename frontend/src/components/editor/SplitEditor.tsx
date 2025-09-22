@@ -10,9 +10,9 @@ import useWindowResize from "../../hooks/useWindowResize";
 import SegmentPayload from "../../models/segmentPayload";
 import SplitFilePayload from "../../models/splitFilePayload";
 import StatTime from "../../models/statTime";
+import WindowParams from "../../models/windowParams";
 import { msToParts, partsToMS, TimeParts } from "../splitter/Timer";
 import TimeRow from "./TimeRow";
-import WindowParams from "../../models/windowParams";
 
 type Game = {
     id: string;
