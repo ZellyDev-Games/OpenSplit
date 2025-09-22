@@ -1,13 +1,10 @@
 package statemachine
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/session"
 )
@@ -54,7 +51,7 @@ type DispatchReply struct {
 // state implementations can be operated by the Service and do meaningful work, and communicate state to the frontend
 // via runtime.EventsEmit
 type state interface {
-	OnEnter(ctx context.Context) error
+	OnEnter() error
 	OnExit() error
 	Receive(command Command, payload []byte) (DispatchReply, error)
 	String() string
@@ -62,15 +59,14 @@ type state interface {
 
 // Service represents a state machine and holds references to all the tools to allow states to do useful work
 type Service struct {
-	ctx             context.Context
 	currentState    state
 	sessionService  *session.Service
 	persister       session.Persister
 	runtimeProvider session.RuntimeProvider
 }
 
-// StartMachine sets the global singleton, and gives it a friendly default state
-func StartMachine(runtimeProvider session.RuntimeProvider, sessionService *session.Service, persister session.Persister) *Service {
+// InitMachine sets the global singleton, and gives it a friendly default state
+func InitMachine(runtimeProvider session.RuntimeProvider, sessionService *session.Service, persister session.Persister) *Service {
 	machine = &Service{
 		sessionService:  sessionService,
 		persister:       persister,
@@ -81,16 +77,7 @@ func StartMachine(runtimeProvider session.RuntimeProvider, sessionService *sessi
 }
 
 // Startup is called by Wails.Run to pass in a context to use against Wails.runtime
-func (s *Service) Startup(ctx context.Context) {
-	s.ctx = ctx
-	s.sessionService.Startup(ctx)
-	s.runtimeProvider.Startup(ctx)
-	err := s.persister.Startup(ctx, s.sessionService)
-	if err != nil {
-		logger.Error("Session Service failed to Startup persister: " + err.Error())
-		os.Exit(3)
-	}
-
+func (s *Service) Startup() {
 	machine.changeState(WELCOME, s.sessionService)
 }
 
@@ -109,7 +96,7 @@ func (s *Service) Dispatch(command Command, payload *string) (DispatchReply, err
 
 	if command == QUIT {
 		logger.Debug("QUIT command dispatched from front end")
-		runtime.Quit(s.ctx)
+		s.runtimeProvider.Quit()
 		return DispatchReply{}, nil
 	}
 
@@ -148,7 +135,7 @@ func (s *Service) changeState(newState StateID, context ...interface{}) {
 	}
 
 	if s.currentState != nil {
-		err := s.currentState.OnEnter(s.ctx)
+		err := s.currentState.OnEnter()
 		if err != nil {
 			logger.Error(fmt.Sprintf("OnEnter failed: %v", err))
 		}
@@ -156,9 +143,7 @@ func (s *Service) changeState(newState StateID, context ...interface{}) {
 }
 
 // Welcome greets the user by indicating the frontend should display the Welcome screen
-type Welcome struct {
-	ctx context.Context
-}
+type Welcome struct{}
 
 // NewWelcomeState requires a *session.Service as its one and only payload parameter
 func NewWelcomeState() (*Welcome, error) {
@@ -171,9 +156,8 @@ func (w *Welcome) String() string {
 }
 
 // OnEnter sets the context from the Wails app and signals the frontend to show the Welcome component
-func (w *Welcome) OnEnter(ctx context.Context) error {
-	w.ctx = ctx
-	runtime.EventsEmit(ctx, "state:enter", WELCOME)
+func (w *Welcome) OnEnter() error {
+	machine.runtimeProvider.EventsEmit("state:enter", WELCOME)
 	return nil
 }
 func (w *Welcome) OnExit() error { return nil }
@@ -211,8 +195,8 @@ func (n *NewFile) String() string {
 	return "NewFile"
 }
 
-func (n *NewFile) OnEnter(ctx context.Context) error {
-	runtime.EventsEmit(ctx, "state:enter", NEWFILE)
+func (n *NewFile) OnEnter() error {
+	machine.runtimeProvider.EventsEmit("state:enter", NEWFILE)
 	return nil
 }
 func (n *NewFile) OnExit() error { return nil }
@@ -240,9 +224,7 @@ func (n *NewFile) Receive(command Command, payload []byte) (DispatchReply, error
 }
 
 // Editing indicates that the frontend should show the SplitEditor, and can also pass along a split file if loaded.
-type Editing struct {
-	ctx context.Context
-}
+type Editing struct{}
 
 // NewEditingState requires a *session.SplitFile as its sole payload parameter
 func NewEditingState() (*Editing, error) {
@@ -250,11 +232,10 @@ func NewEditingState() (*Editing, error) {
 }
 
 // OnEnter sets the context from Wails, and signals the frontend to show the SplitEditor with the specified split file (or nil)
-func (e *Editing) OnEnter(ctx context.Context) error {
-	e.ctx = ctx
+func (e *Editing) OnEnter() error {
 	payload := machine.sessionService.GetLoadedSplitFile()
 	machine.sessionService.Pause()
-	runtime.EventsEmit(ctx, "state:enter", EDITING, payload)
+	machine.runtimeProvider.EventsEmit("state:enter", EDITING, payload)
 	return nil
 }
 
@@ -297,9 +278,9 @@ func NewRunningState() (*Running, error) {
 	return &Running{}, nil
 }
 
-func (r Running) OnEnter(ctx context.Context) error {
+func (r Running) OnEnter() error {
 	payload := machine.sessionService.GetSessionStatus()
-	runtime.EventsEmit(ctx, "state:enter", RUNNING, payload)
+	machine.runtimeProvider.EventsEmit("state:enter", RUNNING, payload)
 	logger.Debug(fmt.Sprintf("state:enter event emittted : %v (%T)", payload.SplitFile, payload))
 	return nil
 }

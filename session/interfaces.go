@@ -8,17 +8,19 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// RuntimeProvider wraps Wails.runtime calls to allow for DI for testing.
+// RuntimeProvider wraps Wails.runtimeProvider calls to allow for DI for testing.
 type RuntimeProvider interface {
 	Startup(ctx context.Context)
 	SaveFileDialog(runtime.SaveDialogOptions) (string, error)
 	OpenFileDialog(runtime.OpenDialogOptions) (string, error)
 	MessageDialog(runtime.MessageDialogOptions) (string, error)
+	EventsEmit(string, ...any)
+	Quit()
 }
 
 // Timer is an interface that a stopwatch service must implement to be used by session.Service
 type Timer interface {
-	Startup(ctx context.Context)
+	Startup(context.Context)
 	IsRunning() bool
 	Run()
 	Start()
@@ -38,7 +40,7 @@ type FileProvider interface {
 
 // Persister is an interface that services that save and load splitfiles must implement to be used by session.Service
 type Persister interface {
-	Startup(ctx context.Context, service *Service) error
+	Startup(rp RuntimeProvider, service *Service)
 	Load() (split SplitFilePayload, err error)
 	Save(split SplitFilePayload) error
 }

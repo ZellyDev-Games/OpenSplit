@@ -1,21 +1,19 @@
 package session
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/uuid"
 )
 
 type MockPersister struct {
-	ctx        context.Context
-	SaveCalled int
-	LoadCalled int
+	runtimeProvider RuntimeProvider
+	SaveCalled      int
+	LoadCalled      int
 }
 
-func (m *MockPersister) Startup(ctx context.Context, payload *Service) error {
-	m.ctx = ctx
-	return nil
+func (m *MockPersister) Startup(p RuntimeProvider, service *Service) {
+	m.runtimeProvider = p
 }
 
 func (m *MockPersister) Load() (SplitFilePayload, error) {

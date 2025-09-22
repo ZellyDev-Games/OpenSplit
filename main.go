@@ -39,21 +39,19 @@ func main() {
 	setupLogging(logDir)
 	logger.Info("logging initialized, starting opensplit")
 
-	jsonFilePersister := session.NewJsonFile(&sessionRuntime.WailsRuntime{}, &sessionRuntime.FileRuntime{})
 	timerService, timeUpdatedChannel := session.NewStopwatch(session.NewTicker(time.Millisecond * 20))
-	sessionService := session.NewService(timerService, timeUpdatedChannel, nil)
-	logger.Debug("SessionService initialized")
-
-	logger.Info("services initialized, starting application")
 	runtimeProvider := sessionRuntime.NewWailsRuntime()
-	machine := statemachine.StartMachine(runtimeProvider, sessionService, jsonFilePersister)
+	fileProvider := &sessionRuntime.FileRuntime{}
+
+	jsonFilePersister := session.NewJsonFile(runtimeProvider, fileProvider)
+	sessionService := session.NewService(runtimeProvider, timerService, timeUpdatedChannel, nil)
+	machine := statemachine.InitMachine(runtimeProvider, sessionService, jsonFilePersister)
 
 	hotkeyProvider, keyInfoChannel := hotkeys.SetupHotkeys()
 	var hotkeyService *hotkeys.Service
 	if hotkeyProvider != nil {
 		hotkeyService = hotkeys.NewService(keyInfoChannel, machine, hotkeyProvider)
 	}
-	logger.Debug("HotkeyService initialized")
 
 	err := wails.Run(&options.App{
 		Title:     "OpenSplit",
@@ -73,7 +71,11 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
 			runtime.WindowSetAlwaysOnTop(ctx, true)
-			machine.Startup(ctx)
+			runtimeProvider.Startup(ctx)
+			sessionService.Startup(ctx)
+			jsonFilePersister.Startup(runtimeProvider, sessionService)
+			machine.Startup()
+
 			if hotkeyProvider != nil {
 				hotkeyService.StartDispatcher()
 			}
@@ -84,7 +86,7 @@ func main() {
 			gracefulShutdown(hotkeyService)
 		},
 		OnBeforeClose: func(ctx context.Context) bool {
-			return sessionService.CleanClose(ctx, jsonFilePersister)
+			return sessionService.CleanClose(jsonFilePersister)
 		},
 		Bind: []interface{}{
 			machine,

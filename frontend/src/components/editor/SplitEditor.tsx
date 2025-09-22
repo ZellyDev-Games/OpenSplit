@@ -10,9 +10,9 @@ import useWindowResize from "../../hooks/useWindowResize";
 import SegmentPayload from "../../models/segmentPayload";
 import SplitFilePayload from "../../models/splitFilePayload";
 import StatTime from "../../models/statTime";
-import WindowParams from "../../models/windowParams";
 import { msToParts, partsToMS, TimeParts } from "../splitter/Timer";
 import TimeRow from "./TimeRow";
+import WindowParams from "../../models/windowParams";
 
 type Game = {
     id: string;
@@ -114,11 +114,11 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
     const saveSplitFile = async (e: React.MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
         const segmentPayloads = segments.map((s) => SegmentPayload.createFrom(s));
-        const splitFilePayload = SplitFilePayload.createFrom({
-            id: "",
-            version: 1,
-            runs: [],
-            window_params: new WindowParams(200,200, 200, 200),
+        const newSpiltFilePayload = SplitFilePayload.createFrom({
+            id: splitFilePayload?.id ?? "",
+            version: splitFilePayload?.version ?? 0,
+            runs: splitFilePayload?.runs ?? [],
+            window_params: splitFilePayload?.window_params ?? new WindowParams(390, 540, 100, 100),
             game_name: gameName,
             game_category: gameCategory,
             segments: segmentPayloads,
@@ -126,7 +126,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
             sob: new StatTime(),
         });
 
-        await Dispatch(Command.SUBMIT, JSON.stringify(splitFilePayload));
+        await Dispatch(Command.SUBMIT, JSON.stringify(newSpiltFilePayload));
     };
 
     const handleTimeChange = (idx: number, time: TimeParts, isBest: boolean) => {

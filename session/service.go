@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/logger"
 
 	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // ServicePayload is a snapshot of the session.Service, useful for communicating the state of the service to the frontend
@@ -29,7 +29,6 @@ type ServicePayload struct {
 // current Run / SplitFile, and communicates timer updates to the frontend
 // If there's one struct that's key to understand in OpenSplit, it's this one.
 type Service struct {
-	ctx                 context.Context
 	timer               Timer
 	loadedSplitFile     *SplitFile
 	currentSegment      *Segment
@@ -38,6 +37,7 @@ type Service struct {
 	finished            bool
 	timeUpdatedChannel  chan time.Duration
 	updateCallbacks     []func(context.Context, ServicePayload)
+	runtimeProvider     RuntimeProvider
 }
 
 // NewService creates a new Service from the passed in components.
@@ -45,12 +45,13 @@ type Service struct {
 // Generally in real code splitFile should be nil and will be populated by the
 // statemachine.Service via UpdateSplitFile or LoadSplitFile
 // Timer updates will be sent over the timeUpdatedChannel at approximately 60FPS.
-func NewService(timer Timer, timeUpdatedChannel chan time.Duration, splitFile *SplitFile) *Service {
+func NewService(runtimeProvider RuntimeProvider, timer Timer, timeUpdatedChannel chan time.Duration, splitFile *SplitFile) *Service {
 	service := &Service{
 		timer:               timer,
 		timeUpdatedChannel:  timeUpdatedChannel,
 		loadedSplitFile:     splitFile,
 		currentSegmentIndex: -1,
+		runtimeProvider:     runtimeProvider,
 	}
 	return service
 }
@@ -61,24 +62,23 @@ func (s *Service) AddCallback(cb func(context.Context, ServicePayload)) {
 }
 
 // Startup is designed to be called by Wails.run OnStartup to supply the proper context.Context that allows the
-// session.Service to call Wails runtime functions that do things like emit events.
+// session.Service to call Wails runtimeProvider functions that do things like emit events.
 //
 // It also calls Reset to ensure the run state is fresh, and starts a loop to listen for updates from Timer.
 // These updates are then passed along to the frontend to update the visual timer via "timer:update" events.
 func (s *Service) Startup(ctx context.Context) {
-	s.ctx = ctx
 	s.Reset()
 	s.timer.Startup(ctx)
 	go func() {
 		for {
 			select {
-			case <-s.ctx.Done():
+			case <-ctx.Done():
 				return
 			case updatedTime, ok := <-s.timeUpdatedChannel:
 				if !ok {
 					return
 				} // channel closed => exit
-				s.emitEvent("timer:update", updatedTime.Milliseconds())
+				s.runtimeProvider.EventsEmit("timer:update", updatedTime.Milliseconds())
 			}
 		}
 	}()
@@ -89,10 +89,10 @@ func (s *Service) Startup(ctx context.Context) {
 // Designed to be called by Wails.App.OnShutdown, but can technically be used just fine outside of that.
 // Returns a bool to be compatiable with OnShutdown.  false will allow the app to continue the shutdown process, true
 // interrupts it
-func (s *Service) CleanClose(ctx context.Context, persister Persister) bool {
+func (s *Service) CleanClose(persister Persister) bool {
 	if s.loadedSplitFile != nil && s.loadedSplitFile.dirty {
-		res, _ := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
-			Type:    runtime.QuestionDialog,
+		res, _ := s.runtimeProvider.MessageDialog(wailsRuntime.MessageDialogOptions{
+			Type:    wailsRuntime.QuestionDialog,
 			Title:   "Save Split File",
 			Message: "Would you like to save your updated runs before exiting?",
 		})
@@ -145,7 +145,7 @@ func (s *Service) Split() {
 		s.currentSegmentIndex++
 		s.currentSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
 		logger.Debug("sending session update from run start split")
-		s.emitEvent("session:update", s.getServicePayload())
+		s.runtimeProvider.EventsEmit("session:update", s.getServicePayload())
 
 		logger.Debug(fmt.Sprintf("starting new run (%s - %s - %s) attempt #%d",
 			s.loadedSplitFile.gameName,
@@ -166,7 +166,7 @@ func (s *Service) Split() {
 		s.currentRun.totalTime = s.timer.GetCurrentTime()
 		logger.Debug("split called with last segment in loaded split file, run complete")
 		logger.Debug("sending session update from run complete split")
-		s.emitEvent("session:update", s.getServicePayload())
+		s.runtimeProvider.EventsEmit("session:update", s.getServicePayload())
 		return
 	} else {
 		// run is in progress
@@ -178,7 +178,7 @@ func (s *Service) Split() {
 		s.currentSegmentIndex++
 		s.currentSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
 		logger.Debug("sending session update from mid run split")
-		s.emitEvent("session:update", s.getServicePayload())
+		s.runtimeProvider.EventsEmit("session:update", s.getServicePayload())
 		logger.Debug(fmt.Sprintf("segment index %d (%s) completed at %s, loading segment %d (%s)",
 			s.currentSegmentIndex-1,
 			s.loadedSplitFile.segments[s.currentSegmentIndex-1].name,
@@ -217,7 +217,7 @@ func (s *Service) Reset() {
 	s.currentSegmentIndex = -1
 	s.currentSegment = nil
 	s.currentRun = nil
-	s.emitEvent("timer:update", 0)
+	s.runtimeProvider.EventsEmit("timer:update", 0)
 	if s.loadedSplitFile != nil {
 		logger.Debug(fmt.Sprintf("session reset (%s - %s)", s.loadedSplitFile.gameName, s.loadedSplitFile.gameCategory))
 	} else {
@@ -289,17 +289,4 @@ func (s *Service) getServicePayload() ServicePayload {
 	}
 
 	return payload
-}
-
-// emitEvent wraps the runtime.EventsEmit from Wails so that it no-ops if there is no context.Context provided by
-// Wails.run OnStartup callback, a requirement to use the function.  This allows for no-ops in unit testing.
-func (s *Service) emitEvent(event string, optional interface{}) {
-	if s.ctx != nil {
-		if sp, ok := optional.(ServicePayload); ok && event == "session:update" {
-			for _, cb := range s.updateCallbacks {
-				cb(s.ctx, sp)
-			}
-		}
-		runtime.EventsEmit(s.ctx, event, optional)
-	}
 }

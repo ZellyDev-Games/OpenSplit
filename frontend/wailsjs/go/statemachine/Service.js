@@ -6,6 +6,6 @@ export function Dispatch(arg1, arg2) {
   return window['go']['statemachine']['Service']['Dispatch'](arg1, arg2);
 }
 
-export function Startup(arg1) {
-  return window['go']['statemachine']['Service']['Startup'](arg1);
+export function Startup() {
+  return window['go']['statemachine']['Service']['Startup']();
 }

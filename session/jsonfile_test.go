@@ -33,8 +33,13 @@ func (f *MockFileProvider) UserHomeDir() (string, error) {
 }
 
 type MockRuntimeProvider struct {
-	SaveCalled int
-	LoadCalled int
+	SaveCalled       int
+	LoadCalled       int
+	EventsEmitCalled int
+}
+
+func (m *MockRuntimeProvider) EventsEmit(string, ...any) {
+	m.EventsEmitCalled++
 }
 
 func (m *MockRuntimeProvider) SaveFileDialog(runtime.SaveDialogOptions) (string, error) {

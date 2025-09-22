@@ -14,8 +14,8 @@ func NewWailsRuntime() *WailsRuntime {
 	return &WailsRuntime{}
 }
 
-func (s *WailsRuntime) Startup(ctx context.Context) {
-	s.ctx = ctx
+func (w *WailsRuntime) Startup(ctx context.Context) {
+	w.ctx = ctx
 }
 
 func (w *WailsRuntime) OpenFileDialog(options runtime.OpenDialogOptions) (string, error) {
@@ -36,4 +36,8 @@ func (w *WailsRuntime) WindowSetAlwaysOnTop(onTop bool) {
 
 func (w *WailsRuntime) MessageDialog(options runtime.MessageDialogOptions) (string, error) {
 	return runtime.MessageDialog(w.ctx, options)
+}
+
+func (w *WailsRuntime) EventsEmit(message string, payload ...interface{}) {
+	runtime.EventsEmit(w.ctx, message, payload...)
 }

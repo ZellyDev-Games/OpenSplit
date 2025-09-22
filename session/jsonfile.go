@@ -15,11 +15,10 @@ import (
 
 // JsonFile represents a SplitFile as a JSON file
 //
-// JsonFile provide utilities to work with the OS filesystem using the Wails runtime, and store information like
+// JsonFile provide utilities to work with the OS filesystem using the Wails runtimeProvider, and store information like
 // the current filename and lastUsedDirectory for UX purposes.
 type JsonFile struct {
-	ctx               context.Context
-	runtime           RuntimeProvider
+	runtimeProvider   RuntimeProvider
 	fileProvider      FileProvider
 	fileName          string
 	lastUsedDirectory string
@@ -40,24 +39,22 @@ type UserCancelledSave struct {
 // In production code this will always be runtime.WailsRuntime and runtime.FileRuntime
 func NewJsonFile(runtime RuntimeProvider, fileProvider FileProvider) *JsonFile {
 	return &JsonFile{
-		runtime:      runtime,
-		fileProvider: fileProvider,
+		runtimeProvider: runtime,
+		fileProvider:    fileProvider,
 	}
 }
 
 // Startup is called either directly by Wails.run OnStartup, or by something else in that chain.
 //
 // The specific context.Context must be provided by Wails.run OnStartup or opening save/load file dialogs will panic.
-func (j *JsonFile) Startup(ctx context.Context, service *Service) error {
-	j.ctx = ctx
+func (j *JsonFile) Startup(runtimeProvider RuntimeProvider, service *Service) {
+	j.runtimeProvider = runtimeProvider
 	service.AddCallback(func(ctx context.Context, payload ServicePayload) {
 		if payload.SplitFile == nil {
 			logger.Debug("clearing last used filename on split file close")
 			j.fileName = ""
 		}
 	})
-
-	return nil
 }
 
 // Save takes a SplitFile payload from the frontend, which modifies the passed in spitFile (or nil if a new file) from
@@ -71,7 +68,7 @@ func (j *JsonFile) Save(splitFilePayload SplitFilePayload) error {
 
 	if j.fileName == "" {
 		defaultFileName := j.getDefaultFileName(splitFilePayload)
-		filename, err := j.runtime.SaveFileDialog(runtime.SaveDialogOptions{
+		filename, err := j.runtimeProvider.SaveFileDialog(runtime.SaveDialogOptions{
 			Title:            "Save OpenSplit File",
 			DefaultFilename:  defaultFileName,
 			DefaultDirectory: defaultDirectory,
@@ -117,7 +114,7 @@ func (j *JsonFile) Load() (SplitFilePayload, error) {
 		return SplitFilePayload{}, err
 	}
 
-	filename, err := j.runtime.OpenFileDialog(runtime.OpenDialogOptions{
+	filename, err := j.runtimeProvider.OpenFileDialog(runtime.OpenDialogOptions{
 		Title:            "load OpenSplit File",
 		DefaultDirectory: defaultDirectory,
 		Filters: []runtime.FileFilter{{

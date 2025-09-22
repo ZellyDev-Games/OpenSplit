@@ -58,7 +58,7 @@ func (t *MockTimer) GetCurrentTime() time.Duration {
 func getService() (*Service, *MockTimer, *SplitFile) {
 	t := new(MockTimer)
 	sf := getSplitFile()
-	return NewService(t, nil, sf), t, sf
+	return NewService(&MockRuntimeProvider{}, t, nil, sf), t, sf
 }
 
 func getSplitFile() *SplitFile {
