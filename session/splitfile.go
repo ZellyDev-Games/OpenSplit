@@ -112,6 +112,10 @@ func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {
 		payload.ID = uuid.New().String()
 	}
 
+	// ensure sane window params
+	payload.WindowParams.Height = max(200, payload.WindowParams.Height)
+	payload.WindowParams.Width = max(200, payload.WindowParams.Width)
+
 	sf := SplitFile{
 		id:           uuid.MustParse(payload.ID),
 		gameName:     payload.GameName,

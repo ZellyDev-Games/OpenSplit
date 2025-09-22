@@ -17,8 +17,7 @@ import (
 	"github.com/zellydev-games/opensplit/hotkeys"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/session"
-	"github.com/zellydev-games/opensplit/skin"
-	"github.com/zellydev-games/opensplit/sysopen"
+	"github.com/zellydev-games/opensplit/statemachine"
 	"github.com/zellydev-games/opensplit/timer"
 
 	sessionRuntime "github.com/zellydev-games/opensplit/session/runtime"
@@ -37,17 +36,10 @@ var (
 )
 
 func main() {
-	_, logDir, skinDir := setupPaths()
+	_, logDir, _ := setupPaths()
 
 	setupLogging(logDir)
 	logger.Info("logging initialized, starting opensplit")
-
-	sysopenService := sysopen.NewService(skinDir)
-	logger.Debug("sysopen service initialized")
-
-	skinsFileServer := setupSkinServer(skinDir)
-	skinService := &skin.Service{}
-	logger.Debug("Skin service initialized")
 
 	timerService, timeUpdatedChannel := timer.NewService(timer.NewTicker(time.Millisecond * 20))
 	logger.Debug("Timer service initialized")
@@ -58,14 +50,16 @@ func main() {
 	sessionService := session.NewService(timerService, timeUpdatedChannel, nil, jsonFilePersister)
 	logger.Debug("SessionService initialized")
 
-	hotkeyProvider, keyInfoChannel := hotkeys.SetupHotkeys()
-	var hotkeyService *hotkeys.Service
-	if hotkeyProvider != nil {
-		hotkeyService = hotkeys.NewService(keyInfoChannel, sessionService, hotkeyProvider)
-	}
-	logger.Debug("HotkeyService initialized")
+	//hotkeyProvider, keyInfoChannel := hotkeys.SetupHotkeys()
+	//var hotkeyService *hotkeys.Service
+	//if hotkeyProvider != nil {
+	//	hotkeyService = hotkeys.NewService(keyInfoChannel, sessionService, hotkeyProvider)
+	//}
+	//logger.Debug("HotkeyService initialized")
 
 	logger.Info("services initialized, starting application")
+	machine := statemachine.StartMachine(sessionService)
+
 	err := wails.Run(&options.App{
 		Title:     "OpenSplit",
 		Width:     1024,
@@ -75,7 +69,7 @@ func main() {
 			Assets: assets,
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if len(r.URL.Path) > 7 && r.URL.Path[:7] == "/skins/" {
-					skinsFileServer.ServeHTTP(w, r)
+					//skinsFileServer.ServeHTTP(w, r)
 					return
 				}
 				http.NotFound(w, r)
@@ -84,24 +78,26 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
 			sessionRuntime.WindowSetAlwaysOnTop(ctx, true)
-			sysopenService.Startup(ctx)
-			timerService.Startup(ctx)
-			skinService.Startup(ctx, skinDir)
-			sessionService.Startup(ctx)
-			if hotkeyProvider != nil {
-				hotkeyService.StartDispatcher()
-			}
-			startInterruptListener(ctx, hotkeyService)
+			machine.Startup(ctx)
+			//sysopenService.Startup(ctx)
+			//timerService.Startup(ctx)
+			//skinService.Startup(ctx, skinDir)
+			//sessionService.Startup(ctx)
+			//if hotkeyProvider != nil {
+			//	hotkeyService.StartDispatcher()
+			//}
+			//startInterruptListener(ctx, hotkeyService)
 			logger.Info("application startup complete")
 		},
 		OnShutdown: func(ctx context.Context) {
-			gracefulShutdown(hotkeyService)
+			//gracefulShutdown(hotkeyService)
 		},
 		OnBeforeClose: sessionService.CleanQuit,
 		Bind: []interface{}{
-			sessionService,
-			sysopenService,
-			skinService,
+			//sessionService,
+			//sysopenService,
+			//skinService,
+			machine,
 		},
 	})
 

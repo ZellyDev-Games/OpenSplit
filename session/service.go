@@ -278,16 +278,16 @@ func (s *Service) Reset() {
 // Use SaveSplitFile instead of UpdateSplitFile when you want to save new runs or BuildStats without changes to data
 // (e.g. NOT changing the Game Name, Category, or segments).
 // This function will never bump the split file version.
-func (s *Service) SaveSplitFile(width int, height int, x int, y int) error {
+func (s *Service) SaveSplitFile(windowParams WindowParams) error {
 	if s.loadedSplitFile == nil {
 		logger.Debug("SaveSplitFile called with no split file loaded: NO-OP")
 		return nil
 	}
 
-	s.loadedSplitFile.windowParams.Width = width
-	s.loadedSplitFile.windowParams.Height = height
-	s.loadedSplitFile.windowParams.X = x
-	s.loadedSplitFile.windowParams.Y = y
+	s.loadedSplitFile.windowParams.Width = windowParams.Width
+	s.loadedSplitFile.windowParams.Height = windowParams.Height
+	s.loadedSplitFile.windowParams.X = windowParams.X
+	s.loadedSplitFile.windowParams.Y = windowParams.Y
 	fmt.Println(s.loadedSplitFile.windowParams.Width, s.loadedSplitFile.windowParams.Height)
 	err := s.persister.Save(s.loadedSplitFile.GetPayload())
 	if err != nil {
@@ -306,81 +306,53 @@ func (s *Service) SaveSplitFile(width int, height int, x int, y int) error {
 // UpdateSplitFile uses the configured Persister to save the SplitFile to the configured storage.
 //
 // It creates a SplitFile from the given SplitFilePayload and then sets that SplitFile as the currently loaded one.
-func (s *Service) UpdateSplitFile(payload SplitFilePayload) error {
-	bumpVersion := false
+func (s *Service) UpdateSplitFile(payload SplitFilePayload) (*SplitFile, error) {
 	newSplitFile, err := newFromPayload(payload)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to parse split file payload: %s", err))
-		return err
+		return nil, err
 	}
 
-	// If this is a new splitfile, s.loadedSplitFile will be nil at this point, so just set a flag to update the version
-	// once we've loaded the splitfile from the payload to be sure.
-	if s.loadedSplitFile == nil || SplitFileChanged(payload, s.loadedSplitFile.GetPayload()) {
-		logger.Debug("SplitFile changed, bumping version after loading new split file")
-		bumpVersion = true
-	}
-
-	// This is a new splitfile so lets build WindowParams with sensible defaults
-	if s.loadedSplitFile == nil {
-		newSplitFile.windowParams = NewDefaultWindowParams()
-	}
-
-	if s.loadedSplitFile != nil {
-		// persist runs and attempts
-		newSplitFile.attempts = s.loadedSplitFile.attempts
-		newSplitFile.runs = s.loadedSplitFile.runs
-	}
-	s.loadedSplitFile = newSplitFile
-	if bumpVersion {
-		// Splitfile is now loaded for sure, even if this was a brand-new file, it's now safe to access its members
-		s.loadedSplitFile.version++
-	}
-
-	err = s.persister.Save(s.loadedSplitFile.GetPayload())
+	err = s.persister.Save(newSplitFile.GetPayload())
 	if err != nil {
 		var cancelled = &UserCancelledSave{}
 		if errors.As(err, cancelled) {
 			logger.Debug("user cancelled save")
-			return err
+			return nil, err
 		}
 		logger.Error(fmt.Sprintf("failed to save split file: %s", err))
 		s.loadedSplitFile = nil
-		return err
+		return nil, err
 	}
 
 	logger.Debug("sending session update from update split file")
 	s.emitEvent("session:update", s.getServicePayload())
 	s.dirty = false
-	return err
+	return newSplitFile, err
+}
+
+// SetLoadedSplitFile sets the given SplitFile as the loaded one
+//
+// Splits and other actions only work against the given splitfile
+func (s *Service) SetLoadedSplitFile(sf *SplitFile) {
+	s.loadedSplitFile = sf
 }
 
 // LoadSplitFile retrieves a SplitFilePayload from Persister configured storage.
 //
 // It creates a new SplitFile from the retrieved SplitFilePayload, sets that as the loaded split file, and resets the
 // system.
-func (s *Service) LoadSplitFile() (SplitFilePayload, error) {
+func (s *Service) LoadSplitFile() (*SplitFile, error) {
 	newSplitFilePayload, err := s.persister.Load()
 	if err != nil {
-		s.loadedSplitFile = nil
 		var userCancelled = &UserCancelledSave{}
 		if !errors.As(err, userCancelled) {
 			logger.Error(fmt.Sprintf("failed to load split file: %s", err))
 		}
-		return SplitFilePayload{}, err
+		return nil, err
 	}
 
-	newSplitFile, err := newFromPayload(newSplitFilePayload)
-	if err != nil {
-		logger.Error(fmt.Sprintf("failed to create split file from payload: %s", err))
-		s.loadedSplitFile = nil
-		return SplitFilePayload{}, err
-	}
-
-	s.loadedSplitFile = newSplitFile
-	s.Reset()
-	s.dirty = false
-	return newSplitFilePayload, nil
+	return newFromPayload(newSplitFilePayload)
 }
 
 // GetSessionStatus is a convenience method for the frontend to query the state of the system imperatively

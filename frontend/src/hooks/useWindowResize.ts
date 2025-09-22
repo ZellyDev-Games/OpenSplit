@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useRef } from "react";
-
-import { session } from "../../wailsjs/go/models";
 import { EventsOn, WindowGetPosition, WindowGetSize, WindowSetPosition, WindowSetSize } from "../../wailsjs/runtime";
-import ServicePayload = session.ServicePayload;
-import SplitFilePayload = session.SplitFilePayload;
+import SplitFilePayload from "../models/splitFilePayload";
+import SessionPayload from "../models/sessionPayload";
 
 export default function useWindowResize(
     pageKey: string,
@@ -61,7 +59,7 @@ export default function useWindowResize(
             window.addEventListener("resize", handleResize);
         })();
 
-        const unsubscribe = EventsOn("session:update", (s: ServicePayload) => {
+        const unsubscribe = EventsOn("session:update", (s: SessionPayload) => {
             setLoadedSplitFile(s.split_file ?? null);
         });
 
