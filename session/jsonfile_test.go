@@ -21,7 +21,6 @@ func (f *MockFileProvider) WriteFile(filename string, data []byte, perm os.FileM
 func (f *MockFileProvider) ReadFile(filename string) ([]byte, error) {
 	return []byte(`{"game_name":"Final Fight (SNES)","game_category":"Any%","segments":[{"id":"bb846ce5-e710-4ed7-a648-d09d7de8bc73","name":"Streets","best_time":"0:01:01.00","average_time":"0:01:02.03"},{"id":"d6450ae3-6dfe-40ee-bc51-f4ebfd17a960","name":"Subway 2","best_time":"1:01:03.04","average_time":"1:02:03.04"},{"id":"bb866bc5-b452-4556-bd8e-3c74b965573e","name":"Fin","best_time":"2:00:04.05","average_time":"2:01:05.00"}],"attempts":5}`),
 		nil
-
 }
 
 func (f *MockFileProvider) MkdirAll(path string, perm os.FileMode) error {
@@ -38,14 +37,21 @@ type MockRuntimeProvider struct {
 	LoadCalled int
 }
 
-func (m *MockRuntimeProvider) SaveFileDialog(context.Context, runtime.SaveDialogOptions) (string, error) {
+func (m *MockRuntimeProvider) SaveFileDialog(runtime.SaveDialogOptions) (string, error) {
 	m.SaveCalled++
 	return "testfile", nil
 }
 
-func (m *MockRuntimeProvider) OpenFileDialog(context.Context, runtime.OpenDialogOptions) (string, error) {
+func (m *MockRuntimeProvider) OpenFileDialog(runtime.OpenDialogOptions) (string, error) {
 	m.LoadCalled++
 	return "testfile", nil
+}
+
+func (m *MockRuntimeProvider) Startup(context.Context) {
+}
+
+func (m *MockRuntimeProvider) MessageDialog(options runtime.MessageDialogOptions) (string, error) {
+	return "yes", nil
 }
 
 func TestSave(t *testing.T) {

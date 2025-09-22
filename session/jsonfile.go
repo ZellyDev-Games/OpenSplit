@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"path"
 	"path/filepath"
 
@@ -13,20 +12,6 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
-
-// RuntimeProvider wraps Wails.runtime calls to allow for DI for testing.
-type RuntimeProvider interface {
-	SaveFileDialog(context.Context, runtime.SaveDialogOptions) (string, error)
-	OpenFileDialog(context.Context, runtime.OpenDialogOptions) (string, error)
-}
-
-// FileProvider wraps os hooks and file operations to allow DI for testing.
-type FileProvider interface {
-	WriteFile(string, []byte, os.FileMode) error
-	ReadFile(string) ([]byte, error)
-	MkdirAll(string, os.FileMode) error
-	UserHomeDir() (string, error)
-}
 
 // JsonFile represents a SplitFile as a JSON file
 //
@@ -86,7 +71,7 @@ func (j *JsonFile) Save(splitFilePayload SplitFilePayload) error {
 
 	if j.fileName == "" {
 		defaultFileName := j.getDefaultFileName(splitFilePayload)
-		filename, err := j.runtime.SaveFileDialog(j.ctx, runtime.SaveDialogOptions{
+		filename, err := j.runtime.SaveFileDialog(runtime.SaveDialogOptions{
 			Title:            "Save OpenSplit File",
 			DefaultFilename:  defaultFileName,
 			DefaultDirectory: defaultDirectory,
@@ -132,7 +117,7 @@ func (j *JsonFile) Load() (SplitFilePayload, error) {
 		return SplitFilePayload{}, err
 	}
 
-	filename, err := j.runtime.OpenFileDialog(j.ctx, runtime.OpenDialogOptions{
+	filename, err := j.runtime.OpenFileDialog(runtime.OpenDialogOptions{
 		Title:            "load OpenSplit File",
 		DefaultDirectory: defaultDirectory,
 		Filters: []runtime.FileFilter{{

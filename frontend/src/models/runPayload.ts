@@ -1,5 +1,5 @@
-import StatTime from "./statTime";
 import SplitPayload from "./splitPayload";
+import StatTime from "./statTime";
 
 export default class RunPayload {
     id: string = "";

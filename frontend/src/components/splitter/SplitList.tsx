@@ -1,9 +1,9 @@
 import { JSX, useEffect, useState } from "react";
 
 import { EventsOn } from "../../../wailsjs/runtime";
-import { displayFormattedTimeParts, formatDuration, msToParts, stringToParts } from "./Timer";
-import SessionPayload from "../../models/sessionPayload";
 import SegmentPayload from "../../models/segmentPayload";
+import SessionPayload from "../../models/sessionPayload";
+import { displayFormattedTimeParts, formatDuration, msToParts, stringToParts } from "./Timer";
 
 export type CompareAgainst = "best" | "average";
 
@@ -14,9 +14,9 @@ type Completion = {
 
 type SplitListParameters = {
     sessionPayload: SessionPayload;
-}
+};
 
-export default function SplitList({sessionPayload} : SplitListParameters) {
+export default function SplitList({ sessionPayload }: SplitListParameters) {
     const [completions, setCompletions] = useState<Completion[]>([]);
     const [compareAgainst] = useState<CompareAgainst>("average");
     const [time, setTime] = useState(0);
@@ -96,12 +96,21 @@ export default function SplitList({sessionPayload} : SplitListParameters) {
         }
     };
 
-    const segmentRows = sessionPayload.split_file && sessionPayload.split_file.segments.map((segment, index) => (
-        <tr key={segment.id ?? index} className={sessionPayload.current_segment !== null && sessionPayload.current_segment_index === index ? "selected" : ""}>
-            <td className="splitName">{segment.name}</td>
-            <td className="splitComparison">{getSegmentDisplayTime(index, segment)}</td>
-        </tr>
-    ));
+    const segmentRows =
+        sessionPayload.split_file &&
+        sessionPayload.split_file.segments.map((segment, index) => (
+            <tr
+                key={segment.id ?? index}
+                className={
+                    sessionPayload.current_segment !== null && sessionPayload.current_segment_index === index
+                        ? "selected"
+                        : ""
+                }
+            >
+                <td className="splitName">{segment.name}</td>
+                <td className="splitComparison">{getSegmentDisplayTime(index, segment)}</td>
+            </tr>
+        ));
 
     const rows = Array.isArray(segmentRows) ? segmentRows : [];
     const displayRows = rows.slice(0, -1);

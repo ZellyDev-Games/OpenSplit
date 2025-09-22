@@ -7,7 +7,7 @@ export default class SegmentPayload {
     average: StatTime = new StatTime();
     pb: StatTime = new StatTime();
 
-    static createFrom = (source : SegmentPayload): SegmentPayload => {
-        return {...source}
-    }
+    static createFrom = (source: SegmentPayload): SegmentPayload => {
+        return { ...source };
+    };
 }

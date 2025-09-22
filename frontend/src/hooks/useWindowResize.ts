@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef } from "react";
+
 import { EventsOn, WindowGetPosition, WindowGetSize, WindowSetPosition, WindowSetSize } from "../../wailsjs/runtime";
-import SplitFilePayload from "../models/splitFilePayload";
 import SessionPayload from "../models/sessionPayload";
+import SplitFilePayload from "../models/splitFilePayload";
 
 export default function useWindowResize(
     pageKey: string,

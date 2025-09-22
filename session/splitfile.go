@@ -1,23 +1,15 @@
 package session
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/logger"
-	"github.com/zellydev-games/opensplit/utils"
 )
-
-// Persister is an interface that services that save and load splitfiles must implement to be used by session.Service
-type Persister interface {
-	Startup(ctx context.Context, service *Service) error
-	Load() (split SplitFilePayload, err error)
-	Save(split SplitFilePayload) error
-}
 
 // WindowParams stores the last size and position the user set splitter window while this file was loaded
 type WindowParams struct {
@@ -50,6 +42,7 @@ type SplitFilePayload struct {
 	Runs         []RunPayload     `json:"runs"`
 	SOB          StatTime         `json:"SOB"`
 	WindowParams WindowParams     `json:"window_params"`
+	Dirty        bool             `json:"dirty"`
 }
 
 // SplitFile represents the data and history of a game/category combo.
@@ -63,6 +56,7 @@ type SplitFile struct {
 	runs         []Run
 	sob          time.Duration
 	windowParams WindowParams
+	dirty        bool
 }
 
 // NewAttempt provides a public function to increment the attempts count
@@ -98,9 +92,10 @@ func (s *SplitFile) GetPayload() SplitFilePayload {
 		Version:      s.version,
 		SOB: StatTime{
 			Raw:       s.sob.Milliseconds(),
-			Formatted: utils.FormatTimeToString(s.sob),
+			Formatted: FormatTimeToString(s.sob),
 		},
 		WindowParams: s.windowParams,
+		Dirty:        s.dirty,
 	}
 }
 
@@ -133,11 +128,34 @@ func (s *SplitFile) Save(persister Persister, windowParams WindowParams) error {
 // UpdateSplitFile uses the configured Persister to save the SplitFile to the configured storage.
 //
 // It creates a SplitFile from the given SplitFilePayload, then returns a pointer to it.
-func UpdateSplitFile(persister Persister, payload SplitFilePayload) (*SplitFile, error) {
+func UpdateSplitFile(runtimeProvider RuntimeProvider, persister Persister, existingSplitFile *SplitFilePayload, payload SplitFilePayload) (*SplitFile, error) {
 	newSplitFile, err := newFromPayload(payload)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to parse split file payload: %s", err))
 		return nil, err
+	}
+
+	if existingSplitFile == nil {
+		// this is a brand new splitfile
+		newSplitFile.version = 1
+	} else {
+		// Check if the segments or the category changed.  If so bump the version.
+		if SplitFileChanged(*existingSplitFile, payload) {
+			if runtimeProvider != nil {
+				res, err := runtimeProvider.MessageDialog(runtime.MessageDialogOptions{
+					Type:    runtime.QuestionDialog,
+					Title:   "Gold Reset",
+					Message: "Changing segments will reset golds and averages for this split file. Proceed?",
+				})
+				if err != nil {
+					return nil, err
+				}
+				if res != "yes" {
+					return nil, UserCancelledSave{err}
+				}
+			}
+			newSplitFile.version = existingSplitFile.Version + 1
+		}
 	}
 
 	err = persister.Save(newSplitFile.GetPayload())

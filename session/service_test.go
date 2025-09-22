@@ -9,6 +9,7 @@ import (
 )
 
 type MockTimer struct {
+	StartupCalled                 bool
 	Running                       bool
 	IsRunningCalled               int
 	RunCalled                     int
@@ -22,6 +23,10 @@ type MockTimer struct {
 func (t *MockTimer) IsRunning() bool {
 	t.IsRunningCalled++
 	return t.Running
+}
+
+func (t *MockTimer) Startup(ctx context.Context) {
+	t.StartupCalled = true
 }
 
 func (t *MockTimer) Run() {
@@ -50,45 +55,10 @@ func (t *MockTimer) GetCurrentTime() time.Duration {
 	return time.Hour*1 + time.Minute*2 + time.Second*3 + time.Millisecond*40
 }
 
-type MockPersister struct {
-	ctx        context.Context
-	SaveCalled int
-	LoadCalled int
-}
-
-func (m *MockPersister) Startup(ctx context.Context, payload *Service) error {
-	m.ctx = ctx
-	return nil
-}
-
-func (m *MockPersister) Load() (SplitFilePayload, error) {
-	m.LoadCalled++
-	return SplitFilePayload{
-		ID:           uuid.New().String(),
-		GameName:     "Test Loaded Game",
-		GameCategory: "Test Loaded Category",
-		Segments: []SegmentPayload{{
-			ID:   "037ba872-2fdd-4531-aaee-101d777408b4",
-			Name: "Test Loaded Segment",
-		}},
-		Attempts: 50,
-		Runs: []RunPayload{{
-			ID:               "037ba872-2fdd-4531-aaee-101d777408b4",
-			SplitFileVersion: 1,
-		}},
-	}, nil
-}
-
-func (m *MockPersister) Save(splitFilePayload SplitFilePayload) error {
-	m.SaveCalled++
-	return nil
-}
-
-func getService() (*Service, *MockTimer, *MockPersister, *SplitFile) {
+func getService() (*Service, *MockTimer, *SplitFile) {
 	t := new(MockTimer)
-	p := new(MockPersister)
 	sf := getSplitFile()
-	return NewService(t, nil, sf, p), t, p, sf
+	return NewService(t, nil, sf), t, sf
 }
 
 func getSplitFile() *SplitFile {
@@ -110,7 +80,7 @@ func getSplitFile() *SplitFile {
 }
 
 func TestServiceSplitWithNoFileLoaded(t *testing.T) {
-	s, _, _, _ := getService()
+	s, _, _ := getService()
 	s.loadedSplitFile = nil
 	s.Split()
 	if s.currentSegmentIndex != -1 {
@@ -119,7 +89,7 @@ func TestServiceSplitWithNoFileLoaded(t *testing.T) {
 }
 
 func TestServiceSplit(t *testing.T) {
-	s, mt, _, sf := getService()
+	s, mt, sf := getService()
 
 	if s.currentRun != nil || len(sf.runs) != 0 {
 		t.Error("new Service wasn't started clean")
@@ -253,7 +223,7 @@ func TestServiceSplit(t *testing.T) {
 }
 
 func TestPause(t *testing.T) {
-	s, mt, _, _ := getService()
+	s, mt, _ := getService()
 	mt.Running = true
 	s.Pause()
 	if mt.PauseCalled != 1 {
@@ -268,7 +238,7 @@ func TestPause(t *testing.T) {
 }
 
 func TestReset(t *testing.T) {
-	s, mt, _, _ := getService()
+	s, mt, _ := getService()
 	s.finished = true
 	s.Reset()
 	if mt.PauseCalled != 1 {
@@ -292,133 +262,8 @@ func TestReset(t *testing.T) {
 	}
 }
 
-func TestNewSplitFile(t *testing.T) {
-	s, _, _, _ := getService()
-	payload := SplitFilePayload{
-		ID:           uuid.New().String(),
-		Version:      0,
-		GameName:     "Test New Game",
-		GameCategory: "Test New Category",
-		Segments:     nil,
-		Attempts:     0,
-		Runs:         nil,
-	}
-
-	s.loadedSplitFile = nil
-	_ = s.UpdateSplitFile(payload)
-	if s.loadedSplitFile.id == uuid.Nil {
-		t.Error("session UpdateSplitFile did not create a new id with a new splitfile")
-	}
-
-	if s.loadedSplitFile.version != 1 {
-		t.Error("session UpdateSplitFile did not bump version on new file")
-	}
-
-	if len(s.loadedSplitFile.runs) > 0 {
-		t.Error("session UpdateSplitFile erroneously added runs to a new file")
-	}
-}
-
-func TestUpdateSplitFile(t *testing.T) {
-	s, _, p, sf := getService()
-	payload := sf.GetPayload()
-	payload.GameName = "Updated Game"
-	payload.Segments[0].Name = "UPDATED SEGMENT 1"
-	_ = s.UpdateSplitFile(payload)
-
-	if s.loadedSplitFile.id != sf.id ||
-		s.loadedSplitFile.version != sf.version+1 ||
-		s.loadedSplitFile.gameName != "Updated Game" ||
-		s.loadedSplitFile.gameCategory != sf.gameCategory ||
-		s.loadedSplitFile.segments[0].id != sf.segments[0].id ||
-		s.loadedSplitFile.segments[1].id != sf.segments[1].id ||
-		s.loadedSplitFile.segments[0].name != "UPDATED SEGMENT 1" ||
-		s.loadedSplitFile.segments[1].name != sf.segments[1].name {
-		t.Errorf("UpdateSplitFile want %v\ngot\n%v", s.loadedSplitFile, sf)
-	}
-
-	if p.SaveCalled != 1 {
-		t.Error("session UpdateSplitFile did not save splitfile")
-	}
-
-	if s.loadedSplitFile.version != 2 {
-		t.Error("session UpdateSplitFile did not bump new splitfile version on change")
-	}
-
-	// Test unchanged
-	newPayload := s.loadedSplitFile.GetPayload()
-	_ = s.UpdateSplitFile(newPayload)
-	if newPayload.Version != s.loadedSplitFile.version {
-		t.Error("session UpdateSplitFile bumped version on unchanged file")
-	}
-
-	// Test changed
-	newPayload.GameName = "new game"
-	_ = s.UpdateSplitFile(newPayload)
-	if p.SaveCalled != 3 {
-		t.Error("session UpdateSplitFile did not save splitfile on change")
-	}
-
-	if s.loadedSplitFile.version != 2 {
-		t.Error("session UpdateSplitFile did not bump splitfile version on change")
-	}
-}
-
-func TestLoadSplitFile(t *testing.T) {
-	s, mt, p, _ := getService()
-	_, _ = s.LoadSplitFile()
-
-	if p.LoadCalled != 1 {
-		t.Error("session LoadSplitFile did not call persister Load")
-	}
-
-	if s.loadedSplitFile.gameName != "Test Loaded Game" {
-		t.Errorf("load split file game name want: %s, got: %s", "Test Loaded Game", s.loadedSplitFile.gameName)
-	}
-
-	if s.loadedSplitFile.gameCategory != "Test Loaded Category" {
-		t.Errorf("load split file game category want: %s, got: %s", "Test Loaded Category", s.loadedSplitFile.gameCategory)
-	}
-
-	if s.loadedSplitFile.segments[0].id != uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4") {
-		t.Errorf("load split file segment id want %s got %s", uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"), s.loadedSplitFile.segments[0].id)
-	}
-
-	if s.loadedSplitFile.segments[0].name != "Test Loaded Segment" {
-		t.Errorf("load split file segment name want: %s, got: %s", "Test Loaded Segment", s.loadedSplitFile.segments[0].name)
-	}
-
-	if s.loadedSplitFile.attempts != 50 {
-		t.Errorf("load split file attempts want: %d, got: %d", 50, s.loadedSplitFile.attempts)
-	}
-
-	if mt.PauseCalled != 1 {
-		t.Error("load split file did not pause timer")
-	}
-
-	if mt.ResetCalled != 1 {
-		t.Error("load split file did not reset timer")
-	}
-
-	if s.finished != false {
-		t.Error("load split file did not unflag finished")
-	}
-
-	if s.currentSegmentIndex != -1 {
-		t.Error("load split file did not reset segment index")
-	}
-
-	if s.currentSegment != nil {
-		t.Error("load split file did not reset current segment")
-	}
-
-	if s.loadedSplitFile.runs[0].id != uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4") {
-		t.Error("Load split file did not load runs")
-	}
-}
-
 func TestGetSessionStatus(t *testing.T) {
-	s, _, _, _ := getService()
+	s, _, _ := getService()
 	payload := s.getServicePayload()
 	statusPayload := s.GetSessionStatus()
 
@@ -428,11 +273,25 @@ func TestGetSessionStatus(t *testing.T) {
 }
 
 func TestGetLoadedSplitFile(t *testing.T) {
-	s, _, _, _ := getService()
+	s, _, _ := getService()
 	payload := s.loadedSplitFile.GetPayload()
 	loadedPayload := s.GetLoadedSplitFile()
 
 	if loadedPayload == nil || payload.GameName != loadedPayload.GameName {
 		t.Error("GetLoadedSplitFile did not return expected payload")
+	}
+}
+
+func TestSetLoadedSplitFile(t *testing.T) {
+	s, mt, _ := getService()
+
+	s.SetLoadedSplitFile(nil)
+
+	if mt.PauseCalled != 1 {
+		t.Error("load split file did not pause timer")
+	}
+
+	if mt.ResetCalled != 1 {
+		t.Error("load split file did not reset timer")
 	}
 }

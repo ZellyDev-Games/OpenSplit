@@ -12,13 +12,6 @@ import (
 	"github.com/zellydev-games/opensplit/session"
 )
 
-// Persister is an interface that services that save and load splitfiles must implement to be used by session.Service
-type Persister interface {
-	Startup(ctx context.Context, service *session.Service) error
-	Load() (split session.SplitFilePayload, err error)
-	Save(split session.SplitFilePayload) error
-}
-
 // machine is a private singleton instance of a *Service that represents a state machine.
 var machine *Service
 
@@ -69,17 +62,19 @@ type state interface {
 
 // Service represents a state machine and holds references to all the tools to allow states to do useful work
 type Service struct {
-	ctx            context.Context
-	currentState   state
-	sessionService *session.Service
-	persister      Persister
+	ctx             context.Context
+	currentState    state
+	sessionService  *session.Service
+	persister       session.Persister
+	runtimeProvider session.RuntimeProvider
 }
 
 // StartMachine sets the global singleton, and gives it a friendly default state
-func StartMachine(sessionService *session.Service, persister Persister) *Service {
+func StartMachine(runtimeProvider session.RuntimeProvider, sessionService *session.Service, persister session.Persister) *Service {
 	machine = &Service{
-		sessionService: sessionService,
-		persister:      persister,
+		sessionService:  sessionService,
+		persister:       persister,
+		runtimeProvider: runtimeProvider,
 	}
 
 	return machine
@@ -89,6 +84,7 @@ func StartMachine(sessionService *session.Service, persister Persister) *Service
 func (s *Service) Startup(ctx context.Context) {
 	s.ctx = ctx
 	s.sessionService.Startup(ctx)
+	s.runtimeProvider.Startup(ctx)
 	err := s.persister.Startup(ctx, s.sessionService)
 	if err != nil {
 		logger.Error("Session Service failed to Startup persister: " + err.Error())
@@ -136,16 +132,16 @@ func (s *Service) changeState(newState StateID, context ...interface{}) {
 
 	switch newState {
 	case WELCOME:
-		logger.Debug(fmt.Sprintf("entering state Welcome"))
+		logger.Debug("entering state Welcome")
 		s.currentState, _ = NewWelcomeState()
 	case NEWFILE:
-		logger.Debug(fmt.Sprintf("entering state NewFile"))
+		logger.Debug("entering state NewFile")
 		s.currentState, _ = NewNewFileState()
 	case EDITING:
-		logger.Debug(fmt.Sprintf("entering state Editing"))
+		logger.Debug("entering state Editing")
 		s.currentState, _ = NewEditingState()
 	case RUNNING:
-		logger.Debug(fmt.Sprintf("entering state Running"))
+		logger.Debug("entering state Running")
 		s.currentState, _ = NewRunningState()
 	default:
 		panic("unhandled default case")
@@ -202,7 +198,7 @@ func (w *Welcome) Receive(command Command, payload []byte) (DispatchReply, error
 	}
 }
 
-// NewFile indicates that the frontend should show the SplitEditor, can cannot send along a split file.
+// NewFile indicates that the frontend should show the SplitEditor, and cannot send along a split file.
 //
 // CANCEL from NewFile should return to the Welcome state
 type NewFile struct{}
@@ -230,7 +226,7 @@ func (n *NewFile) Receive(command Command, payload []byte) (DispatchReply, error
 		if err != nil {
 			logger.Error(fmt.Sprintf("failed to unmarshal into split file from NewFile state: %s", err))
 		} else {
-			splitFile, err := session.UpdateSplitFile(machine.persister, splitFilePayload)
+			splitFile, err := session.UpdateSplitFile(nil, machine.persister, nil, splitFilePayload)
 			machine.sessionService.SetLoadedSplitFile(splitFile)
 			if err != nil {
 				logger.Error(fmt.Sprintf("failed to update split file from NewFile state: %s", err))
@@ -256,11 +252,9 @@ func NewEditingState() (*Editing, error) {
 // OnEnter sets the context from Wails, and signals the frontend to show the SplitEditor with the specified split file (or nil)
 func (e *Editing) OnEnter(ctx context.Context) error {
 	e.ctx = ctx
-	var payload *session.SplitFilePayload
-	payload = machine.sessionService.GetLoadedSplitFile()
+	payload := machine.sessionService.GetLoadedSplitFile()
 	machine.sessionService.Pause()
 	runtime.EventsEmit(ctx, "state:enter", EDITING, payload)
-	logger.Debug(fmt.Sprintf("event emittted : %v (%T)", payload, payload))
 	return nil
 }
 
@@ -275,7 +269,7 @@ func (e *Editing) Receive(command Command, payload []byte) (DispatchReply, error
 		if err != nil {
 			logger.Error(fmt.Sprintf("failed to unmarshal into split file from Editing state: %s", err))
 		}
-		splitFile, err := session.UpdateSplitFile(machine.persister, splitFilePayload)
+		splitFile, err := session.UpdateSplitFile(machine.runtimeProvider, machine.persister, machine.sessionService.GetLoadedSplitFile(), splitFilePayload)
 		machine.sessionService.SetLoadedSplitFile(splitFile)
 		if err != nil {
 			logger.Error(fmt.Sprintf("failed to update split file from Editing state: %s", err))

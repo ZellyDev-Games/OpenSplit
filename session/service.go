@@ -3,39 +3,13 @@ package session
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/zellydev-games/opensplit/logger"
-	"github.com/zellydev-games/opensplit/utils"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
-
-// GetConfig is designed to expose configuration options from the environment or other sources (config files) to the
-// frontend.  Go services can just read the environment, but the frontend has no reliable way to do so, so this func
-// is bound to the app in main which generates a typescript function for the frontend.
-func (s *Service) GetConfig() *Config {
-	speedRunBase := os.Getenv("SPEEDRUN_API_BASE")
-	if speedRunBase == "" {
-		speedRunBase = "https://www.speedrun.com/api/v1"
-	}
-	return &Config{
-		SpeedRunAPIBase: speedRunBase,
-	}
-}
-
-// Timer is an interface that a stopwatch service must implement to be used by session.Service
-type Timer interface {
-	IsRunning() bool
-	Run()
-	Start()
-	Pause()
-	Reset()
-	GetCurrentTimeFormatted() string
-	GetCurrentTime() time.Duration
-}
 
 // ServicePayload is a snapshot of the session.Service, useful for communicating the state of the service to the frontend
 // without exposing internal data.
@@ -63,13 +37,13 @@ type Service struct {
 	currentRun          *Run
 	finished            bool
 	timeUpdatedChannel  chan time.Duration
-	dirty               bool
 	updateCallbacks     []func(context.Context, ServicePayload)
 }
 
 // NewService creates a new Service from the passed in components.
 //
-// Generally in real code splitFile should be nil and will be populated from Service.UpdateSplitFile or Service.LoadSplitFile
+// Generally in real code splitFile should be nil and will be populated by the
+// statemachine.Service via UpdateSplitFile or LoadSplitFile
 // Timer updates will be sent over the timeUpdatedChannel at approximately 60FPS.
 func NewService(timer Timer, timeUpdatedChannel chan time.Duration, splitFile *SplitFile) *Service {
 	service := &Service{
@@ -78,7 +52,6 @@ func NewService(timer Timer, timeUpdatedChannel chan time.Duration, splitFile *S
 		loadedSplitFile:     splitFile,
 		currentSegmentIndex: -1,
 	}
-
 	return service
 }
 
@@ -88,14 +61,14 @@ func (s *Service) AddCallback(cb func(context.Context, ServicePayload)) {
 }
 
 // Startup is designed to be called by Wails.run OnStartup to supply the proper context.Context that allows the
-// session.Service to call Wails runtime functions that do things like open file dialogs.
+// session.Service to call Wails runtime functions that do things like emit events.
 //
-// It also provides the context to the configured Persister so that it may also open file dialogs, calls Reset to ensure
-// the state is fresh, and starts a loop to listen for updates from Timer.  These updates are then passed along to the
-// frontend to update the visual timer.
+// It also calls Reset to ensure the run state is fresh, and starts a loop to listen for updates from Timer.
+// These updates are then passed along to the frontend to update the visual timer via "timer:update" events.
 func (s *Service) Startup(ctx context.Context) {
 	s.ctx = ctx
 	s.Reset()
+	s.timer.Startup(ctx)
 	go func() {
 		for {
 			select {
@@ -111,8 +84,13 @@ func (s *Service) Startup(ctx context.Context) {
 	}()
 }
 
-func (s *Service) CleanQuit(ctx context.Context, persister Persister) bool {
-	if s.dirty {
+// CleanClose gives the user an opportunity to save any modified splitfiles or splitfiles with unsaved runs.
+//
+// Designed to be called by Wails.App.OnShutdown, but can technically be used just fine outside of that.
+// Returns a bool to be compatiable with OnShutdown.  false will allow the app to continue the shutdown process, true
+// interrupts it
+func (s *Service) CleanClose(ctx context.Context, persister Persister) bool {
+	if s.loadedSplitFile != nil && s.loadedSplitFile.dirty {
 		res, _ := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
 			Type:    runtime.QuestionDialog,
 			Title:   "Save Split File",
@@ -155,7 +133,7 @@ func (s *Service) Split() {
 
 	if s.currentSegmentIndex == -1 {
 		// run is starting
-		s.dirty = true
+		s.loadedSplitFile.dirty = false
 		s.timer.Reset()
 		s.timer.Start()
 		s.loadedSplitFile.NewAttempt()
@@ -214,13 +192,9 @@ func (s *Service) Split() {
 func (s *Service) Pause() {
 	if s.timer.IsRunning() {
 		s.timer.Pause()
-		logger.Debug("sending session update from pause timer")
-		s.emitEvent("session:update", s.getServicePayload())
 		logger.Debug(fmt.Sprintf("pausing timer at %s", s.timer.GetCurrentTimeFormatted()))
 	} else {
 		s.timer.Start()
-		logger.Debug("sending session update from start timer")
-		s.emitEvent("session:update", s.getServicePayload())
 		logger.Debug(fmt.Sprintf("restarting timer at %s", s.timer.GetCurrentTimeFormatted()))
 	}
 }
@@ -244,8 +218,6 @@ func (s *Service) Reset() {
 	s.currentSegment = nil
 	s.currentRun = nil
 	s.emitEvent("timer:update", 0)
-	logger.Debug("sending session update from reset session")
-	s.emitEvent("session:update", s.getServicePayload())
 	if s.loadedSplitFile != nil {
 		logger.Debug(fmt.Sprintf("session reset (%s - %s)", s.loadedSplitFile.gameName, s.loadedSplitFile.gameCategory))
 	} else {
@@ -258,6 +230,7 @@ func (s *Service) Reset() {
 // Splits and other actions only work against the given splitfile
 func (s *Service) SetLoadedSplitFile(sf *SplitFile) {
 	s.loadedSplitFile = sf
+	s.Reset()
 }
 
 // GetSessionStatus is a convenience method for the frontend to query the state of the system imperatively
@@ -309,7 +282,7 @@ func (s *Service) getServicePayload() ServicePayload {
 		Finished:            s.finished,
 		CurrentTime: StatTime{
 			Raw:       s.timer.GetCurrentTime().Milliseconds(),
-			Formatted: utils.FormatTimeToString(s.timer.GetCurrentTime()),
+			Formatted: FormatTimeToString(s.timer.GetCurrentTime()),
 		},
 		Paused:     !s.timer.IsRunning(),
 		CurrentRun: currentRunPayload,

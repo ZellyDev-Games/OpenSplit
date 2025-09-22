@@ -1,18 +1,18 @@
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useEffect, useRef, useState } from "react";
+
+import { Dispatch } from "../../../wailsjs/go/statemachine/Service";
 import { WindowCenter, WindowSetSize } from "../../../wailsjs/runtime";
+import { Command } from "../../App";
 import { useClickOutside } from "../../hooks/useClickOutside";
 import useWindowResize from "../../hooks/useWindowResize";
+import SegmentPayload from "../../models/segmentPayload";
+import SplitFilePayload from "../../models/splitFilePayload";
+import StatTime from "../../models/statTime";
+import WindowParams from "../../models/windowParams";
 import { msToParts, partsToMS, TimeParts } from "../splitter/Timer";
 import TimeRow from "./TimeRow";
-import SplitFilePayload from "../../models/splitFilePayload";
-import SegmentPayload from "../../models/segmentPayload";
-import StatTime from "../../models/statTime";
-import {Dispatch} from "../../../wailsjs/go/statemachine/Service";
-import {Command} from "../../App";
-import WindowParams from "../../models/windowParams";
-
 
 type Game = {
     id: string;
@@ -23,10 +23,10 @@ type Game = {
 
 type SplitEditorParams = {
     splitFilePayload: SplitFilePayload | null;
-    speedRunAPIBase: string
-}
+    speedRunAPIBase: string;
+};
 
-export default function SplitEditor({splitFilePayload, speedRunAPIBase} : SplitEditorParams) {
+export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: SplitEditorParams) {
     // Set default window size and persist updates
     useWindowResize("edit");
 
@@ -37,7 +37,7 @@ export default function SplitEditor({splitFilePayload, speedRunAPIBase} : SplitE
     });
 
     // Segment stats
-    const [splitFileLoaded, setSplitFileLoaded] = useState<boolean>(false);
+    const [splitFileLoaded] = useState<boolean>(false);
     const [gameName, setGameName] = React.useState<string>("");
     const [gameCategory, setGameCategory] = React.useState<string>("");
     const [segments, setSegments] = React.useState<SegmentPayload[]>([]);
@@ -87,10 +87,7 @@ export default function SplitEditor({splitFilePayload, speedRunAPIBase} : SplitE
     };
 
     const addSegment = () => {
-        setSegments((prev) => [
-            ...prev,
-            new SegmentPayload()
-        ]);
+        setSegments((prev) => [...prev, new SegmentPayload()]);
     };
 
     const updateSegmentName = (idx: number, name: string) => {
@@ -121,7 +118,7 @@ export default function SplitEditor({splitFilePayload, speedRunAPIBase} : SplitE
             id: "",
             version: 1,
             runs: [],
-            window_params: new WindowParams(),
+            window_params: new WindowParams(200,200, 200, 200),
             game_name: gameName,
             game_category: gameCategory,
             segments: segmentPayloads,
@@ -129,7 +126,7 @@ export default function SplitEditor({splitFilePayload, speedRunAPIBase} : SplitE
             sob: new StatTime(),
         });
 
-        await Dispatch(Command.SUBMIT, JSON.stringify(splitFilePayload))
+        await Dispatch(Command.SUBMIT, JSON.stringify(splitFilePayload));
     };
 
     const handleTimeChange = (idx: number, time: TimeParts, isBest: boolean) => {
@@ -292,9 +289,14 @@ export default function SplitEditor({splitFilePayload, speedRunAPIBase} : SplitE
                     <button onClick={saveSplitFile} type="submit" className="primary">
                         Save
                     </button>
-                    <button type="button" onClick={async () => {
-                        await Dispatch(Command.CANCEL, null);
-                    }}>Cancel</button>
+                    <button
+                        type="button"
+                        onClick={async () => {
+                            await Dispatch(Command.CANCEL, null);
+                        }}
+                    >
+                        Cancel
+                    </button>
                 </div>
             </form>
         </div>

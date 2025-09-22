@@ -1,7 +1,7 @@
 import RunPayload from "./runPayload";
+import SegmentPayload from "./segmentPayload";
 import StatTime from "./statTime";
 import WindowParams from "./windowParams";
-import SegmentPayload from "./segmentPayload";
 
 export default class SplitFilePayload {
     id: string = "";
@@ -14,7 +14,7 @@ export default class SplitFilePayload {
     sob: StatTime = new StatTime();
     window_params: WindowParams = new WindowParams();
 
-    static createFrom = (source : SplitFilePayload): SplitFilePayload => {
-        return {...source}
-    }
+    static createFrom = (source: SplitFilePayload): SplitFilePayload => {
+        return { ...source };
+    };
 }

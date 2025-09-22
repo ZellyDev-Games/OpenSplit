@@ -2,11 +2,22 @@ package hotkeys
 
 import (
 	"testing"
+
+	"github.com/zellydev-games/opensplit/statemachine"
 )
 
 type MockHotkeyProvider struct {
 	StartHookCalled int
 	UnhookCalled    int
+}
+
+type MockDispatcher struct {
+	DispatchCalled int
+}
+
+func (m *MockDispatcher) Dispatch(command statemachine.Command, payload *string) (statemachine.DispatchReply, error) {
+	m.DispatchCalled++
+	return statemachine.DispatchReply{}, nil
 }
 
 func (m *MockHotkeyProvider) StartHook() error {
@@ -19,25 +30,17 @@ func (m *MockHotkeyProvider) Unhook() error {
 	return nil
 }
 
-type MockSession struct {
-	SplitCalled int
-}
-
-func (m *MockSession) Split() {
-	m.SplitCalled++
-}
-
 func TestDispatcher(t *testing.T) {
 	ch := make(chan KeyInfo)
-	session := &MockSession{}
+	stateMachine := &MockDispatcher{}
 	hotkeyProvider := &MockHotkeyProvider{}
-	service := NewService(ch, session, hotkeyProvider)
+	hotkeyService := NewService(ch, stateMachine, hotkeyProvider)
 
-	service.StartDispatcher()
+	hotkeyService.StartDispatcher()
 	ch <- KeyInfo{KeyCode: 32}
-	service.StopDispatcher()
-	if session.SplitCalled != 1 {
-		t.Errorf("session.Split was not called")
+	hotkeyService.StopDispatcher()
+	if stateMachine.DispatchCalled != 1 {
+		t.Errorf("command.SPLIT was not dispatched")
 	}
 
 	if hotkeyProvider.StartHookCalled != 1 {

@@ -1,22 +1,30 @@
 import React, { useEffect } from "react";
+
+import { Dispatch } from "../../../wailsjs/go/statemachine/Service";
+import { EventsOn } from "../../../wailsjs/runtime";
+import { Command } from "../../App";
 import { MenuItem, useContextMenu } from "../../hooks/useContextMenu";
 import useWindowResize from "../../hooks/useWindowResize";
-import { ContextMenu } from "../ContextMenu";
-import Timer from "./Timer";
-import {Dispatch} from "../../../wailsjs/go/statemachine/Service";
-import {Command} from "../../App";
-import SplitList from "./SplitList";
 import SessionPayload from "../../models/sessionPayload";
 import WindowParams from "../../models/windowParams";
+import { ContextMenu } from "../ContextMenu";
+import SplitList from "./SplitList";
+import Timer from "./Timer";
 
 type SplitterParams = {
     sessionPayload: SessionPayload;
-}
+};
 
-export default function Splitter({sessionPayload} : SplitterParams) {
+export default function Splitter({ sessionPayload }: SplitterParams) {
     const contextMenu = useContextMenu();
     const [contextMenuItems, setContextMenuItems] = React.useState<MenuItem[]>([]);
     const [setWindowPosition, getPageSize] = useWindowResize("splitter");
+    const [session, setSession] = React.useState<SessionPayload>(sessionPayload);
+
+    // Subscribe to session updates from the backend
+    useEffect(() => {
+        return EventsOn("session:update", (payload: SessionPayload) => setSession(payload));
+    }, []);
 
     useEffect(() => {
         (async () => {
@@ -29,8 +37,8 @@ export default function Splitter({sessionPayload} : SplitterParams) {
         contextMenuItems.push({
             label: "Edit Split File",
             onClick: async () => {
-                await Dispatch(Command.EDIT, null)
-            }
+                await Dispatch(Command.EDIT, null);
+            },
         });
 
         contextMenuItems.push({
@@ -46,7 +54,9 @@ export default function Splitter({sessionPayload} : SplitterParams) {
 
         contextMenuItems.push({
             label: "Close Split File",
-            onClick: () => {Dispatch(Command.CLOSE, null)},
+            onClick: () => {
+                Dispatch(Command.CLOSE, null);
+            },
         });
 
         contextMenuItems.push({
@@ -60,7 +70,7 @@ export default function Splitter({sessionPayload} : SplitterParams) {
     return (
         <div {...contextMenu.bind} className="splitter">
             <ContextMenu state={contextMenu.state} close={contextMenu.close} items={contextMenuItems} />
-            <SplitList sessionPayload={sessionPayload} />
+            <SplitList sessionPayload={session} />
             <Timer />
         </div>
     );

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+
 import { setActiveSkin } from "../skinLoader";
 
 export default function SkinPicker() {
     const [active, setActive] = useState<string>("default");
-    const [available, setAvailable] = useState<string[]>([]);
+    const [available] = useState<string[]>([]);
 
     useEffect(() => {
         setTimeout(async () => {

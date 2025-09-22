@@ -1,7 +1,7 @@
-import { Command } from "../../App"
+import { Dispatch } from "../../../wailsjs/go/statemachine/Service";
+import { Command } from "../../App";
 import zdgLogo from "../../assets/images/ZG512.png";
 import useWindowResize from "../../hooks/useWindowResize";
-import {Dispatch} from "../../../wailsjs/go/statemachine/Service";
 
 export default function Welcome() {
     useWindowResize("welcome");
@@ -10,12 +10,16 @@ export default function Welcome() {
             <img src={zdgLogo} alt="" />
             <hr />
             <h3>OpenSplit</h3>
-            <button onClick={async() => {
-                await Dispatch(Command.NEW, null)
-            }} >Create New Split File</button>
             <button
                 onClick={async () => {
-                    await Dispatch(Command.LOAD, null)
+                    await Dispatch(Command.NEW, null);
+                }}
+            >
+                Create New Split File
+            </button>
+            <button
+                onClick={async () => {
+                    await Dispatch(Command.LOAD, null);
                 }}
             >
                 Load Split File
@@ -23,7 +27,7 @@ export default function Welcome() {
             <button
                 style={{ marginTop: 30 }}
                 onClick={async () => {
-                    await Dispatch(Command.QUIT, null)
+                    await Dispatch(Command.QUIT, null);
                 }}
             >
                 Exit OpenSplit
@@ -33,7 +37,7 @@ export default function Welcome() {
                 style={{ marginTop: 30 }}
                 onClick={async () => {
                     localStorage.clear();
-                    await Dispatch(Command.RESET, null)
+                    await Dispatch(Command.RESET, null);
                 }}
             >
                 Reset All Preferences
