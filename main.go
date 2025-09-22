@@ -47,7 +47,7 @@ func main() {
 	jsonFilePersister := session.NewJsonFile(&sessionRuntime.WailsRuntime{}, &sessionRuntime.FileRuntime{})
 	logger.Debug("JSON FilePersister initialized")
 
-	sessionService := session.NewService(timerService, timeUpdatedChannel, nil, jsonFilePersister)
+	sessionService := session.NewService(timerService, timeUpdatedChannel, nil)
 	logger.Debug("SessionService initialized")
 
 	//hotkeyProvider, keyInfoChannel := hotkeys.SetupHotkeys()
@@ -58,7 +58,7 @@ func main() {
 	//logger.Debug("HotkeyService initialized")
 
 	logger.Info("services initialized, starting application")
-	machine := statemachine.StartMachine(sessionService)
+	machine := statemachine.StartMachine(sessionService, jsonFilePersister)
 
 	err := wails.Run(&options.App{
 		Title:     "OpenSplit",
@@ -92,7 +92,9 @@ func main() {
 		OnShutdown: func(ctx context.Context) {
 			//gracefulShutdown(hotkeyService)
 		},
-		OnBeforeClose: sessionService.CleanQuit,
+		OnBeforeClose: func(ctx context.Context) bool {
+			return sessionService.CleanQuit(ctx, jsonFilePersister)
+		},
 		Bind: []interface{}{
 			//sessionService,
 			//sysopenService,

@@ -1,12 +1,23 @@
 package session
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"reflect"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/utils"
 )
+
+// Persister is an interface that services that save and load splitfiles must implement to be used by session.Service
+type Persister interface {
+	Startup(ctx context.Context, service *Service) error
+	Load() (split SplitFilePayload, err error)
+	Save(split SplitFilePayload) error
+}
 
 // WindowParams stores the last size and position the user set splitter window while this file was loaded
 type WindowParams struct {
@@ -95,6 +106,70 @@ func (s *SplitFile) GetPayload() SplitFilePayload {
 
 func SplitFileChanged(file1 SplitFilePayload, file2 SplitFilePayload) bool {
 	return !reflect.DeepEqual(file1.Segments, file2.Segments) || !reflect.DeepEqual(file1.GameCategory, file2.GameCategory)
+}
+
+// Save uses the configured Persister to save the SplitFile to the configured storage
+//
+// Use Save instead of UpdateSplitFile when you want to save new runs or BuildStats without changes to data
+// (e.g. NOT changing the Game Name, Category, or segments).
+// This function will never bump the split file version.
+func (s *SplitFile) Save(persister Persister, windowParams WindowParams) error {
+	s.windowParams.Width = windowParams.Width
+	s.windowParams.Height = windowParams.Height
+	s.windowParams.X = windowParams.X
+	s.windowParams.Y = windowParams.Y
+
+	err := persister.Save(s.GetPayload())
+	if err != nil {
+		var cancelled = &UserCancelledSave{}
+		if errors.As(err, cancelled) {
+			logger.Debug("user cancelled save")
+			logger.Error(fmt.Sprintf("failed to save split file with Save: %s", err))
+		}
+	}
+	return err
+}
+
+// UpdateSplitFile uses the configured Persister to save the SplitFile to the configured storage.
+//
+// It creates a SplitFile from the given SplitFilePayload, then returns a pointer to it.
+func UpdateSplitFile(persister Persister, payload SplitFilePayload) (*SplitFile, error) {
+	newSplitFile, err := newFromPayload(payload)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to parse split file payload: %s", err))
+		return nil, err
+	}
+
+	err = persister.Save(newSplitFile.GetPayload())
+	if err != nil {
+		var cancelled = &UserCancelledSave{}
+		if errors.As(err, cancelled) {
+			logger.Debug("user cancelled save")
+			return nil, err
+		}
+		logger.Error(fmt.Sprintf("failed to save split file: %s", err))
+		return nil, err
+	}
+
+	logger.Debug("sending session update from update split file")
+	return newSplitFile, err
+}
+
+// LoadSplitFile retrieves a SplitFilePayload from Persister configured storage.
+//
+// It creates a new SplitFile from the retrieved SplitFilePayload, sets that as the loaded split file, and resets the
+// system.
+func LoadSplitFile(persister Persister) (*SplitFile, error) {
+	newSplitFilePayload, err := persister.Load()
+	if err != nil {
+		var userCancelled = &UserCancelledSave{}
+		if !errors.As(err, userCancelled) {
+			logger.Error(fmt.Sprintf("failed to load split file: %s", err))
+		}
+		return nil, err
+	}
+
+	return newFromPayload(newSplitFilePayload)
 }
 
 func newFromPayload(payload SplitFilePayload) (*SplitFile, error) {

@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -25,13 +24,6 @@ func (s *Service) GetConfig() *Config {
 	return &Config{
 		SpeedRunAPIBase: speedRunBase,
 	}
-}
-
-// Persister is an interface that services that save and load splitfiles must implement to be used by session.Service
-type Persister interface {
-	Startup(ctx context.Context, service *Service) error
-	Load() (split SplitFilePayload, err error)
-	Save(split SplitFilePayload) error
 }
 
 // Timer is an interface that a stopwatch service must implement to be used by session.Service
@@ -57,16 +49,11 @@ type ServicePayload struct {
 	CurrentRun          *RunPayload       `json:"current_run"`
 }
 
-// Service represents the interface from the backend Go system to the frontend React system.
+// Service represents the current state of a run.
 //
-// It is the primary glue that brings together a Timer, SplitFile, Run history, Persister, and the status of the
-// current Run / SplitFile.  If there's one struct that's key to understand in OpenSplit, it's this one.
-//
-// Service contains the authoritative state of the system, and communicates parts of that state to the front end both by
-// imperative functions that are bound to the frontend with Wails.run, and events sent to the frontend via Service.emitEvent
-//
-// It communicates timer updates to the frontend, and passes along frontend calls to bound functions to
-// the OpenSplit backend systems
+// It is the primary glue that brings together a Timer, SplitFile, Run history, tracks the status of the
+// current Run / SplitFile, and communicates timer updates to the frontend
+// If there's one struct that's key to understand in OpenSplit, it's this one.
 type Service struct {
 	ctx                 context.Context
 	timer               Timer
@@ -76,7 +63,6 @@ type Service struct {
 	currentRun          *Run
 	finished            bool
 	timeUpdatedChannel  chan time.Duration
-	persister           Persister
 	dirty               bool
 	updateCallbacks     []func(context.Context, ServicePayload)
 }
@@ -85,12 +71,11 @@ type Service struct {
 //
 // Generally in real code splitFile should be nil and will be populated from Service.UpdateSplitFile or Service.LoadSplitFile
 // Timer updates will be sent over the timeUpdatedChannel at approximately 60FPS.
-func NewService(timer Timer, timeUpdatedChannel chan time.Duration, splitFile *SplitFile, persister Persister) *Service {
+func NewService(timer Timer, timeUpdatedChannel chan time.Duration, splitFile *SplitFile) *Service {
 	service := &Service{
 		timer:               timer,
 		timeUpdatedChannel:  timeUpdatedChannel,
 		loadedSplitFile:     splitFile,
-		persister:           persister,
 		currentSegmentIndex: -1,
 	}
 
@@ -110,11 +95,6 @@ func (s *Service) AddCallback(cb func(context.Context, ServicePayload)) {
 // frontend to update the visual timer.
 func (s *Service) Startup(ctx context.Context) {
 	s.ctx = ctx
-	err := s.persister.Startup(ctx, s)
-	if err != nil {
-		logger.Error("Session Service failed to Startup persister: " + err.Error())
-		os.Exit(3)
-	}
 	s.Reset()
 	go func() {
 		for {
@@ -131,7 +111,7 @@ func (s *Service) Startup(ctx context.Context) {
 	}()
 }
 
-func (s *Service) CleanQuit(ctx context.Context) bool {
+func (s *Service) CleanQuit(ctx context.Context, persister Persister) bool {
 	if s.dirty {
 		res, _ := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
 			Type:    runtime.QuestionDialog,
@@ -141,7 +121,7 @@ func (s *Service) CleanQuit(ctx context.Context) bool {
 
 		if res == "Yes" {
 			logger.Debug("saving split file on exit")
-			err := s.persister.Save(s.loadedSplitFile.GetPayload())
+			err := persister.Save(s.loadedSplitFile.GetPayload())
 			if err != nil {
 				logger.Error(fmt.Sprintf("failed saving split file on exit: %s", err))
 			}
@@ -273,86 +253,11 @@ func (s *Service) Reset() {
 	}
 }
 
-// SaveSplitFile uses the configured Persister to save the SplitFile to the configured storage
-//
-// Use SaveSplitFile instead of UpdateSplitFile when you want to save new runs or BuildStats without changes to data
-// (e.g. NOT changing the Game Name, Category, or segments).
-// This function will never bump the split file version.
-func (s *Service) SaveSplitFile(windowParams WindowParams) error {
-	if s.loadedSplitFile == nil {
-		logger.Debug("SaveSplitFile called with no split file loaded: NO-OP")
-		return nil
-	}
-
-	s.loadedSplitFile.windowParams.Width = windowParams.Width
-	s.loadedSplitFile.windowParams.Height = windowParams.Height
-	s.loadedSplitFile.windowParams.X = windowParams.X
-	s.loadedSplitFile.windowParams.Y = windowParams.Y
-	fmt.Println(s.loadedSplitFile.windowParams.Width, s.loadedSplitFile.windowParams.Height)
-	err := s.persister.Save(s.loadedSplitFile.GetPayload())
-	if err != nil {
-		var cancelled = &UserCancelledSave{}
-		if errors.As(err, cancelled) {
-			logger.Debug("user cancelled save")
-			logger.Error(fmt.Sprintf("failed to save split file with SaveSplitFile: %s", err))
-		}
-	}
-	logger.Debug("sending session update from update split file")
-	s.emitEvent("session:update", s.getServicePayload())
-	s.dirty = false
-	return err
-}
-
-// UpdateSplitFile uses the configured Persister to save the SplitFile to the configured storage.
-//
-// It creates a SplitFile from the given SplitFilePayload and then sets that SplitFile as the currently loaded one.
-func (s *Service) UpdateSplitFile(payload SplitFilePayload) (*SplitFile, error) {
-	newSplitFile, err := newFromPayload(payload)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to parse split file payload: %s", err))
-		return nil, err
-	}
-
-	err = s.persister.Save(newSplitFile.GetPayload())
-	if err != nil {
-		var cancelled = &UserCancelledSave{}
-		if errors.As(err, cancelled) {
-			logger.Debug("user cancelled save")
-			return nil, err
-		}
-		logger.Error(fmt.Sprintf("failed to save split file: %s", err))
-		s.loadedSplitFile = nil
-		return nil, err
-	}
-
-	logger.Debug("sending session update from update split file")
-	s.emitEvent("session:update", s.getServicePayload())
-	s.dirty = false
-	return newSplitFile, err
-}
-
 // SetLoadedSplitFile sets the given SplitFile as the loaded one
 //
 // Splits and other actions only work against the given splitfile
 func (s *Service) SetLoadedSplitFile(sf *SplitFile) {
 	s.loadedSplitFile = sf
-}
-
-// LoadSplitFile retrieves a SplitFilePayload from Persister configured storage.
-//
-// It creates a new SplitFile from the retrieved SplitFilePayload, sets that as the loaded split file, and resets the
-// system.
-func (s *Service) LoadSplitFile() (*SplitFile, error) {
-	newSplitFilePayload, err := s.persister.Load()
-	if err != nil {
-		var userCancelled = &UserCancelledSave{}
-		if !errors.As(err, userCancelled) {
-			logger.Error(fmt.Sprintf("failed to load split file: %s", err))
-		}
-		return nil, err
-	}
-
-	return newFromPayload(newSplitFilePayload)
 }
 
 // GetSessionStatus is a convenience method for the frontend to query the state of the system imperatively
@@ -364,8 +269,6 @@ func (s *Service) GetSessionStatus() ServicePayload {
 func (s *Service) CloseSplitFile() {
 	s.loadedSplitFile = nil
 	s.Reset()
-	logger.Debug("sending session update from close split file")
-	s.emitEvent("session:update", nil)
 }
 
 // GetLoadedSplitFile returns the SplitFilePayload representation of the currently loaded SplitFile
