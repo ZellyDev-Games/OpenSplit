@@ -2,7 +2,9 @@ package hotkeys
 
 import (
 	"fmt"
+
 	"github.com/zellydev-games/opensplit/logger"
+	"github.com/zellydev-games/opensplit/statemachine"
 )
 
 // HotkeyProvider must be implemented by any OS specific hotkey system to be used by the hotkeys.Service
@@ -11,10 +13,10 @@ type HotkeyProvider interface {
 	Unhook() error
 }
 
-// Splitter is generally implemented by the session.Service created by the application, but this interface is useful
-// for testing purposes
-type Splitter interface {
-	Split()
+// Dispatcher is generally implemented by the statemachine.Service created by the application,
+// but this interface is useful for testing purposes
+type Dispatcher interface {
+	Dispatch(command statemachine.Command, payload *string) (statemachine.DispatchReply, error)
 }
 
 // KeyInfo is the Go-friendly struct to capture key code and key name data from the OS
@@ -24,23 +26,23 @@ type KeyInfo struct {
 }
 
 // Service holds a channel that retrieves KeyInfo, controls the provided HotkeyProvider with StartHook/Unhook,
-// and calls exported functions on the provided Splitter (usually session.Service if not testing)
+// and calls exported functions on the provided Dispatcher (usually session.Service if not testing)
 type Service struct {
 	hotkeyChannel  chan KeyInfo
 	hotkeyProvider HotkeyProvider
-	sessionService Splitter
+	dispatcher     Dispatcher
 	internalStop   chan struct{}
 }
 
-// NewService creates a new hotkeys.Service that holds a chan KeyInfo, a reference to a Splitter (usually session.Service)
+// NewService creates a new hotkeys.Service that holds a chan KeyInfo, a reference to a Dispatcher (usually session.Service)
 // a HotkeyProvider that sends raw keypresses from the OS to the keyInfoChannel
 //
 // The common pattern used in OpenSplit is to create a HotkeyProvider with a constructor func that also returns a
 // chan KeyInfo it sends keypress information to, and use that as the first parameter to this constructor func.
-func NewService(keyInfoChannel chan KeyInfo, sessionService Splitter, provider HotkeyProvider) *Service {
+func NewService(keyInfoChannel chan KeyInfo, dispatcher Dispatcher, provider HotkeyProvider) *Service {
 	return &Service{
 		hotkeyChannel:  keyInfoChannel,
-		sessionService: sessionService,
+		dispatcher:     dispatcher,
 		hotkeyProvider: provider,
 	}
 }
@@ -83,7 +85,10 @@ func (s *Service) dispatch() {
 			}
 			switch keyInfo.KeyCode {
 			case 32: // Space
-				s.sessionService.Split()
+				reply, err := s.dispatcher.Dispatch(statemachine.SPLIT, nil)
+				if err != nil || reply.Code != 0 {
+					logger.Error(fmt.Sprintf("failed to dispatch hotkey Split: %s - code %d", err, reply.Code))
+				}
 			}
 		}
 	}

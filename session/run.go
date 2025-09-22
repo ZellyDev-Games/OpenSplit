@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/zellydev-games/opensplit/utils"
 )
 
 type RunPayload struct {
@@ -40,7 +39,7 @@ func (r *Run) getPayload() RunPayload {
 		SplitFileVersion: r.splitFileVersion,
 		TotalTime: StatTime{
 			Raw:       r.totalTime.Milliseconds(),
-			Formatted: utils.FormatTimeToString(r.totalTime),
+			Formatted: FormatTimeToString(r.totalTime),
 		},
 		Completed:     r.completed,
 		SplitPayloads: splitPayloads,
@@ -56,7 +55,7 @@ func newRunFromPayload(payload RunPayload) Run {
 		splits = append(splits, Split{
 			splitIndex:      s.SplitIndex,
 			splitSegmentID:  uuid.MustParse(s.SplitSegmentID),
-			currentDuration: utils.PayloadRawTimeToDuration(s.CurrentTime.Raw),
+			currentDuration: PayloadRawTimeToDuration(s.CurrentTime.Raw),
 		})
 	}
 

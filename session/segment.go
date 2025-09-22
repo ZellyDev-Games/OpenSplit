@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/zellydev-games/opensplit/utils"
 )
 
 // SegmentPayload is a snapshot of a given Segment useful for communicating state while protecting internal data.
@@ -49,15 +48,15 @@ func (s *Segment) GetPayload() SegmentPayload {
 		Name: s.name,
 		Average: StatTime{
 			s.average.Milliseconds(),
-			utils.FormatTimeToString(s.average),
+			FormatTimeToString(s.average),
 		},
 		PB: StatTime{
 			s.pb.Milliseconds(),
-			utils.FormatTimeToString(s.pb),
+			FormatTimeToString(s.pb),
 		},
 		Gold: StatTime{
 			s.gold.Milliseconds(),
-			utils.FormatTimeToString(s.gold),
+			FormatTimeToString(s.gold),
 		},
 	}
 }

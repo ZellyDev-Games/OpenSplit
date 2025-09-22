@@ -3,11 +3,12 @@ package sysopen
 import (
 	"context"
 	"errors"
-	"github.com/zellydev-games/opensplit/logger"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+
+	"github.com/zellydev-games/opensplit/logger"
 )
 
 // Service provides a binding to allow the frontend to open a folder in the native OS file explorer.

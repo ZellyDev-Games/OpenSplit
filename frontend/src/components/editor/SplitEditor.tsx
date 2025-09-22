@@ -1,18 +1,18 @@
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
 
-import { session } from "../../../wailsjs/go/models";
-import { GetConfig, GetLoadedSplitFile, UpdateSplitFile } from "../../../wailsjs/go/session/Service";
+import { Dispatch } from "../../../wailsjs/go/statemachine/Service";
 import { WindowCenter, WindowSetSize } from "../../../wailsjs/runtime";
+import { Command } from "../../App";
 import { useClickOutside } from "../../hooks/useClickOutside";
 import useWindowResize from "../../hooks/useWindowResize";
+import SegmentPayload from "../../models/segmentPayload";
+import SplitFilePayload from "../../models/splitFilePayload";
+import StatTime from "../../models/statTime";
+import WindowParams from "../../models/windowParams";
 import { msToParts, partsToMS, TimeParts } from "../splitter/Timer";
 import TimeRow from "./TimeRow";
-import SegmentPayload = session.SegmentPayload;
-import SplitFilePayload = session.SplitFilePayload;
-import StatTime = session.StatTime;
 
 type Game = {
     id: string;
@@ -21,28 +21,29 @@ type Game = {
     released: string;
 };
 
-export default function SplitEditor() {
+type SplitEditorParams = {
+    splitFilePayload: SplitFilePayload | null;
+    speedRunAPIBase: string;
+};
+
+export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: SplitEditorParams) {
     // Set default window size and persist updates
     useWindowResize("edit");
 
-    // Clear model results which will close the modal when we click outside the modal
+    // Clear modal results which will close the modal when we click outside the modal
     const clickOutsideRef = useRef<HTMLDivElement | null>(null);
     useClickOutside(clickOutsideRef, () => {
         setGameResults([]);
     });
 
-    // Allow us to change pages
-    const navigate = useNavigate();
-
     // Segment stats
-    const [splitFileLoaded, setSplitFileLoaded] = useState<boolean>(false);
+    const [splitFileLoaded] = useState<boolean>(false);
     const [gameName, setGameName] = React.useState<string>("");
     const [gameCategory, setGameCategory] = React.useState<string>("");
     const [segments, setSegments] = React.useState<SegmentPayload[]>([]);
     const [attempts, setAttempts] = React.useState<number>(0);
 
     // Speedrun search
-    const [speedrunAPIBase, setSpeedrunAPIBase] = React.useState<string>("");
     const [gameResults, setGameResults] = React.useState<Game[]>([]);
     const timeoutID = useRef<number>(0);
 
@@ -52,28 +53,19 @@ export default function SplitEditor() {
         WindowCenter();
     }, []);
 
-    // Get configuration, namely the speedrun API base URL
-    useEffect(() => {
-        (async () => {
-            const config = await GetConfig();
-            setSpeedrunAPIBase(config.speed_run_API_base);
-        })();
-    }, []);
-
     // Pull apart the segment times from the split file in a way our UI can use them.
     useEffect(() => {
         (async () => {
-            const loadedSplitFile = await GetLoadedSplitFile();
-            if (loadedSplitFile === null) return;
-            setGameName(loadedSplitFile.game_name);
-            setGameCategory(loadedSplitFile.game_category);
-            setAttempts(loadedSplitFile.attempts);
-            setSegments(loadedSplitFile.segments);
+            if (!splitFilePayload) return;
+            setGameName(splitFilePayload.game_name);
+            setGameCategory(splitFilePayload.game_category);
+            setAttempts(splitFilePayload.attempts);
+            setSegments(splitFilePayload.segments);
         })();
     }, []);
 
     const searchSpeedrun = async () => {
-        if (!speedrunAPIBase) return;
+        if (!speedRunAPIBase) return;
         const q = gameName.trim();
         if (!q) {
             setGameResults([]);
@@ -83,7 +75,7 @@ export default function SplitEditor() {
         clearTimeout(timeoutID.current);
         const controller = new AbortController();
         timeoutID.current = setTimeout(async () => {
-            fetch(`${speedrunAPIBase}/games?name=${encodeURIComponent(gameName)}`, {
+            fetch(`${speedRunAPIBase}/games?name=${encodeURIComponent(gameName)}`, {
                 signal: controller.signal,
             })
                 .then((res) => res.json())
@@ -95,32 +87,20 @@ export default function SplitEditor() {
     };
 
     const addSegment = () => {
-        setSegments((prev) => [
-            ...prev,
-            SegmentPayload.createFrom({
-                id: "",
-                name: "",
-                gold: StatTime.createFrom({
-                    formatted: "",
-                    raw: 0,
-                }),
-                average: StatTime.createFrom({
-                    formatted: "",
-                    raw: 0,
-                }),
-                pb: StatTime.createFrom({
-                    formatted: "",
-                    raw: 0,
-                }),
-            }),
-        ]);
+        setSegments((prev) => [...prev, new SegmentPayload()]);
     };
 
-    const updateSegments = (idx: number, attrName: string, attrVal: string) => {
+    const updateSegmentName = (idx: number, name: string) => {
         setSegments((prev) =>
             prev.map((s, i) => {
                 if (idx === i) {
-                    return SegmentPayload.createFrom({ ...s, [attrName]: attrVal });
+                    const newSegment = new SegmentPayload();
+                    newSegment.id = s.id;
+                    newSegment.average = s.average;
+                    newSegment.pb = s.pb;
+                    newSegment.gold = s.gold;
+                    newSegment.name = name;
+                    return newSegment;
                 }
                 return s;
             }),
@@ -134,18 +114,19 @@ export default function SplitEditor() {
     const saveSplitFile = async (e: React.MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
         const segmentPayloads = segments.map((s) => SegmentPayload.createFrom(s));
-        const splitFilePayload = SplitFilePayload.createFrom({
+        const newSpiltFilePayload = SplitFilePayload.createFrom({
+            id: splitFilePayload?.id ?? "",
+            version: splitFilePayload?.version ?? 0,
+            runs: splitFilePayload?.runs ?? [],
+            window_params: splitFilePayload?.window_params ?? new WindowParams(390, 540, 100, 100),
             game_name: gameName,
             game_category: gameCategory,
             segments: segmentPayloads,
             attempts: Number(attempts),
+            sob: new StatTime(),
         });
 
-        UpdateSplitFile(splitFilePayload)
-            .then(() => {
-                navigate("/");
-            })
-            .catch((err) => console.log(err));
+        await Dispatch(Command.SUBMIT, JSON.stringify(newSpiltFilePayload));
     };
 
     const handleTimeChange = (idx: number, time: TimeParts, isBest: boolean) => {
@@ -153,11 +134,11 @@ export default function SplitEditor() {
         const newSegments = [];
         for (let i = 0; i < segments.length; i++) {
             if (idx != i) {
-                newSegments.push(SegmentPayload.createFrom(segments[i]));
+                newSegments.push({ ...segments[i] });
             } else {
                 const s = { ...segments[i] };
-                const pb = isBest ? StatTime.createFrom({ raw: ms }) : s.pb;
-                const avg = isBest ? s.average : StatTime.createFrom({ raw: ms });
+                const pb = new StatTime(isBest ? ms : s.pb.raw);
+                const avg = new StatTime(isBest ? s.average.raw : ms);
                 newSegments.push(
                     SegmentPayload.createFrom({
                         id: s.id,
@@ -172,14 +153,6 @@ export default function SplitEditor() {
 
         setSegments(newSegments);
     };
-
-    useEffect(() => {
-        (async () => {
-            const sf = await GetLoadedSplitFile();
-            console.log(sf);
-            setSplitFileLoaded(sf !== null);
-        })();
-    }, []);
 
     return (
         <div className="container form-container">
@@ -281,7 +254,7 @@ export default function SplitEditor() {
                                             <td style={{ textAlign: "center" }}>{idx + 1}</td>
                                             <td>
                                                 <input
-                                                    onChange={(e) => updateSegments(idx, "name", e.target.value)}
+                                                    onChange={(e) => updateSegmentName(idx, e.target.value)}
                                                     value={segment.name}
                                                 />
                                             </td>
@@ -316,7 +289,14 @@ export default function SplitEditor() {
                     <button onClick={saveSplitFile} type="submit" className="primary">
                         Save
                     </button>
-                    <button onClick={() => navigate("/")}>Cancel</button>
+                    <button
+                        type="button"
+                        onClick={async () => {
+                            await Dispatch(Command.CANCEL, null);
+                        }}
+                    >
+                        Cancel
+                    </button>
                 </div>
             </form>
         </div>

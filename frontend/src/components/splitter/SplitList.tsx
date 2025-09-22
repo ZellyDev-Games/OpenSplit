@@ -1,12 +1,9 @@
 import { JSX, useEffect, useState } from "react";
 
-import { session } from "../../../wailsjs/go/models";
-import { GetLoadedSplitFile, GetSessionStatus } from "../../../wailsjs/go/session/Service";
 import { EventsOn } from "../../../wailsjs/runtime";
+import SegmentPayload from "../../models/segmentPayload";
+import SessionPayload from "../../models/sessionPayload";
 import { displayFormattedTimeParts, formatDuration, msToParts, stringToParts } from "./Timer";
-import SplitFilePayload = session.SplitFilePayload;
-import ServicePayload = session.ServicePayload;
-import SegmentPayload = session.SegmentPayload;
 
 export type CompareAgainst = "best" | "average";
 
@@ -15,16 +12,14 @@ type Completion = {
     raw: number;
 };
 
-export default function SplitList() {
-    const [splitFile, setSplitFile] = useState<SplitFilePayload | undefined>(undefined);
-    const [currentSegment, setCurrentSegment] = useState<number | null>(null);
+type SplitListParameters = {
+    sessionPayload: SessionPayload;
+};
+
+export default function SplitList({ sessionPayload }: SplitListParameters) {
     const [completions, setCompletions] = useState<Completion[]>([]);
     const [compareAgainst] = useState<CompareAgainst>("average");
     const [time, setTime] = useState(0);
-
-    useEffect(() => {
-        GetLoadedSplitFile().then((d) => setSplitFile(d));
-    }, []);
 
     useEffect(() => {
         return EventsOn("timer:update", (val: number) => {
@@ -33,33 +28,20 @@ export default function SplitList() {
     }, []);
 
     useEffect(() => {
-        (async () => {
-            console.log("fetching session data...");
-            const session = await GetSessionStatus();
-            if (session.current_segment !== undefined) {
-                setCurrentSegment(session.current_segment_index);
-            }
-        })();
-
-        return EventsOn("session:update", (servicePayload: ServicePayload) => {
-            console.log("received service update:", servicePayload);
-            setSplitFile(servicePayload.split_file);
-            setCurrentSegment(servicePayload.current_segment_index);
-            if (servicePayload.current_run) {
-                setCompletions(
-                    servicePayload.current_run.split_payloads.map((c) => {
-                        const time = displayFormattedTimeParts(formatDuration(stringToParts(c.current_time.formatted)));
-                        return {
-                            time: `${time[0]}${time[1]}`,
-                            raw: c.current_time.raw,
-                        };
-                    }),
-                );
-            } else {
-                setCompletions([]);
-            }
-        });
-    }, []);
+        if (sessionPayload?.current_run) {
+            setCompletions(
+                sessionPayload.current_run.split_payloads.map((c) => {
+                    const time = displayFormattedTimeParts(formatDuration(stringToParts(c.current_time.formatted)));
+                    return {
+                        time: `${time[0]}${time[1]}`,
+                        raw: c.current_time.raw,
+                    };
+                }),
+            );
+        } else {
+            setCompletions([]);
+        }
+    }, [sessionPayload]);
 
     const getSegmentDisplayTime = (index: number, segment: SegmentPayload): JSX.Element => {
         const gold = segment.gold?.raw;
@@ -88,7 +70,7 @@ export default function SplitList() {
             const diff = time - target;
             let className = "";
 
-            if (index === currentSegment && diff > -30000) {
+            if (index === sessionPayload.current_segment_index && diff > -30000) {
                 if (time < target) {
                     className = "timer-ahead";
                 }
@@ -114,12 +96,21 @@ export default function SplitList() {
         }
     };
 
-    const segmentRows = splitFile?.segments?.map((segment, index) => (
-        <tr key={segment.id ?? index} className={currentSegment !== null && currentSegment === index ? "selected" : ""}>
-            <td className="splitName">{segment.name}</td>
-            <td className="splitComparison">{getSegmentDisplayTime(index, segment)}</td>
-        </tr>
-    ));
+    const segmentRows =
+        sessionPayload.split_file &&
+        sessionPayload.split_file.segments.map((segment, index) => (
+            <tr
+                key={segment.id ?? index}
+                className={
+                    sessionPayload.current_segment !== null && sessionPayload.current_segment_index === index
+                        ? "selected"
+                        : ""
+                }
+            >
+                <td className="splitName">{segment.name}</td>
+                <td className="splitComparison">{getSegmentDisplayTime(index, segment)}</td>
+            </tr>
+        ));
 
     const rows = Array.isArray(segmentRows) ? segmentRows : [];
     const displayRows = rows.slice(0, -1);
@@ -129,10 +120,10 @@ export default function SplitList() {
         <div className="splitList">
             <div className="gameInfo">
                 <h1 className="gameTitle">
-                    <strong>{splitFile?.game_name}</strong>
+                    <strong>{sessionPayload.split_file?.game_name}</strong>
                 </h1>
                 <h2 className="gameCategory">
-                    <small>{splitFile?.game_category}</small>
+                    <small>{sessionPayload.split_file?.game_category}</small>
                 </h2>
             </div>
             <div className="splitContainer">

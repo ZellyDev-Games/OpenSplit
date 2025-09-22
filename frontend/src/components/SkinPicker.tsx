@@ -1,17 +1,15 @@
 import { useEffect, useState } from "react";
 
-import { GetAvailableSkins } from "../../wailsjs/go/skin/Service";
-import { OpenSkinsFolder } from "../../wailsjs/go/sysopen/Service";
 import { setActiveSkin } from "../skinLoader";
 
 export default function SkinPicker() {
     const [active, setActive] = useState<string>("default");
-    const [available, setAvailable] = useState<string[]>([]);
+    const [available] = useState<string[]>([]);
 
     useEffect(() => {
         setTimeout(async () => {
-            const skins = await GetAvailableSkins();
-            setAvailable(skins);
+            //const skins = await GetAvailableSkins();
+            //setAvailable(skins);
         }, 1000);
     }, []);
 
@@ -30,7 +28,7 @@ export default function SkinPicker() {
                         {active === name ? " ✓" : ""}
                     </button>
                 ))}
-            <button onClick={OpenSkinsFolder}>Open Skins Folder</button>
+            <button>Open Skins Folder</button>
         </div>
     );
 }

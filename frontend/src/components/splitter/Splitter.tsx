@@ -1,87 +1,76 @@
 import React, { useEffect } from "react";
-import { useNavigate } from "react-router";
 
-import { session } from "../../../wailsjs/go/models";
-import { CloseSplitFile, GetLoadedSplitFile, LoadSplitFile, SaveSplitFile } from "../../../wailsjs/go/session/Service";
-import { EventsOn, Quit } from "../../../wailsjs/runtime";
+import { Dispatch } from "../../../wailsjs/go/statemachine/Service";
+import { EventsOn } from "../../../wailsjs/runtime";
+import { Command } from "../../App";
 import { MenuItem, useContextMenu } from "../../hooks/useContextMenu";
 import useWindowResize from "../../hooks/useWindowResize";
+import SessionPayload from "../../models/sessionPayload";
+import WindowParams from "../../models/windowParams";
 import { ContextMenu } from "../ContextMenu";
 import SplitList from "./SplitList";
 import Timer from "./Timer";
-import Welcome from "./Welcome";
-import ServicePayload = session.ServicePayload;
-import SplitFilePayload = session.SplitFilePayload;
 
-export default function Splitter() {
-    const navigate = useNavigate();
+type SplitterParams = {
+    sessionPayload: SessionPayload;
+};
+
+export default function Splitter({ sessionPayload }: SplitterParams) {
     const contextMenu = useContextMenu();
     const [contextMenuItems, setContextMenuItems] = React.useState<MenuItem[]>([]);
-    const [splitFile, setSplitFile] = React.useState<SplitFilePayload | null>(null);
     const [setWindowPosition, getPageSize] = useWindowResize("splitter");
+    const [session, setSession] = React.useState<SessionPayload>(sessionPayload);
+
+    // Subscribe to session updates from the backend
+    useEffect(() => {
+        return EventsOn("session:update", (payload: SessionPayload) => setSession(payload));
+    }, []);
 
     useEffect(() => {
         (async () => {
             setContextMenuItems(await buildContextMenu());
         })();
-
-        return EventsOn("session:update", async (session: ServicePayload) => {
-            setContextMenuItems(await buildContextMenu());
-            setSplitFile(session.split_file ?? null);
-        });
-    }, []);
+    }, [sessionPayload]);
 
     const buildContextMenu = async (): Promise<MenuItem[]> => {
         const contextMenuItems: MenuItem[] = [];
-        const splitFile = await GetLoadedSplitFile();
         contextMenuItems.push({
-            label: splitFile ? "Edit Split File" : "Create Split File",
+            label: "Edit Split File",
             onClick: async () => {
-                navigate("/edit");
+                await Dispatch(Command.EDIT, null);
             },
         });
 
-        if (splitFile) {
-            contextMenuItems.push({
-                label: "Save",
-                onClick: async () => {
-                    const [w, h] = getPageSize("splitter");
-                    const [x, y] = await setWindowPosition("splitter");
-                    await SaveSplitFile(w, h, x, y).catch((err) => console.log(err));
-                },
-            });
-        }
-
         contextMenuItems.push({
-            label: "Open Split File",
-            onClick: async () => await LoadSplitFile().catch((err) => console.log(err)),
+            label: "Save",
+            onClick: async () => {
+                const [w, h] = getPageSize("splitter");
+                const [x, y] = await setWindowPosition("splitter");
+                await Dispatch(Command.SAVE, JSON.stringify(new WindowParams(w, h, x, y)));
+            },
         });
 
         contextMenuItems.push({ type: "separator" });
 
-        if (splitFile) {
-            contextMenuItems.push({
-                label: "Close Split File",
-                onClick: async () => await CloseSplitFile(),
-            });
-        }
+        contextMenuItems.push({
+            label: "Close Split File",
+            onClick: () => {
+                Dispatch(Command.CLOSE, null);
+            },
+        });
 
         contextMenuItems.push({
             label: "Exit OpenSplit",
-            onClick: async () => Quit(),
+            onClick: async () => Dispatch(Command.QUIT, null),
         });
 
         return contextMenuItems;
     };
 
-    if (!splitFile) {
-        return <Welcome />;
-    }
-
     return (
         <div {...contextMenu.bind} className="splitter">
             <ContextMenu state={contextMenu.state} close={contextMenu.close} items={contextMenuItems} />
-            <SplitList />
+            <SplitList sessionPayload={session} />
             <Timer />
         </div>
     );

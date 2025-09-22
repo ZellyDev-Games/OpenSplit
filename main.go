@@ -14,14 +14,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/hotkeys"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/session"
-	"github.com/zellydev-games/opensplit/skin"
-	"github.com/zellydev-games/opensplit/sysopen"
-	"github.com/zellydev-games/opensplit/timer"
-
 	sessionRuntime "github.com/zellydev-games/opensplit/session/runtime"
+	"github.com/zellydev-games/opensplit/statemachine"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -37,35 +35,24 @@ var (
 )
 
 func main() {
-	_, logDir, skinDir := setupPaths()
-
+	_, logDir, _ := setupPaths()
 	setupLogging(logDir)
 	logger.Info("logging initialized, starting opensplit")
 
-	sysopenService := sysopen.NewService(skinDir)
-	logger.Debug("sysopen service initialized")
+	timerService, timeUpdatedChannel := session.NewStopwatch(session.NewTicker(time.Millisecond * 20))
+	runtimeProvider := sessionRuntime.NewWailsRuntime()
+	fileProvider := &sessionRuntime.FileRuntime{}
 
-	skinsFileServer := setupSkinServer(skinDir)
-	skinService := &skin.Service{}
-	logger.Debug("Skin service initialized")
-
-	timerService, timeUpdatedChannel := timer.NewService(timer.NewTicker(time.Millisecond * 20))
-	logger.Debug("Timer service initialized")
-
-	jsonFilePersister := session.NewJsonFile(&sessionRuntime.WailsRuntime{}, &sessionRuntime.FileRuntime{})
-	logger.Debug("JSON FilePersister initialized")
-
-	sessionService := session.NewService(timerService, timeUpdatedChannel, nil, jsonFilePersister)
-	logger.Debug("SessionService initialized")
+	jsonFilePersister := session.NewJsonFile(runtimeProvider, fileProvider)
+	sessionService := session.NewService(runtimeProvider, timerService, timeUpdatedChannel, nil)
+	machine := statemachine.InitMachine(runtimeProvider, sessionService, jsonFilePersister)
 
 	hotkeyProvider, keyInfoChannel := hotkeys.SetupHotkeys()
 	var hotkeyService *hotkeys.Service
 	if hotkeyProvider != nil {
-		hotkeyService = hotkeys.NewService(keyInfoChannel, sessionService, hotkeyProvider)
+		hotkeyService = hotkeys.NewService(keyInfoChannel, machine, hotkeyProvider)
 	}
-	logger.Debug("HotkeyService initialized")
 
-	logger.Info("services initialized, starting application")
 	err := wails.Run(&options.App{
 		Title:     "OpenSplit",
 		Width:     1024,
@@ -75,7 +62,7 @@ func main() {
 			Assets: assets,
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if len(r.URL.Path) > 7 && r.URL.Path[:7] == "/skins/" {
-					skinsFileServer.ServeHTTP(w, r)
+					//skinsFileServer.ServeHTTP(w, r)
 					return
 				}
 				http.NotFound(w, r)
@@ -83,11 +70,12 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
-			sessionRuntime.WindowSetAlwaysOnTop(ctx, true)
-			sysopenService.Startup(ctx)
-			timerService.Startup(ctx)
-			skinService.Startup(ctx, skinDir)
+			runtime.WindowSetAlwaysOnTop(ctx, true)
+			runtimeProvider.Startup(ctx)
 			sessionService.Startup(ctx)
+			jsonFilePersister.Startup(runtimeProvider, sessionService)
+			machine.Startup()
+
 			if hotkeyProvider != nil {
 				hotkeyService.StartDispatcher()
 			}
@@ -97,11 +85,11 @@ func main() {
 		OnShutdown: func(ctx context.Context) {
 			gracefulShutdown(hotkeyService)
 		},
-		OnBeforeClose: sessionService.CleanQuit,
+		OnBeforeClose: func(ctx context.Context) bool {
+			return sessionService.CleanClose(jsonFilePersister)
+		},
 		Bind: []interface{}{
-			sessionService,
-			sysopenService,
-			skinService,
+			machine,
 		},
 	})
 
@@ -128,9 +116,9 @@ func setupLogging(logDir string) {
 	logger.AddHandler(fileHandler)
 }
 
-func setupSkinServer(skinDir string) http.Handler {
-	return http.StripPrefix("/skins/", http.FileServer(http.Dir(skinDir)))
-}
+//func setupSkinServer(skinDir string) http.Handler {
+//	return http.StripPrefix("/skins/", http.FileServer(http.Dir(skinDir)))
+//}
 
 func setupPaths() (string, string, string) {
 	base, err := os.UserConfigDir()
@@ -169,7 +157,7 @@ func startInterruptListener(ctx context.Context, hotkeyService *hotkeys.Service)
 		gracefulShutdown(hotkeyService)
 
 		// Ask Wails to quit (this will still call OnShutdown in normal paths)
-		sessionRuntime.Quit(ctx)
+		runtime.Quit(ctx)
 
 		// Give Wails a brief moment to unwind; then hard-exit if needed
 		select {

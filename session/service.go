@@ -2,48 +2,14 @@ package session
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"os"
 	"time"
 
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/logger"
-	"github.com/zellydev-games/opensplit/utils"
 
 	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
-
-// GetConfig is designed to expose configuration options from the environment or other sources (config files) to the
-// frontend.  Go services can just read the environment, but the frontend has no reliable way to do so, so this func
-// is bound to the app in main which generates a typescript function for the frontend.
-func (s *Service) GetConfig() *Config {
-	speedRunBase := os.Getenv("SPEEDRUN_API_BASE")
-	if speedRunBase == "" {
-		speedRunBase = "https://www.speedrun.com/api/v1"
-	}
-	return &Config{
-		SpeedRunAPIBase: speedRunBase,
-	}
-}
-
-// Persister is an interface that services that save and load splitfiles must implement to be used by session.Service
-type Persister interface {
-	Startup(ctx context.Context, service *Service) error
-	Load() (split SplitFilePayload, err error)
-	Save(split SplitFilePayload) error
-}
-
-// Timer is an interface that a stopwatch service must implement to be used by session.Service
-type Timer interface {
-	IsRunning() bool
-	Run()
-	Start()
-	Pause()
-	Reset()
-	GetCurrentTimeFormatted() string
-	GetCurrentTime() time.Duration
-}
 
 // ServicePayload is a snapshot of the session.Service, useful for communicating the state of the service to the frontend
 // without exposing internal data.
@@ -57,18 +23,12 @@ type ServicePayload struct {
 	CurrentRun          *RunPayload       `json:"current_run"`
 }
 
-// Service represents the interface from the backend Go system to the frontend React system.
+// Service represents the current state of a run.
 //
-// It is the primary glue that brings together a Timer, SplitFile, Run history, Persister, and the status of the
-// current Run / SplitFile.  If there's one struct that's key to understand in OpenSplit, it's this one.
-//
-// Service contains the authoritative state of the system, and communicates parts of that state to the front end both by
-// imperative functions that are bound to the frontend with Wails.run, and events sent to the frontend via Service.emitEvent
-//
-// It communicates timer updates to the frontend, and passes along frontend calls to bound functions to
-// the OpenSplit backend systems
+// It is the primary glue that brings together a Timer, SplitFile, Run history, tracks the status of the
+// current Run / SplitFile, and communicates timer updates to the frontend
+// If there's one struct that's key to understand in OpenSplit, it's this one.
 type Service struct {
-	ctx                 context.Context
 	timer               Timer
 	loadedSplitFile     *SplitFile
 	currentSegment      *Segment
@@ -76,24 +36,23 @@ type Service struct {
 	currentRun          *Run
 	finished            bool
 	timeUpdatedChannel  chan time.Duration
-	persister           Persister
-	dirty               bool
 	updateCallbacks     []func(context.Context, ServicePayload)
+	runtimeProvider     RuntimeProvider
 }
 
 // NewService creates a new Service from the passed in components.
 //
-// Generally in real code splitFile should be nil and will be populated from Service.UpdateSplitFile or Service.LoadSplitFile
+// Generally in real code splitFile should be nil and will be populated by the
+// statemachine.Service via UpdateSplitFile or LoadSplitFile
 // Timer updates will be sent over the timeUpdatedChannel at approximately 60FPS.
-func NewService(timer Timer, timeUpdatedChannel chan time.Duration, splitFile *SplitFile, persister Persister) *Service {
+func NewService(runtimeProvider RuntimeProvider, timer Timer, timeUpdatedChannel chan time.Duration, splitFile *SplitFile) *Service {
 	service := &Service{
 		timer:               timer,
 		timeUpdatedChannel:  timeUpdatedChannel,
 		loadedSplitFile:     splitFile,
-		persister:           persister,
 		currentSegmentIndex: -1,
+		runtimeProvider:     runtimeProvider,
 	}
-
 	return service
 }
 
@@ -103,45 +62,44 @@ func (s *Service) AddCallback(cb func(context.Context, ServicePayload)) {
 }
 
 // Startup is designed to be called by Wails.run OnStartup to supply the proper context.Context that allows the
-// session.Service to call Wails runtime functions that do things like open file dialogs.
+// session.Service to call Wails runtimeProvider functions that do things like emit events.
 //
-// It also provides the context to the configured Persister so that it may also open file dialogs, calls Reset to ensure
-// the state is fresh, and starts a loop to listen for updates from Timer.  These updates are then passed along to the
-// frontend to update the visual timer.
+// It also calls Reset to ensure the run state is fresh, and starts a loop to listen for updates from Timer.
+// These updates are then passed along to the frontend to update the visual timer via "timer:update" events.
 func (s *Service) Startup(ctx context.Context) {
-	s.ctx = ctx
-	err := s.persister.Startup(ctx, s)
-	if err != nil {
-		logger.Error("Session Service failed to Startup persister: " + err.Error())
-		os.Exit(3)
-	}
 	s.Reset()
+	s.timer.Startup(ctx)
 	go func() {
 		for {
 			select {
-			case <-s.ctx.Done():
+			case <-ctx.Done():
 				return
 			case updatedTime, ok := <-s.timeUpdatedChannel:
 				if !ok {
 					return
 				} // channel closed => exit
-				s.emitEvent("timer:update", updatedTime.Milliseconds())
+				s.runtimeProvider.EventsEmit("timer:update", updatedTime.Milliseconds())
 			}
 		}
 	}()
 }
 
-func (s *Service) CleanQuit(ctx context.Context) bool {
-	if s.dirty {
-		res, _ := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
-			Type:    runtime.QuestionDialog,
+// CleanClose gives the user an opportunity to save any modified splitfiles or splitfiles with unsaved runs.
+//
+// Designed to be called by Wails.App.OnShutdown, but can technically be used just fine outside of that.
+// Returns a bool to be compatiable with OnShutdown.  false will allow the app to continue the shutdown process, true
+// interrupts it
+func (s *Service) CleanClose(persister Persister) bool {
+	if s.loadedSplitFile != nil && s.loadedSplitFile.dirty {
+		res, _ := s.runtimeProvider.MessageDialog(wailsRuntime.MessageDialogOptions{
+			Type:    wailsRuntime.QuestionDialog,
 			Title:   "Save Split File",
 			Message: "Would you like to save your updated runs before exiting?",
 		})
 
 		if res == "Yes" {
 			logger.Debug("saving split file on exit")
-			err := s.persister.Save(s.loadedSplitFile.GetPayload())
+			err := persister.Save(s.loadedSplitFile.GetPayload())
 			if err != nil {
 				logger.Error(fmt.Sprintf("failed saving split file on exit: %s", err))
 			}
@@ -175,7 +133,7 @@ func (s *Service) Split() {
 
 	if s.currentSegmentIndex == -1 {
 		// run is starting
-		s.dirty = true
+		s.loadedSplitFile.dirty = false
 		s.timer.Reset()
 		s.timer.Start()
 		s.loadedSplitFile.NewAttempt()
@@ -187,7 +145,7 @@ func (s *Service) Split() {
 		s.currentSegmentIndex++
 		s.currentSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
 		logger.Debug("sending session update from run start split")
-		s.emitEvent("session:update", s.getServicePayload())
+		s.runtimeProvider.EventsEmit("session:update", s.getServicePayload())
 
 		logger.Debug(fmt.Sprintf("starting new run (%s - %s - %s) attempt #%d",
 			s.loadedSplitFile.gameName,
@@ -208,7 +166,7 @@ func (s *Service) Split() {
 		s.currentRun.totalTime = s.timer.GetCurrentTime()
 		logger.Debug("split called with last segment in loaded split file, run complete")
 		logger.Debug("sending session update from run complete split")
-		s.emitEvent("session:update", s.getServicePayload())
+		s.runtimeProvider.EventsEmit("session:update", s.getServicePayload())
 		return
 	} else {
 		// run is in progress
@@ -220,7 +178,7 @@ func (s *Service) Split() {
 		s.currentSegmentIndex++
 		s.currentSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
 		logger.Debug("sending session update from mid run split")
-		s.emitEvent("session:update", s.getServicePayload())
+		s.runtimeProvider.EventsEmit("session:update", s.getServicePayload())
 		logger.Debug(fmt.Sprintf("segment index %d (%s) completed at %s, loading segment %d (%s)",
 			s.currentSegmentIndex-1,
 			s.loadedSplitFile.segments[s.currentSegmentIndex-1].name,
@@ -234,13 +192,9 @@ func (s *Service) Split() {
 func (s *Service) Pause() {
 	if s.timer.IsRunning() {
 		s.timer.Pause()
-		logger.Debug("sending session update from pause timer")
-		s.emitEvent("session:update", s.getServicePayload())
 		logger.Debug(fmt.Sprintf("pausing timer at %s", s.timer.GetCurrentTimeFormatted()))
 	} else {
 		s.timer.Start()
-		logger.Debug("sending session update from start timer")
-		s.emitEvent("session:update", s.getServicePayload())
 		logger.Debug(fmt.Sprintf("restarting timer at %s", s.timer.GetCurrentTimeFormatted()))
 	}
 }
@@ -263,9 +217,7 @@ func (s *Service) Reset() {
 	s.currentSegmentIndex = -1
 	s.currentSegment = nil
 	s.currentRun = nil
-	s.emitEvent("timer:update", 0)
-	logger.Debug("sending session update from reset session")
-	s.emitEvent("session:update", s.getServicePayload())
+	s.runtimeProvider.EventsEmit("timer:update", 0)
 	if s.loadedSplitFile != nil {
 		logger.Debug(fmt.Sprintf("session reset (%s - %s)", s.loadedSplitFile.gameName, s.loadedSplitFile.gameCategory))
 	} else {
@@ -273,114 +225,12 @@ func (s *Service) Reset() {
 	}
 }
 
-// SaveSplitFile uses the configured Persister to save the SplitFile to the configured storage
+// SetLoadedSplitFile sets the given SplitFile as the loaded one
 //
-// Use SaveSplitFile instead of UpdateSplitFile when you want to save new runs or BuildStats without changes to data
-// (e.g. NOT changing the Game Name, Category, or segments).
-// This function will never bump the split file version.
-func (s *Service) SaveSplitFile(width int, height int, x int, y int) error {
-	if s.loadedSplitFile == nil {
-		logger.Debug("SaveSplitFile called with no split file loaded: NO-OP")
-		return nil
-	}
-
-	s.loadedSplitFile.windowParams.Width = width
-	s.loadedSplitFile.windowParams.Height = height
-	s.loadedSplitFile.windowParams.X = x
-	s.loadedSplitFile.windowParams.Y = y
-	fmt.Println(s.loadedSplitFile.windowParams.Width, s.loadedSplitFile.windowParams.Height)
-	err := s.persister.Save(s.loadedSplitFile.GetPayload())
-	if err != nil {
-		var cancelled = &UserCancelledSave{}
-		if errors.As(err, cancelled) {
-			logger.Debug("user cancelled save")
-			logger.Error(fmt.Sprintf("failed to save split file with SaveSplitFile: %s", err))
-		}
-	}
-	logger.Debug("sending session update from update split file")
-	s.emitEvent("session:update", s.getServicePayload())
-	s.dirty = false
-	return err
-}
-
-// UpdateSplitFile uses the configured Persister to save the SplitFile to the configured storage.
-//
-// It creates a SplitFile from the given SplitFilePayload and then sets that SplitFile as the currently loaded one.
-func (s *Service) UpdateSplitFile(payload SplitFilePayload) error {
-	bumpVersion := false
-	newSplitFile, err := newFromPayload(payload)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to parse split file payload: %s", err))
-		return err
-	}
-
-	// If this is a new splitfile, s.loadedSplitFile will be nil at this point, so just set a flag to update the version
-	// once we've loaded the splitfile from the payload to be sure.
-	if s.loadedSplitFile == nil || SplitFileChanged(payload, s.loadedSplitFile.GetPayload()) {
-		logger.Debug("SplitFile changed, bumping version after loading new split file")
-		bumpVersion = true
-	}
-
-	// This is a new splitfile so lets build WindowParams with sensible defaults
-	if s.loadedSplitFile == nil {
-		newSplitFile.windowParams = NewDefaultWindowParams()
-	}
-
-	if s.loadedSplitFile != nil {
-		// persist runs and attempts
-		newSplitFile.attempts = s.loadedSplitFile.attempts
-		newSplitFile.runs = s.loadedSplitFile.runs
-	}
-	s.loadedSplitFile = newSplitFile
-	if bumpVersion {
-		// Splitfile is now loaded for sure, even if this was a brand-new file, it's now safe to access its members
-		s.loadedSplitFile.version++
-	}
-
-	err = s.persister.Save(s.loadedSplitFile.GetPayload())
-	if err != nil {
-		var cancelled = &UserCancelledSave{}
-		if errors.As(err, cancelled) {
-			logger.Debug("user cancelled save")
-			return err
-		}
-		logger.Error(fmt.Sprintf("failed to save split file: %s", err))
-		s.loadedSplitFile = nil
-		return err
-	}
-
-	logger.Debug("sending session update from update split file")
-	s.emitEvent("session:update", s.getServicePayload())
-	s.dirty = false
-	return err
-}
-
-// LoadSplitFile retrieves a SplitFilePayload from Persister configured storage.
-//
-// It creates a new SplitFile from the retrieved SplitFilePayload, sets that as the loaded split file, and resets the
-// system.
-func (s *Service) LoadSplitFile() (SplitFilePayload, error) {
-	newSplitFilePayload, err := s.persister.Load()
-	if err != nil {
-		s.loadedSplitFile = nil
-		var userCancelled = &UserCancelledSave{}
-		if !errors.As(err, userCancelled) {
-			logger.Error(fmt.Sprintf("failed to load split file: %s", err))
-		}
-		return SplitFilePayload{}, err
-	}
-
-	newSplitFile, err := newFromPayload(newSplitFilePayload)
-	if err != nil {
-		logger.Error(fmt.Sprintf("failed to create split file from payload: %s", err))
-		s.loadedSplitFile = nil
-		return SplitFilePayload{}, err
-	}
-
-	s.loadedSplitFile = newSplitFile
+// Splits and other actions only work against the given splitfile
+func (s *Service) SetLoadedSplitFile(sf *SplitFile) {
+	s.loadedSplitFile = sf
 	s.Reset()
-	s.dirty = false
-	return newSplitFilePayload, nil
 }
 
 // GetSessionStatus is a convenience method for the frontend to query the state of the system imperatively
@@ -392,8 +242,6 @@ func (s *Service) GetSessionStatus() ServicePayload {
 func (s *Service) CloseSplitFile() {
 	s.loadedSplitFile = nil
 	s.Reset()
-	logger.Debug("sending session update from close split file")
-	s.emitEvent("session:update", nil)
 }
 
 // GetLoadedSplitFile returns the SplitFilePayload representation of the currently loaded SplitFile
@@ -434,24 +282,11 @@ func (s *Service) getServicePayload() ServicePayload {
 		Finished:            s.finished,
 		CurrentTime: StatTime{
 			Raw:       s.timer.GetCurrentTime().Milliseconds(),
-			Formatted: utils.FormatTimeToString(s.timer.GetCurrentTime()),
+			Formatted: FormatTimeToString(s.timer.GetCurrentTime()),
 		},
 		Paused:     !s.timer.IsRunning(),
 		CurrentRun: currentRunPayload,
 	}
 
 	return payload
-}
-
-// emitEvent wraps the runtime.EventsEmit from Wails so that it no-ops if there is no context.Context provided by
-// Wails.run OnStartup callback, a requirement to use the function.  This allows for no-ops in unit testing.
-func (s *Service) emitEvent(event string, optional interface{}) {
-	if s.ctx != nil {
-		if sp, ok := optional.(ServicePayload); ok && event == "session:update" {
-			for _, cb := range s.updateCallbacks {
-				cb(s.ctx, sp)
-			}
-		}
-		runtime.EventsEmit(s.ctx, event, optional)
-	}
 }

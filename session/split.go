@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/zellydev-games/opensplit/utils"
 )
 
 // SplitPayload is a snapshot of split data to communicate information about a split to the frontend, and also the
@@ -30,7 +29,7 @@ func (s *Split) getPayload() SplitPayload {
 		SplitSegmentID: s.splitSegmentID.String(),
 		CurrentTime: StatTime{
 			Raw:       s.currentDuration.Milliseconds(),
-			Formatted: utils.FormatTimeToString(s.currentDuration),
+			Formatted: FormatTimeToString(s.currentDuration),
 		},
 	}
 }

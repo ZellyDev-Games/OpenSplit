@@ -1,22 +1,25 @@
-import { useNavigate } from "react-router";
-
-import { LoadSplitFile } from "../../../wailsjs/go/session/Service";
-import { Quit } from "../../../wailsjs/runtime";
+import { Dispatch } from "../../../wailsjs/go/statemachine/Service";
+import { Command } from "../../App";
 import zdgLogo from "../../assets/images/ZG512.png";
 import useWindowResize from "../../hooks/useWindowResize";
 
 export default function Welcome() {
-    const navigate = useNavigate();
     useWindowResize("welcome");
     return (
         <div className="welcome">
             <img src={zdgLogo} alt="" />
             <hr />
             <h3>OpenSplit</h3>
-            <button onClick={() => navigate("/edit")}>Create New Split File</button>
             <button
                 onClick={async () => {
-                    await LoadSplitFile();
+                    await Dispatch(Command.NEW, null);
+                }}
+            >
+                Create New Split File
+            </button>
+            <button
+                onClick={async () => {
+                    await Dispatch(Command.LOAD, null);
                 }}
             >
                 Load Split File
@@ -24,7 +27,7 @@ export default function Welcome() {
             <button
                 style={{ marginTop: 30 }}
                 onClick={async () => {
-                    Quit();
+                    await Dispatch(Command.QUIT, null);
                 }}
             >
                 Exit OpenSplit
@@ -34,6 +37,7 @@ export default function Welcome() {
                 style={{ marginTop: 30 }}
                 onClick={async () => {
                     localStorage.clear();
+                    await Dispatch(Command.RESET, null);
                 }}
             >
                 Reset All Preferences
