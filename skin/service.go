@@ -9,7 +9,7 @@ import (
 	"sort"
 )
 
-// Service allows for runtime switching of skins
+// Service allows for platform switching of skins
 type Service struct {
 	ctx     context.Context
 	skinDir string

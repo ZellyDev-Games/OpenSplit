@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/zellydev-games/opensplit/persistence"
 )
 
 // RuntimeProvider wraps Wails.runtimeProvider calls to allow for DI for testing.
@@ -40,13 +41,7 @@ type FileProvider interface {
 
 // Persister is an interface that services that save and load splitfiles must implement to be used by session.Service
 type Persister interface {
-	Startup(rp RuntimeProvider, service *Service)
-	Load() (split SplitFilePayload, err error)
-	Save(split SplitFilePayload) error
-}
-
-// TickerInterface wraps time.Ticker to allow DI for testing
-type TickerInterface interface {
-	Ch() <-chan time.Time
-	Stop()
+	Startup(runtimeProvider persistence.RuntimeProvider)
+	Load() ([]byte, error)
+	Save([]byte, string) error
 }

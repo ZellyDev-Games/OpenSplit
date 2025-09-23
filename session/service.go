@@ -1,26 +1,73 @@
 package session
 
 import (
-	"context"
 	"fmt"
+	"sync"
 	"time"
 
-	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
-	"github.com/zellydev-games/opensplit/logger"
-
 	"github.com/google/uuid"
+	"github.com/zellydev-games/opensplit/logger"
 )
 
-// ServicePayload is a snapshot of the session.Service, useful for communicating the state of the service to the frontend
-// without exposing internal data.
-type ServicePayload struct {
-	SplitFile           *SplitFilePayload `json:"split_file"`
-	CurrentSegmentIndex int               `json:"current_segment_index"`
-	CurrentSegment      *SegmentPayload   `json:"current_segment"`
-	Finished            bool              `json:"finished"`
-	Paused              bool              `json:"paused"`
-	CurrentTime         StatTime          `json:"current_time"`
-	CurrentRun          *RunPayload       `json:"current_run"`
+const splitDebounce = 120 * time.Millisecond
+
+type SplitResult int
+
+const (
+	SplitNoop SplitResult = iota
+	SplitStarted
+	SplitAdvanced
+	SplitFinished
+	SplitReset
+)
+
+type State byte
+
+const (
+	Idle State = iota
+	Running
+	Paused
+	Finished
+)
+
+// Repository defines a contract for a persistence provider to operate against
+type Repository interface {
+	Load() (*Run, error)
+	Save(*Run) error
+	SaveAs(run *Run) error
+}
+
+// Split represents an advancement of a run through the segments.
+//
+// Split identifies a completed segment, and how long that segment took
+type Split struct {
+	splitIndex        int
+	splitSegmentID    uuid.UUID
+	currentCumulative time.Duration
+	currentDuration   time.Duration
+}
+
+// Segment represents a portion of a game that you want to time (e.g. "Level 1")
+type Segment struct {
+	id      uuid.UUID
+	name    string
+	gold    time.Duration
+	average time.Duration
+	pb      time.Duration
+}
+
+// Run is a snapshot of a SplitFile along with additional data to track a run
+type Run struct {
+	id               uuid.UUID
+	splitFileID      uuid.UUID
+	splitFileVersion int
+	gameName         string
+	gameCategory     string
+	segments         []Segment
+	attempts         int
+	sob              StatTime
+	totalTime        time.Duration
+	splits           []Split
 }
 
 // Service represents the current state of a run.
@@ -29,15 +76,14 @@ type ServicePayload struct {
 // current Run / SplitFile, and communicates timer updates to the frontend
 // If there's one struct that's key to understand in OpenSplit, it's this one.
 type Service struct {
+	mu                  sync.Mutex
 	timer               Timer
-	loadedSplitFile     *SplitFile
-	currentSegment      *Segment
-	currentSegmentIndex int
 	currentRun          *Run
-	finished            bool
-	timeUpdatedChannel  chan time.Duration
-	updateCallbacks     []func(context.Context, ServicePayload)
-	runtimeProvider     RuntimeProvider
+	currentSegmentIndex int
+	sessionState        State
+	lastSplitTime       time.Time
+	repository          Repository
+	dirty               bool
 }
 
 // NewService creates a new Service from the passed in components.
@@ -45,248 +91,245 @@ type Service struct {
 // Generally in real code splitFile should be nil and will be populated by the
 // statemachine.Service via UpdateSplitFile or LoadSplitFile
 // Timer updates will be sent over the timeUpdatedChannel at approximately 60FPS.
-func NewService(runtimeProvider RuntimeProvider, timer Timer, timeUpdatedChannel chan time.Duration, splitFile *SplitFile) *Service {
+func NewService(repo Repository, timer Timer) *Service {
 	service := &Service{
 		timer:               timer,
-		timeUpdatedChannel:  timeUpdatedChannel,
-		loadedSplitFile:     splitFile,
 		currentSegmentIndex: -1,
-		runtimeProvider:     runtimeProvider,
+		repository:          repo,
 	}
 	return service
 }
 
-// AddCallback adds a callback that is invoked when eventsEmit is called with "session:update"
-func (s *Service) AddCallback(cb func(context.Context, ServicePayload)) {
-	s.updateCallbacks = append(s.updateCallbacks, cb)
-}
+// Split starts, advances, finishes, or resets a run depending on the state
+func (s *Service) Split() SplitResult {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-// Startup is designed to be called by Wails.run OnStartup to supply the proper context.Context that allows the
-// session.Service to call Wails runtimeProvider functions that do things like emit events.
-//
-// It also calls Reset to ensure the run state is fresh, and starts a loop to listen for updates from Timer.
-// These updates are then passed along to the frontend to update the visual timer via "timer:update" events.
-func (s *Service) Startup(ctx context.Context) {
-	s.Reset()
-	s.timer.Startup(ctx)
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case updatedTime, ok := <-s.timeUpdatedChannel:
-				if !ok {
-					return
-				} // channel closed => exit
-				s.runtimeProvider.EventsEmit("timer:update", updatedTime.Milliseconds())
-			}
-		}
-	}()
-}
-
-// CleanClose gives the user an opportunity to save any modified splitfiles or splitfiles with unsaved runs.
-//
-// Designed to be called by Wails.App.OnShutdown, but can technically be used just fine outside of that.
-// Returns a bool to be compatiable with OnShutdown.  false will allow the app to continue the shutdown process, true
-// interrupts it
-func (s *Service) CleanClose(persister Persister) bool {
-	if s.loadedSplitFile != nil && s.loadedSplitFile.dirty {
-		res, _ := s.runtimeProvider.MessageDialog(wailsRuntime.MessageDialogOptions{
-			Type:    wailsRuntime.QuestionDialog,
-			Title:   "Save Split File",
-			Message: "Would you like to save your updated runs before exiting?",
-		})
-
-		if res == "Yes" {
-			logger.Debug("saving split file on exit")
-			err := persister.Save(s.loadedSplitFile.GetPayload())
-			if err != nil {
-				logger.Error(fmt.Sprintf("failed saving split file on exit: %s", err))
-			}
-		}
-	}
-
-	return false
-}
-
-// Split advances the state of a Run
-//
-// Split has several logical branches depending on the state of the Run.  It can start a Run if currentIndex is -1,
-// advance to the next split and generate split information if in the middle of a Run, end a Run once the last segment is
-// split, and Reset for a new Run if called when the Run is over.
-func (s *Service) Split() {
-	if s.loadedSplitFile == nil {
-		logger.Debug("split called with no split file loaded: NO-OP")
-		return
-	}
-
-	// TODO: Handle the case where the user just wants a stopwatch (i.e. no segments in a split file, or no split file loaded at all)
-	if len(s.loadedSplitFile.segments) == 0 {
-		logger.Debug("split called on a split file with no segments: NO-OP")
-		return
-	}
-
-	if s.finished {
-		s.Reset()
-		return
-	}
-
-	if s.currentSegmentIndex == -1 {
-		// run is starting
-		s.loadedSplitFile.dirty = false
-		s.timer.Reset()
-		s.timer.Start()
-		s.loadedSplitFile.NewAttempt()
-		s.currentRun = &Run{
-			id:               uuid.New(),
-			splitFileVersion: s.loadedSplitFile.version,
-		}
-
-		s.currentSegmentIndex++
-		s.currentSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
-		logger.Debug("sending session update from run start split")
-		s.runtimeProvider.EventsEmit("session:update", s.getServicePayload())
-
-		logger.Debug(fmt.Sprintf("starting new run (%s - %s - %s) attempt #%d",
-			s.loadedSplitFile.gameName,
-			s.loadedSplitFile.gameCategory,
-			s.currentSegment.name,
-			s.loadedSplitFile.attempts))
-		return
-	} else if s.currentSegmentIndex >= len(s.loadedSplitFile.segments)-1 {
-		// run is finished
-		s.timer.Pause()
-		s.finished = true
-		s.currentRun.splits = append(s.currentRun.splits, Split{
-			splitIndex:      s.currentSegmentIndex,
-			splitSegmentID:  s.currentSegment.id,
-			currentDuration: s.timer.GetCurrentTime(),
-		})
-		s.currentRun.completed = true
-		s.currentRun.totalTime = s.timer.GetCurrentTime()
-		logger.Debug("split called with last segment in loaded split file, run complete")
-		logger.Debug("sending session update from run complete split")
-		s.runtimeProvider.EventsEmit("session:update", s.getServicePayload())
-		return
+	if t := time.Now(); s.lastSplitTime.Add(splitDebounce).After(t) {
+		return SplitNoop
 	} else {
-		// run is in progress
-		s.currentRun.splits = append(s.currentRun.splits, Split{
-			splitIndex:      s.currentSegmentIndex,
-			splitSegmentID:  s.currentSegment.id,
-			currentDuration: s.timer.GetCurrentTime(),
-		})
-		s.currentSegmentIndex++
-		s.currentSegment = &s.loadedSplitFile.segments[s.currentSegmentIndex]
-		logger.Debug("sending session update from mid run split")
-		s.runtimeProvider.EventsEmit("session:update", s.getServicePayload())
-		logger.Debug(fmt.Sprintf("segment index %d (%s) completed at %s, loading segment %d (%s)",
-			s.currentSegmentIndex-1,
-			s.loadedSplitFile.segments[s.currentSegmentIndex-1].name,
-			s.timer.GetCurrentTimeFormatted(),
-			s.currentSegmentIndex,
-			s.currentSegment.name))
+		s.lastSplitTime = t
 	}
+
+	switch s.sessionState {
+	case Idle:
+		// Start a new run
+		if s.currentRun == nil {
+			logger.Debug("Split() called with no loaded Run.  NO-OP")
+			return SplitNoop
+		}
+
+		if len(s.currentRun.segments) == 0 {
+			logger.Debug("Split() called on run with no segments, NO-OP")
+			return SplitNoop
+		}
+		s.resetLocked()
+		s.timer.Start()
+		s.currentRun.attempts++
+		s.sessionState = Running
+		s.currentSegmentIndex = 0
+		s.dirty = true
+		return SplitStarted
+	case Running:
+		// defensive, prevents us from panic in case something really went wrong
+		if s.currentSegmentIndex < 0 || s.currentSegmentIndex >= len(s.currentRun.segments) {
+			logger.Warn(
+				fmt.Sprintf("Split() called in Running state, but current segment index is out of bounds: %d",
+					s.currentSegmentIndex))
+			return SplitNoop
+		}
+		now := s.timer.GetCurrentTime()
+		prev := time.Duration(0)
+		if s.currentSegmentIndex > 0 {
+			prev = s.currentRun.splits[s.currentSegmentIndex-1].currentCumulative
+		}
+		segTime := now - prev
+
+		s.currentRun.splits = append(s.currentRun.splits, Split{
+			splitIndex:        s.currentSegmentIndex,
+			splitSegmentID:    s.currentRun.segments[s.currentSegmentIndex].id,
+			currentCumulative: now,
+			currentDuration:   segTime,
+		})
+		s.dirty = true
+
+		if s.currentSegmentIndex >= len(s.currentRun.segments)-1 {
+			s.timer.Pause()
+			s.sessionState = Finished
+			s.currentRun.totalTime = now
+			return SplitFinished
+		}
+		s.currentSegmentIndex++
+		return SplitAdvanced
+	case Finished:
+		s.resetLocked()
+		return SplitReset
+	case Paused:
+		logger.Debug("Split() called with paused - NO-OP")
+		return SplitNoop
+	}
+
+	return SplitNoop
 }
 
-// Pause toggles the timer between the running and not running state.
+// Undo cancels a Split()
+func (s *Service) Undo() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.currentRun == nil || s.currentSegmentIndex <= 0 || s.sessionState == Idle || len(s.currentRun.splits) == 0 {
+		return
+	}
+
+	s.currentRun.splits = s.currentRun.splits[:len(s.currentRun.splits)-1]
+	if s.sessionState == Finished {
+		s.sessionState = Running
+	}
+
+	s.currentSegmentIndex = len(s.currentRun.splits)
+
+	if s.currentSegmentIndex != 0 {
+		s.currentRun.totalTime = s.currentRun.splits[len(s.currentRun.splits)-1].currentCumulative
+	} else {
+		s.currentRun.totalTime = 0
+	}
+	s.dirty = true
+}
+
+// Skip sets the current segment to the next one without recording a split
+func (s *Service) Skip() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.currentRun == nil ||
+		s.currentSegmentIndex >= len(s.currentRun.segments)-1 ||
+		s.sessionState == Idle ||
+		s.sessionState == Finished {
+		return
+	}
+	s.currentSegmentIndex++
+	s.dirty = true
+}
+
+// Pause toggles the pause state of a run
 func (s *Service) Pause() {
-	if s.timer.IsRunning() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.sessionState != Running && s.sessionState != Paused {
+		return
+	}
+	if s.sessionState == Running {
+		s.sessionState = Paused
 		s.timer.Pause()
-		logger.Debug(fmt.Sprintf("pausing timer at %s", s.timer.GetCurrentTimeFormatted()))
 	} else {
+		s.sessionState = Running
 		s.timer.Start()
-		logger.Debug(fmt.Sprintf("restarting timer at %s", s.timer.GetCurrentTimeFormatted()))
 	}
 }
 
-// Reset brings the system back to a default state.
-//
-// If there was a current Run loaded, information about that Run is added to the SplitFile history.
-func (s *Service) Reset() {
-	s.timer.Pause()
-	s.timer.Reset()
-
-	// If there's a run, add it to the history
-	if s.loadedSplitFile != nil && s.currentRun != nil {
-		logger.Debug(fmt.Sprintf("appending run to splitfile: %v", s.currentRun))
-		s.loadedSplitFile.runs = append(s.loadedSplitFile.runs, *s.currentRun)
-		s.loadedSplitFile.BuildStats()
+// Load loads a split file from the configured Repository and sets it as the current Run
+func (s *Service) Load() error {
+	run, err := s.repository.Load()
+	if err != nil {
+		return err
 	}
 
-	s.finished = false
-	s.currentSegmentIndex = -1
-	s.currentSegment = nil
-	s.currentRun = nil
-	s.runtimeProvider.EventsEmit("timer:update", 0)
-	if s.loadedSplitFile != nil {
-		logger.Debug(fmt.Sprintf("session reset (%s - %s)", s.loadedSplitFile.gameName, s.loadedSplitFile.gameCategory))
-	} else {
-		logger.Debug("session reset (no loaded split file)")
-	}
-}
-
-// SetLoadedSplitFile sets the given SplitFile as the loaded one
-//
-// Splits and other actions only work against the given splitfile
-func (s *Service) SetLoadedSplitFile(sf *SplitFile) {
-	s.loadedSplitFile = sf
-	s.Reset()
-}
-
-// GetSessionStatus is a convenience method for the frontend to query the state of the system imperatively
-func (s *Service) GetSessionStatus() ServicePayload {
-	return s.getServicePayload()
-}
-
-// CloseSplitFile unloads the loaded SplitFile, and resets the system.
-func (s *Service) CloseSplitFile() {
-	s.loadedSplitFile = nil
-	s.Reset()
-}
-
-// GetLoadedSplitFile returns the SplitFilePayload representation of the currently loaded SplitFile
-//
-// It returns a payload, modifications to it do not affect the internal state.  To do that modify the payload then
-// send the modified payload to UpdateSplitFile.
-func (s *Service) GetLoadedSplitFile() *SplitFilePayload {
-	if s.loadedSplitFile != nil {
-		splitFilePayload := s.loadedSplitFile.GetPayload()
-		return &splitFilePayload
-	}
+	s.mu.Lock()
+	s.currentRun = run
+	s.resetLocked()
+	s.dirty = false
+	s.mu.Unlock()
 	return nil
 }
 
-func (s *Service) getServicePayload() ServicePayload {
-	var loadedSplitFilePayload *SplitFilePayload
-	if s.loadedSplitFile != nil {
-		payload := s.loadedSplitFile.GetPayload()
-		loadedSplitFilePayload = &payload
+// Save persists the current Run with the configured Repository
+func (s *Service) Save() error {
+	if s.currentRun == nil {
+		return nil
+	}
+	s.mu.Lock()
+	run := s.currentRun
+	s.mu.Unlock()
+	err := s.repository.Save(run)
+	if err != nil {
+		return err
 	}
 
-	var currentSegmentPayload *SegmentPayload
-	if s.currentSegment != nil {
-		payload := s.currentSegment.GetPayload()
-		currentSegmentPayload = &payload
+	s.mu.Lock()
+	s.dirty = false
+	s.mu.Unlock()
+	return nil
+}
+
+// SaveAs saves the current Run with the configured Repository, intending to force the file dialog path
+func (s *Service) SaveAs() error {
+	if s.currentRun == nil {
+		return nil
+	}
+	s.mu.Lock()
+	run := s.currentRun
+	s.mu.Unlock()
+
+	err := s.repository.SaveAs(run)
+	if err != nil {
+		return err
 	}
 
-	var currentRunPayload *RunPayload
+	s.mu.Lock()
+	s.dirty = false
+	s.mu.Unlock()
+	return nil
+}
+
+// Reset stops any current run and brings the system back to a default state.
+func (s *Service) Reset() {
+	s.mu.Lock()
+	s.resetLocked()
+	s.mu.Unlock()
+}
+
+// CloseRun unloads the loaded Run, and resets the system.
+func (s *Service) CloseRun() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.currentRun = nil
+	s.resetLocked()
+}
+
+// Dirty returns the unsaved changes status of the session
+func (s *Service) Dirty() bool { s.mu.Lock(); defer s.mu.Unlock(); return s.dirty }
+
+// State returns the session State
+func (s *Service) State() State { s.mu.Lock(); defer s.mu.Unlock(); return s.sessionState }
+
+// Index returns the current segment index of the session
+func (s *Service) Index() int { s.mu.Lock(); defer s.mu.Unlock(); return s.currentSegmentIndex }
+
+// Run returns the currently loaded Run
+//
+// Returns true as second param only if result is valid
+func (s *Service) Run() (Run, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.currentRun == nil {
+		return Run{}, false
+	}
+	r := *s.currentRun
+	r.segments = append([]Segment(nil), r.segments...)
+	r.splits = append([]Split(nil), r.splits...)
+	return r, true
+}
+
+// resetLocked assumed that the system is under lock when called.
+func (s *Service) resetLocked() {
+	s.timer.Pause()
+	s.timer.Reset()
 	if s.currentRun != nil {
-		payload := s.currentRun.getPayload()
-		currentRunPayload = &payload
+		s.currentRun.totalTime = 0
+		clear(s.currentRun.splits)
+		s.currentRun.splits = s.currentRun.splits[:0]
 	}
 
-	payload := ServicePayload{
-		SplitFile:           loadedSplitFilePayload,
-		CurrentSegmentIndex: s.currentSegmentIndex,
-		CurrentSegment:      currentSegmentPayload,
-		Finished:            s.finished,
-		CurrentTime: StatTime{
-			Raw:       s.timer.GetCurrentTime().Milliseconds(),
-			Formatted: FormatTimeToString(s.timer.GetCurrentTime()),
-		},
-		Paused:     !s.timer.IsRunning(),
-		CurrentRun: currentRunPayload,
-	}
-
-	return payload
+	s.sessionState = Idle
+	s.currentSegmentIndex = -1
 }

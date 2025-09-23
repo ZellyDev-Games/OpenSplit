@@ -76,7 +76,7 @@ func InitMachine(runtimeProvider session.RuntimeProvider, sessionService *sessio
 	return machine
 }
 
-// Startup is called by Wails.Run to pass in a context to use against Wails.runtime
+// Startup is called by Wails.Run to pass in a context to use against Wails.platform
 func (s *Service) Startup() {
 	machine.changeState(WELCOME, s.sessionService)
 }
@@ -293,7 +293,7 @@ func (r Running) Receive(command Command, params []byte) (DispatchReply, error) 
 	switch command {
 	case CLOSE:
 		logger.Debug(fmt.Sprintf("Running received CLOSE command: %s", params))
-		machine.sessionService.CloseSplitFile()
+		machine.sessionService.CloseRun()
 		machine.changeState(WELCOME, nil)
 	case EDIT:
 		logger.Debug(fmt.Sprintf("Running received EDIT command: %s", params))

@@ -1,4 +1,4 @@
-package session
+package timer
 
 import (
 	"context"
@@ -7,6 +7,12 @@ import (
 	"sync"
 	"time"
 )
+
+// TickerInterface wraps time.Ticker to allow DI for testing
+type TickerInterface interface {
+	Ch() <-chan time.Time
+	Stop()
+}
 
 // Stopwatch tracks the passing of time with a monotonic clock
 //

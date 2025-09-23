@@ -1,4 +1,4 @@
-package session
+package persistence
 
 import (
 	"context"
@@ -65,8 +65,7 @@ func TestSave(t *testing.T) {
 	m := &MockRuntimeProvider{}
 	f := &MockFileProvider{}
 	j := NewJsonFile(m, f)
-	sf := getTestFile()
-	err := j.Save(sf.GetPayload())
+	err := j.Save([]byte(""), "default.osf")
 	if err != nil {
 		t.Error(err)
 	}
@@ -93,7 +92,9 @@ func TestLoad(t *testing.T) {
 		t.Error("Load() never opened OpenFileDialog")
 	}
 
-	if payload.GameName != "Final Fight (SNES)" || payload.GameCategory != "Any%" || payload.Attempts != 5 {
+	want := `{"game_name":"Final Fight (SNES)","game_category":"Any%","segments":[{"id":"bb846ce5-e710-4ed7-a648-d09d7de8bc73","name":"Streets","best_time":"0:01:01.00","average_time":"0:01:02.03"},{"id":"d6450ae3-6dfe-40ee-bc51-f4ebfd17a960","name":"Subway 2","best_time":"1:01:03.04","average_time":"1:02:03.04"},{"id":"bb866bc5-b452-4556-bd8e-3c74b965573e","name":"Fin","best_time":"2:00:04.05","average_time":"2:01:05.00"}],"attempts":5}`
+
+	if string(payload) != want {
 		t.Errorf("Load didn't return expected payload")
 	}
 }

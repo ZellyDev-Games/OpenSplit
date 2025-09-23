@@ -14,11 +14,6 @@ type StatTime struct {
 	Formatted string `json:"formatted"`
 }
 
-type PBStatsPayload struct {
-	Run   *RunPayload `json:"run"`
-	Total StatTime    `json:"total"`
-}
-
 type PBStats struct {
 	run   *Run
 	total time.Duration
@@ -53,7 +48,7 @@ func (s *SplitFile) BuildStats() {
 		for _, split := range pb.run.splits {
 			for i, seg := range s.segments {
 				if split.splitSegmentID == seg.id {
-					seg.pb = split.currentDuration
+					seg.pb = split.currentCumulative
 					s.segments[i] = seg
 				}
 			}
@@ -71,11 +66,7 @@ func getPB(runs []Run) (*PBStats, error) {
 	var fastestRun *Run = nil
 	fastestTotal := time.Duration(0)
 	for i, run := range runs {
-		if !run.completed || len(run.splits) == 0 {
-			continue
-		}
-
-		total := run.splits[len(run.splits)-1].currentDuration
+		total := run.splits[len(run.splits)-1].currentCumulative
 		if fastestRun == nil || total < fastestTotal {
 			fastestRun = &runs[i]
 			fastestTotal = total
@@ -100,18 +91,18 @@ func (s *SplitFile) perSegmentAggregates(runs []Run) (golds map[uuid.UUID]time.D
 	for _, run := range runs {
 		var last time.Duration
 		for i, sp := range run.splits {
-			segmentDuration := sp.currentDuration - last
+			segmentDuration := sp.currentCumulative - last
 			if segmentDuration < 0 {
 				logger.Warn(fmt.Sprintf("non-monotonic cumulative at split %d", i))
 				continue
 			}
 
-			last = sp.currentDuration
+			last = sp.currentCumulative
 			if cur, ok := golds[sp.splitSegmentID]; !ok || segmentDuration < cur {
 				golds[sp.splitSegmentID] = segmentDuration
 			}
 
-			sums[sp.splitSegmentID] += sp.currentDuration
+			sums[sp.splitSegmentID] += sp.currentCumulative
 			counts[sp.splitSegmentID]++
 		}
 	}

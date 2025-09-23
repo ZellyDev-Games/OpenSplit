@@ -1,8 +1,12 @@
-package runtime
+package platform
 
 import "os"
 
 type FileRuntime struct{}
+
+func NewFileRuntime() *FileRuntime {
+	return &FileRuntime{}
+}
 
 func (f *FileRuntime) WriteFile(filename string, data []byte, perm os.FileMode) error {
 	return os.WriteFile(filename, data, perm)
