@@ -66,58 +66,55 @@ type MockRepository struct {
 	SaveAsCalled int
 }
 
-func (r *MockRepository) Load() (*Run, error) {
-	return &Run{
-		id:               uid,
-		splitFileID:      uid,
-		splitFileVersion: 1,
-		gameName:         "Test Loaded Game",
-		gameCategory:     "Loaded Category",
-		segments: []Segment{{
-			id:      uid,
-			name:    "Segment 1",
-			gold:    time.Second * 60,
-			average: time.Second * 70,
-			pb:      time.Second * 50,
+func (r *MockRepository) Load() (*SplitFile, error) {
+	return &SplitFile{
+		ID:           uid,
+		Version:      1,
+		GameName:     "Test Loaded Game",
+		GameCategory: "Loaded Category",
+		Segments: []Segment{{
+			ID:      uid,
+			Name:    "Segment 1",
+			Gold:    time.Second * 60,
+			Average: time.Second * 70,
+			PB:      time.Second * 50,
 		}, {
-			id:      uid2,
-			name:    "Segment 2",
-			gold:    time.Second * 60,
-			average: time.Second * 70,
-			pb:      time.Second * 50,
+			ID:      uid2,
+			Name:    "Segment 2",
+			Gold:    time.Second * 60,
+			Average: time.Second * 70,
+			PB:      time.Second * 50,
 		}},
-		attempts:  0,
-		sob:       StatTime{},
-		totalTime: 0,
-		splits:    nil,
+		Attempts: 0,
+		SOB:      0,
 	}, nil
 }
 
-func (m *MockRepository) Save(run *Run) error {
+func (m *MockRepository) Save(*SplitFile) error {
 	m.SaveCalled++
 	return nil
 }
 
-func (m *MockRepository) SaveAs(run *Run) error {
+func (m *MockRepository) SaveAs(*SplitFile) error {
 	m.SaveAsCalled++
 	return nil
 }
 
 func getSplitFile() *SplitFile {
 	return &SplitFile{
-		id:           uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
-		gameName:     "Test Game",
-		gameCategory: "Test Category",
-		segments: []Segment{{
-			id:   uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
-			name: "Test Segment 1",
+		ID:           uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
+		GameName:     "Test Game",
+		GameCategory: "Test Category",
+		Segments: []Segment{{
+			ID:   uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
+			Name: "Test Segment 1",
 		}, {
-			id:   uuid.MustParse("4bc1a05c-d4f3-4095-887f-519e2fbb54f3"),
-			name: "Test Segment 2",
+			ID:   uuid.MustParse("4bc1a05c-d4f3-4095-887f-519e2fbb54f3"),
+			Name: "Test Segment 2",
 		}},
-		attempts: 0,
-		version:  1,
-		runs:     []Run{},
+		Attempts: 0,
+		Version:  1,
+		Runs:     []Run{},
 	}
 }
 
@@ -129,9 +126,16 @@ func getService() (*Service, *MockTimer, *MockRepository, *SplitFile) {
 }
 
 func TestSplit(t *testing.T) {
-	s, mt, r, _ := getService()
-	s.currentRun, _ = r.Load()
+	s, mt, _, _ := getService()
 	s.Split()
+	if s.currentSegmentIndex != -1 {
+		t.Fatalf("Split() before load s.currentSegmentIndex want %d, got %d", -1, s.currentSegmentIndex)
+	}
+
+	_ = s.Load()
+	time.Sleep(splitDebounce + 1*time.Millisecond)
+	s.Split()
+
 	if s.currentSegmentIndex != 0 {
 		t.Fatalf("Split() s.currentSegmentIndex want %d, got %d", 0, s.currentSegmentIndex)
 	}
@@ -148,8 +152,8 @@ func TestSplit(t *testing.T) {
 		t.Fatalf("Split() s.timer.IsRunning() want %v, got %v", true, s.timer.IsRunning())
 	}
 
-	if s.currentRun.attempts != 1 {
-		t.Fatalf("Split() attempts want %d, got %d", 1, s.currentRun.attempts)
+	if s.loadedSplitFile.Attempts != 1 {
+		t.Fatalf("Split() Attempts want %d, got %d", 1, s.loadedSplitFile.Attempts)
 	}
 
 	time.Sleep(splitDebounce + 1*time.Millisecond)
@@ -158,12 +162,12 @@ func TestSplit(t *testing.T) {
 		t.Fatalf("Split() s.currentSegmentIndex want %d, got %d", 1, s.currentSegmentIndex)
 	}
 
-	if len(s.currentRun.splits) != 1 {
-		t.Fatalf("Split() s.currentRun.splits want %d, got %d", 1, len(s.currentRun.splits))
+	if len(s.currentRun.Splits) != 1 {
+		t.Fatalf("Split() s.currentRun.Splits want %d, got %d", 1, len(s.currentRun.Splits))
 	}
 
-	if s.currentRun.splits[0].splitSegmentID != uid {
-		t.Fatalf("Split() 1st recorded split segment ID want %s, got %s", uid.String(), s.currentRun.splits[0].splitSegmentID.String())
+	if s.currentRun.Splits[0].SplitSegmentID != uid {
+		t.Fatalf("Split() 1st recorded split segment ID want %s, got %s", uid.String(), s.currentRun.Splits[0].SplitSegmentID.String())
 	}
 
 	time.Sleep(splitDebounce + 1*time.Millisecond)
@@ -176,11 +180,11 @@ func TestSplit(t *testing.T) {
 		t.Fatalf("Split() s.timer.IsRunning() want %v, got %v", false, s.timer.IsRunning())
 	}
 
-	totalTime1 := s.currentRun.splits[0].currentDuration
-	totalTime2 := s.currentRun.splits[1].currentDuration
+	totalTime1 := s.currentRun.Splits[0].CurrentDuration
+	totalTime2 := s.currentRun.Splits[1].CurrentDuration
 	totalTime := totalTime1 + totalTime2
-	if s.currentRun.totalTime != totalTime {
-		t.Fatalf("Split() final split total time want %d, got %d (%d + %d)", totalTime, s.currentRun.totalTime, totalTime1, totalTime2)
+	if s.currentRun.TotalTime != totalTime {
+		t.Fatalf("Split() final split total time want %d, got %d (%d + %d)", totalTime, s.currentRun.TotalTime, totalTime1, totalTime2)
 	}
 
 	time.Sleep(splitDebounce + 1*time.Millisecond)
@@ -189,8 +193,8 @@ func TestSplit(t *testing.T) {
 		t.Fatalf("reset Split() timer.IsRunning() want %v, got %v", false, s.timer.IsRunning())
 	}
 
-	if mt.ResetCalled != 2 {
-		t.Fatalf("Split() timer reset called want %d, got %d", 2, mt.ResetCalled)
+	if mt.ResetCalled != 3 {
+		t.Fatalf("Split() timer reset called want %d, got %d", 3, mt.ResetCalled)
 	}
 
 	time.Sleep(splitDebounce + 1*time.Millisecond)
@@ -207,13 +211,18 @@ func TestSplit(t *testing.T) {
 		t.Fatalf("Split() s.timer.IsRunning() want %v, got %v", true, s.timer.IsRunning())
 	}
 
-	if s.currentRun.attempts != 2 {
-		t.Fatalf("Split() attempts want %d, got %d", 1, s.currentRun.attempts)
+	if s.loadedSplitFile.Attempts != 2 {
+		t.Fatalf("Split() Attempts want %d, got %d", 1, s.loadedSplitFile.Attempts)
+	}
+
+	if len(s.loadedSplitFile.Runs) != 1 {
+		t.Fatalf("Split() Runs count want %d, got %d", 1, len(s.loadedSplitFile.Runs))
 	}
 }
 
 func TestUndo(t *testing.T) {
 	s, _, _, _ := getService()
+	_ = s.Load()
 	s.Split()
 
 	// Should do nothing on the first segment
@@ -232,26 +241,28 @@ func TestUndo(t *testing.T) {
 		t.Fatalf("Undo() on third segment currentSegmentIndex want %d, got %d", 1, s.currentSegmentIndex)
 	}
 
-	if len(s.currentRun.splits) != 1 {
-		t.Fatalf("Undo() on third segment split count want %d, got %d", 1, len(s.currentRun.splits))
+	if len(s.currentRun.Splits) != 1 {
+		t.Fatalf("Undo() on third segment split count want %d, got %d", 1, len(s.currentRun.Splits))
 	}
 }
 
 func TestSkip(t *testing.T) {
 	s, _, _, _ := getService()
+	_ = s.Load()
 	s.Split()
 	s.Skip()
 	if s.currentSegmentIndex != 1 {
 		t.Fatalf("Skip() currentSegmentIndex want %d, got %d", 1, s.currentSegmentIndex)
 	}
 
-	if len(s.currentRun.splits) != 0 {
-		t.Fatalf("Skip() currentRun.splits count want %d, got %d", 0, len(s.currentRun.splits))
+	if len(s.currentRun.Splits) != 0 {
+		t.Fatalf("Skip() currentRun.Splits count want %d, got %d", 0, len(s.currentRun.Splits))
 	}
 }
 
 func TestPause(t *testing.T) {
 	s, _, _, _ := getService()
+	_ = s.Load()
 	s.Pause()
 	if s.sessionState != Idle {
 		t.Fatalf("Pause() before run start sessionState want %v, got %v", Idle, s.sessionState)
@@ -280,15 +291,17 @@ func TestPause(t *testing.T) {
 func TestLoad(t *testing.T) {
 	s, _, _, _ := getService()
 	_ = s.Load()
-	if s.currentRun.id != uid {
-		t.Fatalf("Load() currentRun.id want %s, got %s", uid.String(), s.currentRun.id.String())
+	if s.loadedSplitFile.ID != uid {
+		t.Fatalf("Load() currentRun.ID want %s, got %s", uid.String(), s.currentRun.ID.String())
 	}
 }
 
 func TestSave(t *testing.T) {
 	s, _, r, _ := getService()
-	_ = s.Save()
 	s.dirty = true
+	_ = s.Load()
+	s.Split()
+	_ = s.Save()
 	if r.SaveCalled != 1 {
 		t.Fatalf("Save() repo save called want %d, got %d", 1, r.SaveCalled)
 	}
@@ -300,8 +313,10 @@ func TestSave(t *testing.T) {
 
 func TestSaveAs(t *testing.T) {
 	s, _, r, _ := getService()
-	_ = s.SaveAs()
+	_ = s.Load()
+	s.Split()
 	s.dirty = true
+	_ = s.SaveAs()
 	if r.SaveAsCalled != 1 {
 		t.Fatalf("SaveAs() repo save called want %d, got %d", 1, r.SaveCalled)
 	}
@@ -313,10 +328,11 @@ func TestSaveAs(t *testing.T) {
 
 func TestReset(t *testing.T) {
 	s, mt, _, _ := getService()
+	_ = s.Load()
 	s.Split()
 	s.Reset()
 
-	if mt.ResetCalled != 1 {
+	if mt.ResetCalled != 3 {
 		t.Fatalf("Reset() timer Reset called want %d, got %d", 1, mt.ResetCalled)
 	}
 
@@ -331,6 +347,7 @@ func TestReset(t *testing.T) {
 
 func TestDirty(t *testing.T) {
 	s, _, _, _ := getService()
+	_ = s.Load()
 	if s.Dirty() {
 		t.Fatalf("Dirty() before split want %v, got %v", false, s.Dirty())
 	}
@@ -344,6 +361,7 @@ func TestDirty(t *testing.T) {
 
 func TestState(t *testing.T) {
 	s, _, _, _ := getService()
+	_ = s.Load()
 	if s.State() != Idle {
 		t.Fatalf("State() before split want %v, got %v", Idle, s.State())
 	}
@@ -356,6 +374,7 @@ func TestState(t *testing.T) {
 
 func TestIndex(t *testing.T) {
 	s, _, _, _ := getService()
+	_ = s.Load()
 	if s.Index() != -1 {
 		t.Fatalf("Index() after split want %v, got %v", -1, s.Index())
 	}
@@ -368,18 +387,19 @@ func TestIndex(t *testing.T) {
 
 func TestRun(t *testing.T) {
 	s, _, _, _ := getService()
+	_ = s.Load()
 	_, clean := s.Run()
 	if clean {
 		t.Fatalf("Run() returned clean flag with currentRun == nil")
 	}
-	_ = s.Load()
+	s.Split()
 	r, clean := s.Run()
 	if !clean {
 		t.Fatalf("Run() returned not clean flag with valid currentRun")
 	}
 
-	if r.id != uid {
-		t.Fatalf("Run() returned id want %s, got %s", uid.String(), r.id.String())
+	if r.ID == uuid.Nil {
+		t.Fatalf("Run() new run didn't get ID")
 	}
 
 }

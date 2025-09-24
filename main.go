@@ -17,8 +17,8 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/hotkeys"
 	"github.com/zellydev-games/opensplit/logger"
-	"github.com/zellydev-games/opensplit/persistence"
 	"github.com/zellydev-games/opensplit/platform"
+	"github.com/zellydev-games/opensplit/repo"
 	"github.com/zellydev-games/opensplit/session"
 	"github.com/zellydev-games/opensplit/statemachine"
 	"github.com/zellydev-games/opensplit/timer"
@@ -41,13 +41,13 @@ func main() {
 	setupLogging(logDir)
 	logger.Info("logging initialized, starting opensplit")
 
-	timerService, timeUpdatedChannel := timer.NewStopwatch(timer.NewTicker(time.Millisecond * 20))
+	timerService, _ := timer.NewStopwatch(timer.NewTicker(time.Millisecond * 20))
 	runtimeProvider := platform.NewWailsRuntime()
 	fileProvider := platform.NewFileRuntime()
 
-	jsonFilePersister := persistence.NewJsonFile(runtimeProvider, fileProvider)
-	sessionService := session.NewService(runtimeProvider, timerService, timeUpdatedChannel, nil)
-	machine := statemachine.InitMachine(runtimeProvider, sessionService, jsonFilePersister)
+	_ = repo.NewJsonFile(runtimeProvider, fileProvider)
+	sessionService := session.NewService(nil, timerService)
+	machine := statemachine.InitMachine(runtimeProvider, sessionService)
 
 	hotkeyProvider, keyInfoChannel := hotkeys.SetupHotkeys()
 	var hotkeyService *hotkeys.Service
@@ -74,8 +74,6 @@ func main() {
 		OnStartup: func(ctx context.Context) {
 			runtime.WindowSetAlwaysOnTop(ctx, true)
 			runtimeProvider.Startup(ctx)
-			sessionService.Startup(ctx)
-			jsonFilePersister.Startup(runtimeProvider)
 			machine.Startup()
 
 			if hotkeyProvider != nil {
@@ -88,7 +86,7 @@ func main() {
 			gracefulShutdown(hotkeyService)
 		},
 		OnBeforeClose: func(ctx context.Context) bool {
-			return sessionService.CleanClose(jsonFilePersister)
+			return false
 		},
 		Bind: []interface{}{
 			machine,

@@ -1,4 +1,4 @@
-package persistence
+package repo
 
 import (
 	"context"
@@ -60,13 +60,6 @@ func NewJsonFile(runtime RuntimeProvider, fileProvider FileProvider) *JsonFile {
 		runtimeProvider: runtime,
 		fileProvider:    fileProvider,
 	}
-}
-
-// Startup is called either directly by Wails.run OnStartup, or by something else in that chain.
-//
-// The specific context.Context must be provided by Wails.run OnStartup or opening save/load file dialogs will panic.
-func (j *JsonFile) Startup(runtimeProvider RuntimeProvider) {
-	j.runtimeProvider = runtimeProvider
 }
 
 func (j *JsonFile) ClearCachedFileName() {

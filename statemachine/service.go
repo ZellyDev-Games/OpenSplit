@@ -7,6 +7,7 @@ import (
 
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/session"
+	"github.com/zellydev-games/opensplit/splitfile"
 )
 
 // machine is a private singleton instance of a *Service that represents a state machine.
@@ -61,15 +62,13 @@ type state interface {
 type Service struct {
 	currentState    state
 	sessionService  *session.Service
-	persister       session.Persister
 	runtimeProvider session.RuntimeProvider
 }
 
 // InitMachine sets the global singleton, and gives it a friendly default state
-func InitMachine(runtimeProvider session.RuntimeProvider, sessionService *session.Service, persister session.Persister) *Service {
+func InitMachine(runtimeProvider session.RuntimeProvider, sessionService *session.Service) *Service {
 	machine = &Service{
 		sessionService:  sessionService,
-		persister:       persister,
 		runtimeProvider: runtimeProvider,
 	}
 
@@ -165,12 +164,10 @@ func (w *Welcome) Receive(command Command, payload []byte) (DispatchReply, error
 	switch command {
 	case LOAD:
 		logger.Debug("Welcome received command LOAD")
-		sf, err := session.LoadSplitFile(machine.persister)
+		err := machine.sessionService.Load()
 		if err != nil {
-			logger.Error(fmt.Sprintf("failed to load split file from Welcome state: %s", err))
-			return DispatchReply{}, err
+			return DispatchReply{1, "failed to load splitfile: " + err.Error()}, err
 		}
-		machine.sessionService.SetLoadedSplitFile(sf)
 		machine.changeState(RUNNING, machine.sessionService)
 		return DispatchReply{}, nil
 	case NEW:
@@ -205,18 +202,11 @@ func (n *NewFile) Receive(command Command, payload []byte) (DispatchReply, error
 	case CANCEL:
 		machine.changeState(WELCOME, nil)
 	case SUBMIT:
-		var splitFilePayload = session.SplitFilePayload{}
-		err := json.Unmarshal(payload, &splitFilePayload)
+		err := machine.sessionService.SaveAs()
 		if err != nil {
-			logger.Error(fmt.Sprintf("failed to unmarshal into split file from NewFile state: %s", err))
-		} else {
-			splitFile, err := session.UpdateSplitFile(nil, machine.persister, nil, splitFilePayload)
-			machine.sessionService.SetLoadedSplitFile(splitFile)
-			if err != nil {
-				logger.Error(fmt.Sprintf("failed to update split file from NewFile state: %s", err))
-			}
-			machine.changeState(RUNNING, splitFile)
+			return DispatchReply{1, "failed to save splitfile: " + err.Error()}, err
 		}
+		machine.changeState(RUNNING)
 	default:
 		panic("unhandled default case")
 	}
@@ -233,7 +223,7 @@ func NewEditingState() (*Editing, error) {
 
 // OnEnter sets the context from Wails, and signals the frontend to show the SplitEditor with the specified split file (or nil)
 func (e *Editing) OnEnter() error {
-	payload := machine.sessionService.GetLoadedSplitFile()
+	payload := machine.sessionService.SplitFile()
 	machine.sessionService.Pause()
 	machine.runtimeProvider.EventsEmit("state:enter", EDITING, payload)
 	return nil
@@ -243,21 +233,14 @@ func (e *Editing) OnExit() error { return nil }
 func (e *Editing) Receive(command Command, payload []byte) (DispatchReply, error) {
 	switch command {
 	case CANCEL:
-		machine.changeState(RUNNING, nil)
+		machine.changeState(RUNNING)
 	case SUBMIT:
-		var splitFilePayload = session.SplitFilePayload{}
-		err := json.Unmarshal(payload, &splitFilePayload)
+		err := machine.sessionService.Save()
 		if err != nil {
-			logger.Error(fmt.Sprintf("failed to unmarshal into split file from Editing state: %s", err))
+			return DispatchReply{1, "failed to save splitfile: " + err.Error()}, err
 		}
-		splitFile, err := session.UpdateSplitFile(machine.runtimeProvider, machine.persister, machine.sessionService.GetLoadedSplitFile(), splitFilePayload)
-		machine.sessionService.SetLoadedSplitFile(splitFile)
-		if err != nil {
-			logger.Error(fmt.Sprintf("failed to update split file from Editing state: %s", err))
-		} else {
-			machine.changeState(RUNNING, nil)
-			return DispatchReply{}, nil
-		}
+		machine.changeState(RUNNING)
+		return DispatchReply{}, nil
 	default:
 		panic("unhandled default case")
 
@@ -271,7 +254,7 @@ func (e *Editing) String() string {
 
 // Running represents the state where a splitfile has been loaded, the UI should be showing the SplitList and the timer.
 type Running struct {
-	splitFile *session.SplitFile
+	splitFile *splitfile.SplitFile
 }
 
 func NewRunningState() (*Running, error) {
@@ -279,9 +262,8 @@ func NewRunningState() (*Running, error) {
 }
 
 func (r Running) OnEnter() error {
-	payload := machine.sessionService.GetSessionStatus()
-	machine.runtimeProvider.EventsEmit("state:enter", RUNNING, payload)
-	logger.Debug(fmt.Sprintf("state:enter event emittted : %v (%T)", payload.SplitFile, payload))
+	//payload := machine.sessionService.GetSessionStatus()
+	//machine.runtimeProvider.EventsEmit("state:enter", RUNNING, payload)
 	return nil
 }
 
@@ -300,14 +282,14 @@ func (r Running) Receive(command Command, params []byte) (DispatchReply, error) 
 		machine.changeState(EDITING, nil)
 	case SAVE:
 		logger.Debug(fmt.Sprintf("Running received SAVE command: %s", params))
-		windowParams := session.WindowParams{}
+		windowParams := splitfile.WindowParams{}
 		err := json.Unmarshal(params, &windowParams)
 		if err != nil {
 			msg := fmt.Sprintf("failed to unmarshal into window params: %s - %s", err, string(params))
 			logger.Error(msg)
 			return DispatchReply{Code: 1, Message: msg}, err
 		}
-		err = r.splitFile.Save(machine.persister, windowParams)
+		err = machine.sessionService.Save()
 		if err != nil {
 			msg := fmt.Sprintf("failed to save split file to session: %s", err)
 			logger.Error(msg)

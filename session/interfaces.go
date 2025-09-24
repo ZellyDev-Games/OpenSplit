@@ -6,8 +6,14 @@ import (
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
-	"github.com/zellydev-games/opensplit/persistence"
 )
+
+// Repository defines a contract for a repo provider to operate against
+type Repository interface {
+	Load() (*SplitFile, error)
+	Save(*SplitFile) error
+	SaveAs(run *SplitFile) error
+}
 
 // RuntimeProvider wraps Wails.runtimeProvider calls to allow for DI for testing.
 type RuntimeProvider interface {
@@ -37,11 +43,4 @@ type FileProvider interface {
 	ReadFile(string) ([]byte, error)
 	MkdirAll(string, os.FileMode) error
 	UserHomeDir() (string, error)
-}
-
-// Persister is an interface that services that save and load splitfiles must implement to be used by session.Service
-type Persister interface {
-	Startup(runtimeProvider persistence.RuntimeProvider)
-	Load() ([]byte, error)
-	Save([]byte, string) error
 }

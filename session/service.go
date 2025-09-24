@@ -30,44 +30,45 @@ const (
 	Finished
 )
 
-// Repository defines a contract for a persistence provider to operate against
-type Repository interface {
-	Load() (*Run, error)
-	Save(*Run) error
-	SaveAs(run *Run) error
-}
-
-// Split represents an advancement of a run through the segments.
+// Split represents an advancement of a run through the Segments.
 //
 // Split identifies a completed segment, and how long that segment took
 type Split struct {
-	splitIndex        int
-	splitSegmentID    uuid.UUID
-	currentCumulative time.Duration
-	currentDuration   time.Duration
+	SplitIndex        int
+	SplitSegmentID    uuid.UUID
+	CurrentCumulative time.Duration
+	CurrentDuration   time.Duration
 }
 
 // Segment represents a portion of a game that you want to time (e.g. "Level 1")
 type Segment struct {
-	id      uuid.UUID
-	name    string
-	gold    time.Duration
-	average time.Duration
-	pb      time.Duration
+	ID      uuid.UUID
+	Name    string
+	Gold    time.Duration
+	Average time.Duration
+	PB      time.Duration
 }
 
 // Run is a snapshot of a SplitFile along with additional data to track a run
 type Run struct {
-	id               uuid.UUID
-	splitFileID      uuid.UUID
-	splitFileVersion int
-	gameName         string
-	gameCategory     string
-	segments         []Segment
-	attempts         int
-	sob              StatTime
-	totalTime        time.Duration
-	splits           []Split
+	ID               uuid.UUID
+	TotalTime        time.Duration
+	Splits           []Split
+	Completed        bool
+	SplitFileVersion int
+}
+
+type SplitFile struct {
+	ID           uuid.UUID
+	GameName     string
+	GameCategory string
+	Version      int
+	Attempts     int
+	Segments     []Segment
+	SOB          time.Duration
+	Runs         []Run
+	PB           *Run
+	PBTotalTime  time.Duration
 }
 
 // Service represents the current state of a run.
@@ -78,6 +79,7 @@ type Run struct {
 type Service struct {
 	mu                  sync.Mutex
 	timer               Timer
+	loadedSplitFile     *SplitFile
 	currentRun          *Run
 	currentSegmentIndex int
 	sessionState        State
@@ -104,7 +106,6 @@ func NewService(repo Repository, timer Timer) *Service {
 func (s *Service) Split() SplitResult {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
 	if t := time.Now(); s.lastSplitTime.Add(splitDebounce).After(t) {
 		return SplitNoop
 	} else {
@@ -114,25 +115,29 @@ func (s *Service) Split() SplitResult {
 	switch s.sessionState {
 	case Idle:
 		// Start a new run
-		if s.currentRun == nil {
-			logger.Debug("Split() called with no loaded Run.  NO-OP")
+		if s.loadedSplitFile == nil {
+			logger.Debug("Split() called with no loaded splitfile.  NO-OP")
 			return SplitNoop
 		}
 
-		if len(s.currentRun.segments) == 0 {
-			logger.Debug("Split() called on run with no segments, NO-OP")
+		if len(s.loadedSplitFile.Segments) == 0 {
+			logger.Debug("Split() called on run with no Segments, NO-OP")
 			return SplitNoop
 		}
 		s.resetLocked()
 		s.timer.Start()
-		s.currentRun.attempts++
+		s.loadedSplitFile.Attempts++
 		s.sessionState = Running
 		s.currentSegmentIndex = 0
+		s.currentRun = &Run{
+			ID:               uuid.New(),
+			SplitFileVersion: s.loadedSplitFile.Version,
+		}
 		s.dirty = true
 		return SplitStarted
 	case Running:
 		// defensive, prevents us from panic in case something really went wrong
-		if s.currentSegmentIndex < 0 || s.currentSegmentIndex >= len(s.currentRun.segments) {
+		if s.currentSegmentIndex < 0 || s.currentSegmentIndex >= len(s.loadedSplitFile.Segments) {
 			logger.Warn(
 				fmt.Sprintf("Split() called in Running state, but current segment index is out of bounds: %d",
 					s.currentSegmentIndex))
@@ -141,22 +146,22 @@ func (s *Service) Split() SplitResult {
 		now := s.timer.GetCurrentTime()
 		prev := time.Duration(0)
 		if s.currentSegmentIndex > 0 {
-			prev = s.currentRun.splits[s.currentSegmentIndex-1].currentCumulative
+			prev = s.currentRun.Splits[s.currentSegmentIndex-1].CurrentCumulative
 		}
 		segTime := now - prev
 
-		s.currentRun.splits = append(s.currentRun.splits, Split{
-			splitIndex:        s.currentSegmentIndex,
-			splitSegmentID:    s.currentRun.segments[s.currentSegmentIndex].id,
-			currentCumulative: now,
-			currentDuration:   segTime,
+		s.currentRun.Splits = append(s.currentRun.Splits, Split{
+			SplitIndex:        s.currentSegmentIndex,
+			SplitSegmentID:    s.loadedSplitFile.Segments[s.currentSegmentIndex].ID,
+			CurrentCumulative: now,
+			CurrentDuration:   segTime,
 		})
 		s.dirty = true
 
-		if s.currentSegmentIndex >= len(s.currentRun.segments)-1 {
+		if s.currentSegmentIndex >= len(s.loadedSplitFile.Segments)-1 {
 			s.timer.Pause()
 			s.sessionState = Finished
-			s.currentRun.totalTime = now
+			s.currentRun.TotalTime = now
 			return SplitFinished
 		}
 		s.currentSegmentIndex++
@@ -177,21 +182,21 @@ func (s *Service) Undo() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.currentRun == nil || s.currentSegmentIndex <= 0 || s.sessionState == Idle || len(s.currentRun.splits) == 0 {
+	if s.currentRun == nil || s.currentSegmentIndex <= 0 || s.sessionState == Idle || len(s.currentRun.Splits) == 0 {
 		return
 	}
 
-	s.currentRun.splits = s.currentRun.splits[:len(s.currentRun.splits)-1]
+	s.currentRun.Splits = s.currentRun.Splits[:len(s.currentRun.Splits)-1]
 	if s.sessionState == Finished {
 		s.sessionState = Running
 	}
 
-	s.currentSegmentIndex = len(s.currentRun.splits)
+	s.currentSegmentIndex = len(s.currentRun.Splits)
 
 	if s.currentSegmentIndex != 0 {
-		s.currentRun.totalTime = s.currentRun.splits[len(s.currentRun.splits)-1].currentCumulative
+		s.currentRun.TotalTime = s.currentRun.Splits[len(s.currentRun.Splits)-1].CurrentCumulative
 	} else {
-		s.currentRun.totalTime = 0
+		s.currentRun.TotalTime = 0
 	}
 	s.dirty = true
 }
@@ -201,7 +206,7 @@ func (s *Service) Skip() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.currentRun == nil ||
-		s.currentSegmentIndex >= len(s.currentRun.segments)-1 ||
+		s.currentSegmentIndex >= len(s.loadedSplitFile.Segments)-1 ||
 		s.sessionState == Idle ||
 		s.sessionState == Finished {
 		return
@@ -228,13 +233,13 @@ func (s *Service) Pause() {
 
 // Load loads a split file from the configured Repository and sets it as the current Run
 func (s *Service) Load() error {
-	run, err := s.repository.Load()
+	sf, err := s.repository.Load()
 	if err != nil {
 		return err
 	}
 
 	s.mu.Lock()
-	s.currentRun = run
+	s.loadedSplitFile = sf
 	s.resetLocked()
 	s.dirty = false
 	s.mu.Unlock()
@@ -247,9 +252,9 @@ func (s *Service) Save() error {
 		return nil
 	}
 	s.mu.Lock()
-	run := s.currentRun
+	file := s.loadedSplitFile
 	s.mu.Unlock()
-	err := s.repository.Save(run)
+	err := s.repository.Save(file)
 	if err != nil {
 		return err
 	}
@@ -266,10 +271,10 @@ func (s *Service) SaveAs() error {
 		return nil
 	}
 	s.mu.Lock()
-	run := s.currentRun
+	sf := s.loadedSplitFile
 	s.mu.Unlock()
 
-	err := s.repository.SaveAs(run)
+	err := s.repository.SaveAs(sf)
 	if err != nil {
 		return err
 	}
@@ -296,6 +301,10 @@ func (s *Service) CloseRun() {
 	s.resetLocked()
 }
 
+func (s *Service) SplitFile() *SplitFile {
+	return s.loadedSplitFile
+}
+
 // Dirty returns the unsaved changes status of the session
 func (s *Service) Dirty() bool { s.mu.Lock(); defer s.mu.Unlock(); return s.dirty }
 
@@ -315,8 +324,7 @@ func (s *Service) Run() (Run, bool) {
 		return Run{}, false
 	}
 	r := *s.currentRun
-	r.segments = append([]Segment(nil), r.segments...)
-	r.splits = append([]Split(nil), r.splits...)
+	r.Splits = append([]Split(nil), r.Splits...)
 	return r, true
 }
 
@@ -325,9 +333,12 @@ func (s *Service) resetLocked() {
 	s.timer.Pause()
 	s.timer.Reset()
 	if s.currentRun != nil {
-		s.currentRun.totalTime = 0
-		clear(s.currentRun.splits)
-		s.currentRun.splits = s.currentRun.splits[:0]
+		s.loadedSplitFile.Runs = append(s.loadedSplitFile.Runs, *s.currentRun)
+		s.loadedSplitFile.BuildStats()
+		if s.sessionState == Finished {
+			s.currentRun.Completed = true
+		}
+		s.currentRun = nil
 	}
 
 	s.sessionState = Idle
