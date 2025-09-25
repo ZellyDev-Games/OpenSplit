@@ -1,7 +1,9 @@
 package session
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -29,6 +31,26 @@ const (
 	Paused
 	Finished
 )
+
+// Timer is an interface that a stopwatch service must implement to be used by session.Service
+type Timer interface {
+	Startup(context.Context)
+	IsRunning() bool
+	Run()
+	Start()
+	Pause()
+	Reset()
+	GetCurrentTimeFormatted() string
+	GetCurrentTime() time.Duration
+}
+
+// FileProvider wraps os hooks and file operations to allow DI for testing.
+type FileProvider interface {
+	WriteFile(string, []byte, os.FileMode) error
+	ReadFile(string) ([]byte, error)
+	MkdirAll(string, os.FileMode) error
+	UserHomeDir() (string, error)
+}
 
 // Split represents an advancement of a run through the Segments.
 //
@@ -65,6 +87,10 @@ type SplitFile struct {
 	Version      int
 	Attempts     int
 	Segments     []Segment
+	WindowX      int
+	WindowY      int
+	WindowHeight int
+	WindowWidth  int
 	SOB          time.Duration
 	Runs         []Run
 	PB           *Run
@@ -84,7 +110,6 @@ type Service struct {
 	currentSegmentIndex int
 	sessionState        State
 	lastSplitTime       time.Time
-	repository          Repository
 	dirty               bool
 }
 
@@ -93,13 +118,18 @@ type Service struct {
 // Generally in real code splitFile should be nil and will be populated by the
 // statemachine.Service via UpdateSplitFile or LoadSplitFile
 // Timer updates will be sent over the timeUpdatedChannel at approximately 60FPS.
-func NewService(repo Repository, timer Timer) *Service {
+func NewService(timer Timer) *Service {
 	service := &Service{
 		timer:               timer,
 		currentSegmentIndex: -1,
-		repository:          repo,
 	}
 	return service
+}
+
+func (s *Service) SetLoadedSplitFile(sf *SplitFile) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.loadedSplitFile = sf
 }
 
 // Split starts, advances, finishes, or resets a run depending on the state
@@ -116,7 +146,7 @@ func (s *Service) Split() SplitResult {
 	case Idle:
 		// Start a new run
 		if s.loadedSplitFile == nil {
-			logger.Debug("Split() called with no loaded splitfile.  NO-OP")
+			logger.Debug("Split() called with no loaded dto.  NO-OP")
 			return SplitNoop
 		}
 
@@ -229,60 +259,6 @@ func (s *Service) Pause() {
 		s.sessionState = Running
 		s.timer.Start()
 	}
-}
-
-// Load loads a split file from the configured Repository and sets it as the current Run
-func (s *Service) Load() error {
-	sf, err := s.repository.Load()
-	if err != nil {
-		return err
-	}
-
-	s.mu.Lock()
-	s.loadedSplitFile = sf
-	s.resetLocked()
-	s.dirty = false
-	s.mu.Unlock()
-	return nil
-}
-
-// Save persists the current Run with the configured Repository
-func (s *Service) Save() error {
-	if s.currentRun == nil {
-		return nil
-	}
-	s.mu.Lock()
-	file := s.loadedSplitFile
-	s.mu.Unlock()
-	err := s.repository.Save(file)
-	if err != nil {
-		return err
-	}
-
-	s.mu.Lock()
-	s.dirty = false
-	s.mu.Unlock()
-	return nil
-}
-
-// SaveAs saves the current Run with the configured Repository, intending to force the file dialog path
-func (s *Service) SaveAs() error {
-	if s.currentRun == nil {
-		return nil
-	}
-	s.mu.Lock()
-	sf := s.loadedSplitFile
-	s.mu.Unlock()
-
-	err := s.repository.SaveAs(sf)
-	if err != nil {
-		return err
-	}
-
-	s.mu.Lock()
-	s.dirty = false
-	s.mu.Unlock()
-	return nil
 }
 
 // Reset stops any current run and brings the system back to a default state.

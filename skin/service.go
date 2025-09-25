@@ -3,10 +3,11 @@ package skin
 import (
 	"context"
 	"fmt"
-	"github.com/zellydev-games/opensplit/logger"
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/zellydev-games/opensplit/logger"
 )
 
 // Service allows for platform switching of skins

@@ -45,14 +45,16 @@ func main() {
 	runtimeProvider := platform.NewWailsRuntime()
 	fileProvider := platform.NewFileRuntime()
 
-	_ = repo.NewJsonFile(runtimeProvider, fileProvider)
-	sessionService := session.NewService(nil, timerService)
-	machine := statemachine.InitMachine(runtimeProvider, sessionService)
+	jsonRepo := repo.NewJsonFile(runtimeProvider, fileProvider)
+	repoService := repo.NewService(jsonRepo)
+	sessionService := session.NewService(timerService)
+	machine := statemachine.InitMachine(runtimeProvider, repoService, sessionService)
 
 	hotkeyProvider, keyInfoChannel := hotkeys.SetupHotkeys()
 	var hotkeyService *hotkeys.Service
 	if hotkeyProvider != nil {
 		hotkeyService = hotkeys.NewService(keyInfoChannel, machine, hotkeyProvider)
+		machine.AttachHotkeyProvider(hotkeyService)
 	}
 
 	err := wails.Run(&options.App{
@@ -74,11 +76,7 @@ func main() {
 		OnStartup: func(ctx context.Context) {
 			runtime.WindowSetAlwaysOnTop(ctx, true)
 			runtimeProvider.Startup(ctx)
-			machine.Startup()
-
-			if hotkeyProvider != nil {
-				hotkeyService.StartDispatcher()
-			}
+			machine.Startup(ctx)
 			startInterruptListener(ctx, hotkeyService)
 			logger.Info("application startup complete")
 		},

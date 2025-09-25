@@ -17,6 +17,8 @@ type RuntimeProvider interface {
 	Startup(ctx context.Context)
 	SaveFileDialog(runtime.SaveDialogOptions) (string, error)
 	OpenFileDialog(runtime.OpenDialogOptions) (string, error)
+	MessageDialog(runtime.MessageDialogOptions) (string, error)
+	Quit()
 }
 
 // FileProvider wraps os hooks and file operations to allow DI for testing.
@@ -67,8 +69,12 @@ func (j *JsonFile) ClearCachedFileName() {
 	j.fileName = ""
 }
 
+func (j *JsonFile) SaveAs(payload []byte) error {
+	return j.Save(payload)
+}
+
 // Save takes a payload marshalled as bytes and saves it to disk
-func (j *JsonFile) Save(payload []byte, defaultFileName string) error {
+func (j *JsonFile) Save(payload []byte) error {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		logger.Error("save failed: " + err.Error())
@@ -78,7 +84,6 @@ func (j *JsonFile) Save(payload []byte, defaultFileName string) error {
 	if j.fileName == "" {
 		filename, err := j.runtimeProvider.SaveFileDialog(runtime.SaveDialogOptions{
 			Title:            "Save OpenSplit File",
-			DefaultFilename:  defaultFileName,
 			DefaultDirectory: defaultDirectory,
 			Filters: []runtime.FileFilter{{
 				DisplayName: "OpenSplit Files",

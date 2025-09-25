@@ -1,11 +1,9 @@
-import StatTime from "./statTime";
-
 export default class SegmentPayload {
     id: string = "";
     name: string = "";
-    gold: StatTime = new StatTime();
-    average: StatTime = new StatTime();
-    pb: StatTime = new StatTime();
+    gold: number = 0;
+    average: number = 0;
+    pb: number = 0;
 
     static createFrom = (source: SegmentPayload): SegmentPayload => {
         return { ...source };

@@ -122,17 +122,18 @@ func getService() (*Service, *MockTimer, *MockRepository, *SplitFile) {
 	t := new(MockTimer)
 	m := new(MockRepository)
 	sf := getSplitFile()
-	return NewService(m, t), t, m, sf
+	return NewService(t), t, m, sf
 }
 
 func TestSplit(t *testing.T) {
-	s, mt, _, _ := getService()
+	s, mt, m, _ := getService()
 	s.Split()
 	if s.currentSegmentIndex != -1 {
 		t.Fatalf("Split() before load s.currentSegmentIndex want %d, got %d", -1, s.currentSegmentIndex)
 	}
 
-	_ = s.Load()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
 	time.Sleep(splitDebounce + 1*time.Millisecond)
 	s.Split()
 
@@ -193,8 +194,8 @@ func TestSplit(t *testing.T) {
 		t.Fatalf("reset Split() timer.IsRunning() want %v, got %v", false, s.timer.IsRunning())
 	}
 
-	if mt.ResetCalled != 3 {
-		t.Fatalf("Split() timer reset called want %d, got %d", 3, mt.ResetCalled)
+	if mt.ResetCalled != 2 {
+		t.Fatalf("Split() timer reset called want %d, got %d", 2, mt.ResetCalled)
 	}
 
 	time.Sleep(splitDebounce + 1*time.Millisecond)
@@ -221,8 +222,9 @@ func TestSplit(t *testing.T) {
 }
 
 func TestUndo(t *testing.T) {
-	s, _, _, _ := getService()
-	_ = s.Load()
+	s, _, m, _ := getService()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
 	s.Split()
 
 	// Should do nothing on the first segment
@@ -247,8 +249,9 @@ func TestUndo(t *testing.T) {
 }
 
 func TestSkip(t *testing.T) {
-	s, _, _, _ := getService()
-	_ = s.Load()
+	s, _, m, _ := getService()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
 	s.Split()
 	s.Skip()
 	if s.currentSegmentIndex != 1 {
@@ -261,8 +264,9 @@ func TestSkip(t *testing.T) {
 }
 
 func TestPause(t *testing.T) {
-	s, _, _, _ := getService()
-	_ = s.Load()
+	s, _, m, _ := getService()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
 	s.Pause()
 	if s.sessionState != Idle {
 		t.Fatalf("Pause() before run start sessionState want %v, got %v", Idle, s.sessionState)
@@ -288,52 +292,15 @@ func TestPause(t *testing.T) {
 	}
 }
 
-func TestLoad(t *testing.T) {
-	s, _, _, _ := getService()
-	_ = s.Load()
-	if s.loadedSplitFile.ID != uid {
-		t.Fatalf("Load() currentRun.ID want %s, got %s", uid.String(), s.currentRun.ID.String())
-	}
-}
-
-func TestSave(t *testing.T) {
-	s, _, r, _ := getService()
-	s.dirty = true
-	_ = s.Load()
-	s.Split()
-	_ = s.Save()
-	if r.SaveCalled != 1 {
-		t.Fatalf("Save() repo save called want %d, got %d", 1, r.SaveCalled)
-	}
-
-	if s.dirty {
-		t.Fatalf("Save() didn't clear dirty flag")
-	}
-}
-
-func TestSaveAs(t *testing.T) {
-	s, _, r, _ := getService()
-	_ = s.Load()
-	s.Split()
-	s.dirty = true
-	_ = s.SaveAs()
-	if r.SaveAsCalled != 1 {
-		t.Fatalf("SaveAs() repo save called want %d, got %d", 1, r.SaveCalled)
-	}
-
-	if s.dirty {
-		t.Fatalf("SaveAs() didn't clear dirty flag")
-	}
-}
-
 func TestReset(t *testing.T) {
-	s, mt, _, _ := getService()
-	_ = s.Load()
+	s, mt, m, _ := getService()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
 	s.Split()
 	s.Reset()
 
-	if mt.ResetCalled != 3 {
-		t.Fatalf("Reset() timer Reset called want %d, got %d", 1, mt.ResetCalled)
+	if mt.ResetCalled != 2 {
+		t.Fatalf("Reset() timer Reset called want %d, got %d", 2, mt.ResetCalled)
 	}
 
 	if s.currentSegmentIndex != -1 {
@@ -346,8 +313,9 @@ func TestReset(t *testing.T) {
 }
 
 func TestDirty(t *testing.T) {
-	s, _, _, _ := getService()
-	_ = s.Load()
+	s, _, m, _ := getService()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
 	if s.Dirty() {
 		t.Fatalf("Dirty() before split want %v, got %v", false, s.Dirty())
 	}
@@ -360,8 +328,9 @@ func TestDirty(t *testing.T) {
 }
 
 func TestState(t *testing.T) {
-	s, _, _, _ := getService()
-	_ = s.Load()
+	s, _, m, _ := getService()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
 	if s.State() != Idle {
 		t.Fatalf("State() before split want %v, got %v", Idle, s.State())
 	}
@@ -373,8 +342,9 @@ func TestState(t *testing.T) {
 }
 
 func TestIndex(t *testing.T) {
-	s, _, _, _ := getService()
-	_ = s.Load()
+	s, _, m, _ := getService()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
 	if s.Index() != -1 {
 		t.Fatalf("Index() after split want %v, got %v", -1, s.Index())
 	}
@@ -386,8 +356,9 @@ func TestIndex(t *testing.T) {
 }
 
 func TestRun(t *testing.T) {
-	s, _, _, _ := getService()
-	_ = s.Load()
+	s, _, m, _ := getService()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
 	_, clean := s.Run()
 	if clean {
 		t.Fatalf("Run() returned clean flag with currentRun == nil")
