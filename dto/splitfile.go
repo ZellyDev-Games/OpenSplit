@@ -36,5 +36,7 @@ type SplitFile struct {
 	WindowWidth  int       `json:"window_width"`
 	Runs         []Run     `json:"runs"`
 	Segments     []Segment `json:"segments"`
-	SOB          int64     `json:"SOB"`
+	SOB          int64     `json:"sob"`
+	PB           *Run      `json:"pb"`
+	PBTotalTime  int64     `json:"pb_total_time"`
 }

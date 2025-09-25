@@ -13,6 +13,8 @@ import (
 func DomainToSplitFile(splitFile *session.SplitFile) *dto.SplitFile {
 	var segments []dto.Segment
 	var runs []dto.Run
+	var PB *dto.Run
+	PBTotalTime := int64(0)
 
 	for _, segment := range splitFile.Segments {
 		segments = append(segments, dto.Segment{
@@ -45,6 +47,29 @@ func DomainToSplitFile(splitFile *session.SplitFile) *dto.SplitFile {
 		})
 	}
 
+	if splitFile.PB != nil {
+		var splits []dto.Split
+		for _, s := range splitFile.PB.Splits {
+			splits = append(splits, dto.Split{
+				SplitIndex:        s.SplitIndex,
+				SplitSegmentID:    s.SplitSegmentID.String(),
+				CurrentCumulative: s.CurrentCumulative.Milliseconds(),
+				CurrentDuration:   s.CurrentDuration.Milliseconds(),
+			})
+		}
+
+		PB = &dto.Run{
+			ID:               splitFile.PB.ID.String(),
+			SplitFileID:      splitFile.ID.String(),
+			SplitFileVersion: splitFile.Version,
+			TotalTime:        splitFile.PB.TotalTime.Milliseconds(),
+			Splits:           splits,
+			Completed:        splitFile.PB.Completed,
+		}
+
+		PBTotalTime = splitFile.PB.TotalTime.Milliseconds()
+	}
+
 	return &dto.SplitFile{
 		ID:           splitFile.ID.String(),
 		GameName:     splitFile.GameName,
@@ -57,6 +82,8 @@ func DomainToSplitFile(splitFile *session.SplitFile) *dto.SplitFile {
 		WindowX:      splitFile.WindowX,
 		WindowY:      splitFile.WindowY,
 		Version:      splitFile.Version,
+		PB:           PB,
+		PBTotalTime:  PBTotalTime,
 	}
 }
 
@@ -75,6 +102,8 @@ func SplitFileToDomain(payload *dto.SplitFile) (*session.SplitFile, error) {
 
 	var runs []session.Run
 	var segments []session.Segment
+	var PB *session.Run
+	PBTotalTime := time.Duration(0)
 
 	for _, segment := range payload.Segments {
 		sid, err := uuid.Parse(segment.ID)
@@ -122,6 +151,39 @@ func SplitFileToDomain(payload *dto.SplitFile) (*session.SplitFile, error) {
 		})
 	}
 
+	if payload.PB != nil {
+		id, err := uuid.Parse(payload.PB.ID)
+		if err == nil {
+			var splits []session.Split
+			for _, s := range payload.PB.Splits {
+				splitSegmentID, err := uuid.Parse(s.SplitSegmentID)
+				if err != nil {
+					logger.Error("failed to parse split ID from payload payload")
+					continue
+				}
+
+				splits = append(splits, session.Split{
+					SplitIndex:        s.SplitIndex,
+					SplitSegmentID:    splitSegmentID,
+					CurrentCumulative: time.Duration(s.CurrentCumulative) * time.Millisecond,
+					CurrentDuration:   time.Duration(s.CurrentDuration) * time.Millisecond,
+				})
+			}
+
+			PB = &session.Run{
+				ID:               id,
+				TotalTime:        time.Duration(payload.PB.TotalTime) * time.Millisecond,
+				Splits:           splits,
+				Completed:        payload.PB.Completed,
+				SplitFileVersion: payload.PB.SplitFileVersion,
+			}
+
+			PBTotalTime = time.Duration(payload.PB.TotalTime) * time.Millisecond
+		} else {
+			logger.Error("failed to parse PB ID from payload payload, PB will be nil in domain model")
+		}
+	}
+
 	return &session.SplitFile{
 		ID:           id,
 		Version:      payload.Version,
@@ -134,10 +196,16 @@ func SplitFileToDomain(payload *dto.SplitFile) (*session.SplitFile, error) {
 		WindowX:      payload.WindowX,
 		WindowY:      payload.WindowY,
 		Runs:         runs,
+		PB:           PB,
+		PBTotalTime:  PBTotalTime,
 	}, nil
 }
 
-func JsonToSplitFile(payload string) (*dto.SplitFile, error) {
+// FrontendToSplitFile takes a string input from the frontend (default: JSON) and returns a new *dto.SplitFile
+//
+// If no ID was provided for the file, or the segments,
+// assume this is a new split file or split file with new segments from the SplitEditor and generate new IDs for them.
+func FrontendToSplitFile(payload string) (*dto.SplitFile, error) {
 	var sf dto.SplitFile
 	err := json.Unmarshal([]byte(payload), &sf)
 	if err != nil {
@@ -157,6 +225,6 @@ func JsonToSplitFile(payload string) (*dto.SplitFile, error) {
 	return &sf, nil
 }
 
-func SplitFileToJson(sf *dto.SplitFile) ([]byte, error) {
+func SplitFileToFrontENd(sf *dto.SplitFile) ([]byte, error) {
 	return json.Marshal(sf)
 }

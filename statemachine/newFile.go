@@ -34,7 +34,7 @@ func (n *NewFile) Receive(command Command, payload *string) (DispatchReply, erro
 				Message: "nil payload received",
 			}, nil
 		}
-		dto, err := adapters.JsonToSplitFile(*payload)
+		dto, err := adapters.FrontendToSplitFile(*payload)
 		if err != nil {
 			logger.Error(err.Error())
 			return DispatchReply{2, err.Error()}, err

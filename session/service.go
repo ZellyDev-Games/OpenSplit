@@ -52,6 +52,10 @@ type FileProvider interface {
 	UserHomeDir() (string, error)
 }
 
+type RuntimeProvider interface {
+	EventsEmit(string, ...any)
+}
+
 // Split represents an advancement of a run through the Segments.
 //
 // Split identifies a completed segment, and how long that segment took
@@ -103,14 +107,17 @@ type SplitFile struct {
 // current Run / SplitFile, and communicates timer updates to the frontend
 // If there's one struct that's key to understand in OpenSplit, it's this one.
 type Service struct {
-	mu                  sync.Mutex
-	timer               Timer
-	loadedSplitFile     *SplitFile
-	currentRun          *Run
-	currentSegmentIndex int
-	sessionState        State
-	lastSplitTime       time.Time
-	dirty               bool
+	mu                    sync.Mutex
+	timer                 Timer
+	loadedSplitFile       *SplitFile
+	currentRun            *Run
+	currentSegmentIndex   int
+	sessionState          State
+	lastSplitTime         time.Time
+	dirty                 bool
+	timerUpdateChannel    chan time.Duration
+	timerEventStopChannel chan any
+	runtimeProvider       RuntimeProvider
 }
 
 // NewService creates a new Service from the passed in components.
@@ -118,10 +125,12 @@ type Service struct {
 // Generally in real code splitFile should be nil and will be populated by the
 // statemachine.Service via UpdateSplitFile or LoadSplitFile
 // Timer updates will be sent over the timeUpdatedChannel at approximately 60FPS.
-func NewService(timer Timer) *Service {
+func NewService(timer Timer, timerUpdateChannel chan time.Duration, runtimeProvider RuntimeProvider) *Service {
 	service := &Service{
 		timer:               timer,
 		currentSegmentIndex: -1,
+		timerUpdateChannel:  timerUpdateChannel,
+		runtimeProvider:     runtimeProvider,
 	}
 	return service
 }
@@ -136,74 +145,22 @@ func (s *Service) SetLoadedSplitFile(sf *SplitFile) {
 func (s *Service) Split() SplitResult {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if t := time.Now(); s.lastSplitTime.Add(splitDebounce).After(t) {
+	if !s.debounced() {
 		return SplitNoop
-	} else {
-		s.lastSplitTime = t
 	}
 
 	switch s.sessionState {
 	case Idle:
-		// Start a new run
-		if s.loadedSplitFile == nil {
-			logger.Debug("Split() called with no loaded dto.  NO-OP")
-			return SplitNoop
-		}
-
-		if len(s.loadedSplitFile.Segments) == 0 {
-			logger.Debug("Split() called on run with no Segments, NO-OP")
-			return SplitNoop
-		}
-		s.resetLocked()
-		s.timer.Start()
-		s.loadedSplitFile.Attempts++
-		s.sessionState = Running
-		s.currentSegmentIndex = 0
-		s.currentRun = &Run{
-			ID:               uuid.New(),
-			SplitFileVersion: s.loadedSplitFile.Version,
-		}
-		s.dirty = true
-		return SplitStarted
+		return s.startNewRun()
 	case Running:
-		// defensive, prevents us from panic in case something really went wrong
-		if s.currentSegmentIndex < 0 || s.currentSegmentIndex >= len(s.loadedSplitFile.Segments) {
-			logger.Warn(
-				fmt.Sprintf("Split() called in Running state, but current segment index is out of bounds: %d",
-					s.currentSegmentIndex))
-			return SplitNoop
-		}
-		now := s.timer.GetCurrentTime()
-		prev := time.Duration(0)
-		if s.currentSegmentIndex > 0 {
-			prev = s.currentRun.Splits[s.currentSegmentIndex-1].CurrentCumulative
-		}
-		segTime := now - prev
-
-		s.currentRun.Splits = append(s.currentRun.Splits, Split{
-			SplitIndex:        s.currentSegmentIndex,
-			SplitSegmentID:    s.loadedSplitFile.Segments[s.currentSegmentIndex].ID,
-			CurrentCumulative: now,
-			CurrentDuration:   segTime,
-		})
-		s.dirty = true
-
-		if s.currentSegmentIndex >= len(s.loadedSplitFile.Segments)-1 {
-			s.timer.Pause()
-			s.sessionState = Finished
-			s.currentRun.TotalTime = now
-			return SplitFinished
-		}
-		s.currentSegmentIndex++
-		return SplitAdvanced
+		return s.advanceRun()
 	case Finished:
 		s.resetLocked()
+		close(s.timerEventStopChannel)
 		return SplitReset
 	case Paused:
-		logger.Debug("Split() called with paused - NO-OP")
 		return SplitNoop
 	}
-
 	return SplitNoop
 }
 
@@ -319,4 +276,86 @@ func (s *Service) resetLocked() {
 
 	s.sessionState = Idle
 	s.currentSegmentIndex = -1
+}
+
+func (s *Service) debounced() bool {
+	if t := time.Now(); s.lastSplitTime.Add(splitDebounce).After(t) {
+		return false
+	} else {
+		s.lastSplitTime = t
+		return true
+	}
+}
+
+func (s *Service) startNewRun() SplitResult {
+	// Start a new run
+	if s.loadedSplitFile == nil {
+		logger.Debug("Split() called with no loaded dto.  NO-OP")
+		return SplitNoop
+	}
+
+	if len(s.loadedSplitFile.Segments) == 0 {
+		logger.Debug("Split() called on run with no Segments, NO-OP")
+		return SplitNoop
+	}
+	s.resetLocked()
+	s.timer.Start()
+	s.loadedSplitFile.Attempts++
+	s.sessionState = Running
+	s.currentSegmentIndex = 0
+	s.currentRun = &Run{
+		ID:               uuid.New(),
+		SplitFileVersion: s.loadedSplitFile.Version,
+	}
+	s.dirty = true
+
+	// Start the timer event loop. event can be listened to by anything on the frontend, it's primary use is to
+	// provide the UI with the current cumulative time with centisecond precision.  Close the channel when we need
+	// to terminate this loop.
+	s.timerEventStopChannel = make(chan any)
+	go func() {
+		for {
+			select {
+			case <-s.timerEventStopChannel:
+				return
+			case t := <-s.timerUpdateChannel:
+				s.runtimeProvider.EventsEmit("timer:update", t.Milliseconds())
+			}
+		}
+	}()
+
+	return SplitStarted
+}
+
+func (s *Service) advanceRun() SplitResult {
+	// defensive, prevents us from panic in case something really went wrong
+	if s.currentSegmentIndex < 0 || s.currentSegmentIndex >= len(s.loadedSplitFile.Segments) {
+		logger.Warn(
+			fmt.Sprintf("Split() called in Running state, but current segment index is out of bounds: %d",
+				s.currentSegmentIndex))
+		return SplitNoop
+	}
+	now := s.timer.GetCurrentTime()
+	prev := time.Duration(0)
+	if s.currentSegmentIndex > 0 {
+		prev = s.currentRun.Splits[s.currentSegmentIndex-1].CurrentCumulative
+	}
+	segTime := now - prev
+
+	s.currentRun.Splits = append(s.currentRun.Splits, Split{
+		SplitIndex:        s.currentSegmentIndex,
+		SplitSegmentID:    s.loadedSplitFile.Segments[s.currentSegmentIndex].ID,
+		CurrentCumulative: now,
+		CurrentDuration:   segTime,
+	})
+	s.dirty = true
+
+	if s.currentSegmentIndex >= len(s.loadedSplitFile.Segments)-1 {
+		s.timer.Pause()
+		s.sessionState = Finished
+		s.currentRun.TotalTime = now
+		return SplitFinished
+	}
+	s.currentSegmentIndex++
+	return SplitAdvanced
 }

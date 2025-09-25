@@ -41,13 +41,13 @@ func main() {
 	setupLogging(logDir)
 	logger.Info("logging initialized, starting opensplit")
 
-	timerService, _ := timer.NewStopwatch(timer.NewTicker(time.Millisecond * 20))
+	timerService, timerUpdateChannel := timer.NewStopwatch(timer.NewTicker(time.Millisecond * 20))
 	runtimeProvider := platform.NewWailsRuntime()
 	fileProvider := platform.NewFileRuntime()
 
 	jsonRepo := repo.NewJsonFile(runtimeProvider, fileProvider)
 	repoService := repo.NewService(jsonRepo)
-	sessionService := session.NewService(timerService)
+	sessionService := session.NewService(timerService, timerUpdateChannel, runtimeProvider)
 	machine := statemachine.InitMachine(runtimeProvider, repoService, sessionService)
 
 	hotkeyProvider, keyInfoChannel := hotkeys.SetupHotkeys()
@@ -75,6 +75,7 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
 			runtime.WindowSetAlwaysOnTop(ctx, true)
+			timerService.Startup(ctx)
 			runtimeProvider.Startup(ctx)
 			machine.Startup(ctx)
 			startInterruptListener(ctx, hotkeyService)
