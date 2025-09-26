@@ -1,4 +1,4 @@
-package runtime
+package platform
 
 import (
 	"context"
@@ -40,4 +40,12 @@ func (w *WailsRuntime) MessageDialog(options runtime.MessageDialogOptions) (stri
 
 func (w *WailsRuntime) EventsEmit(message string, payload ...interface{}) {
 	runtime.EventsEmit(w.ctx, message, payload...)
+}
+
+func (w *WailsRuntime) WindowGetSize() (int, int) {
+	return runtime.WindowGetSize(w.ctx)
+}
+
+func (w *WailsRuntime) WindowGetPosition() (int, int) {
+	return runtime.WindowGetPosition(w.ctx)
 }

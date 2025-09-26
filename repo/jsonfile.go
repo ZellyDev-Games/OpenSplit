@@ -1,17 +1,33 @@
-package session
+package repo
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 
-	"github.com/zellydev-games/opensplit/logger"
-
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/zellydev-games/opensplit/logger"
 )
+
+// RuntimeProvider wraps Wails.runtimeProvider calls to allow for DI for testing.
+type RuntimeProvider interface {
+	Startup(ctx context.Context)
+	SaveFileDialog(runtime.SaveDialogOptions) (string, error)
+	OpenFileDialog(runtime.OpenDialogOptions) (string, error)
+	MessageDialog(runtime.MessageDialogOptions) (string, error)
+	Quit()
+}
+
+// FileProvider wraps os hooks and file operations to allow DI for testing.
+type FileProvider interface {
+	WriteFile(string, []byte, os.FileMode) error
+	ReadFile(string) ([]byte, error)
+	MkdirAll(string, os.FileMode) error
+	UserHomeDir() (string, error)
+}
 
 // JsonFile represents a SplitFile as a JSON file
 //
@@ -31,12 +47,16 @@ type JsonFile struct {
 // that needs to be handled, but it is a convenient way to communicate to the frontend to catch()
 // a promise instead of fulfilling it so that it doesn't try to do anything with an empty data structure.
 type UserCancelledSave struct {
-	error
+	Err error
+}
+
+func (u UserCancelledSave) Error() string {
+	return u.Err.Error()
 }
 
 // NewJsonFile creates a JsonFile with the provided RuntimeProvider and FileProvider
 //
-// In production code this will always be runtime.WailsRuntime and runtime.FileRuntime
+// In production code this will always be platform.WailsRuntime and platform.FileRuntime
 func NewJsonFile(runtime RuntimeProvider, fileProvider FileProvider) *JsonFile {
 	return &JsonFile{
 		runtimeProvider: runtime,
@@ -44,22 +64,17 @@ func NewJsonFile(runtime RuntimeProvider, fileProvider FileProvider) *JsonFile {
 	}
 }
 
-// Startup is called either directly by Wails.run OnStartup, or by something else in that chain.
-//
-// The specific context.Context must be provided by Wails.run OnStartup or opening save/load file dialogs will panic.
-func (j *JsonFile) Startup(runtimeProvider RuntimeProvider, service *Service) {
-	j.runtimeProvider = runtimeProvider
-	service.AddCallback(func(ctx context.Context, payload ServicePayload) {
-		if payload.SplitFile == nil {
-			logger.Debug("clearing last used filename on split file close")
-			j.fileName = ""
-		}
-	})
+func (j *JsonFile) ClearCachedFileName() {
+	logger.Debug("clearing last used filename")
+	j.fileName = ""
 }
 
-// Save takes a SplitFile payload from the frontend, which modifies the passed in spitFile (or nil if a new file) from
-// the Session Service backend.
-func (j *JsonFile) Save(splitFilePayload SplitFilePayload) error {
+func (j *JsonFile) SaveAs(payload []byte) error {
+	return j.Save(payload)
+}
+
+// Save takes a payload marshalled as bytes and saves it to disk
+func (j *JsonFile) Save(payload []byte) error {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		logger.Error("save failed: " + err.Error())
@@ -67,10 +82,8 @@ func (j *JsonFile) Save(splitFilePayload SplitFilePayload) error {
 	}
 
 	if j.fileName == "" {
-		defaultFileName := j.getDefaultFileName(splitFilePayload)
 		filename, err := j.runtimeProvider.SaveFileDialog(runtime.SaveDialogOptions{
 			Title:            "Save OpenSplit File",
-			DefaultFilename:  defaultFileName,
 			DefaultDirectory: defaultDirectory,
 			Filters: []runtime.FileFilter{{
 				DisplayName: "OpenSplit Files",
@@ -92,12 +105,7 @@ func (j *JsonFile) Save(splitFilePayload SplitFilePayload) error {
 	}
 
 	j.lastUsedDirectory = filepath.Dir(j.fileName)
-	data, err := json.Marshal(splitFilePayload)
-	if err != nil {
-		logger.Error(fmt.Sprintf("failed to marshal split file payload: %s", err.Error()))
-		return err
-	}
-	err = j.fileProvider.WriteFile(j.fileName, data, 0644)
+	err = j.fileProvider.WriteFile(j.fileName, payload, 0644)
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to save split file: %s", err.Error()))
 		return err
@@ -107,11 +115,10 @@ func (j *JsonFile) Save(splitFilePayload SplitFilePayload) error {
 
 // Load reads a JSON (*.osf) file from the path returned from the open file dialog
 // and unserializes it into a SplitFilePayload
-func (j *JsonFile) Load() (SplitFilePayload, error) {
-	var splitFilePayload SplitFilePayload
+func (j *JsonFile) Load() ([]byte, error) {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
-		return SplitFilePayload{}, err
+		return nil, err
 	}
 
 	filename, err := j.runtimeProvider.OpenFileDialog(runtime.OpenDialogOptions{
@@ -125,12 +132,12 @@ func (j *JsonFile) Load() (SplitFilePayload, error) {
 
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to get path from open file dialog: %s", err.Error()))
-		return SplitFilePayload{}, err
+		return nil, err
 	}
 
 	if filename == "" {
 		logger.Debug("user cancelled load")
-		return SplitFilePayload{}, UserCancelledSave{errors.New("user cancelled load")}
+		return nil, UserCancelledSave{errors.New("user cancelled load")}
 	}
 
 	j.fileName = filename
@@ -138,15 +145,10 @@ func (j *JsonFile) Load() (SplitFilePayload, error) {
 	data, err := j.fileProvider.ReadFile(filename)
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to load split file: %s", err.Error()))
-		return SplitFilePayload{}, err
+		return nil, err
 	}
 
-	err = json.Unmarshal(data, &splitFilePayload)
-	if err != nil {
-		return SplitFilePayload{}, err
-	}
-
-	return splitFilePayload, nil
+	return data, nil
 }
 
 func (j *JsonFile) getDefaultDirectory() (string, error) {
@@ -168,12 +170,4 @@ func (j *JsonFile) getDefaultDirectory() (string, error) {
 	}
 
 	return defaultDirectory, nil
-}
-
-func (j *JsonFile) getDefaultFileName(splitFile SplitFilePayload) string {
-	if j.fileName != "" {
-		return j.fileName
-	} else {
-		return fmt.Sprintf("%s-%s.osf", splitFile.GameName, splitFile.GameCategory)
-	}
 }

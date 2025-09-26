@@ -6,11 +6,8 @@ import { Dispatch } from "../../../wailsjs/go/statemachine/Service";
 import { WindowCenter, WindowSetSize } from "../../../wailsjs/runtime";
 import { Command } from "../../App";
 import { useClickOutside } from "../../hooks/useClickOutside";
-import useWindowResize from "../../hooks/useWindowResize";
 import SegmentPayload from "../../models/segmentPayload";
 import SplitFilePayload from "../../models/splitFilePayload";
-import StatTime from "../../models/statTime";
-import WindowParams from "../../models/windowParams";
 import { msToParts, partsToMS, TimeParts } from "../splitter/Timer";
 import TimeRow from "./TimeRow";
 
@@ -27,9 +24,6 @@ type SplitEditorParams = {
 };
 
 export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: SplitEditorParams) {
-    // Set default window size and persist updates
-    useWindowResize("edit");
-
     // Clear modal results which will close the modal when we click outside the modal
     const clickOutsideRef = useRef<HTMLDivElement | null>(null);
     useClickOutside(clickOutsideRef, () => {
@@ -118,15 +112,20 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
             id: splitFilePayload?.id ?? "",
             version: splitFilePayload?.version ?? 0,
             runs: splitFilePayload?.runs ?? [],
-            window_params: splitFilePayload?.window_params ?? new WindowParams(390, 540, 100, 100),
+            window_x: splitFilePayload?.window_x ?? 100,
+            window_y: splitFilePayload?.window_y ?? 100,
+            window_height: splitFilePayload?.window_height ?? 550,
+            window_width: splitFilePayload?.window_width ?? 350,
             game_name: gameName,
             game_category: gameCategory,
             segments: segmentPayloads,
             attempts: Number(attempts),
-            sob: new StatTime(),
+            sob: splitFilePayload?.sob ?? 0,
         });
 
-        await Dispatch(Command.SUBMIT, JSON.stringify(newSpiltFilePayload));
+        const payload = JSON.stringify(newSpiltFilePayload);
+        console.log(payload);
+        await Dispatch(Command.SUBMIT, payload);
     };
 
     const handleTimeChange = (idx: number, time: TimeParts, isBest: boolean) => {
@@ -137,8 +136,8 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                 newSegments.push({ ...segments[i] });
             } else {
                 const s = { ...segments[i] };
-                const pb = new StatTime(isBest ? ms : s.pb.raw);
-                const avg = new StatTime(isBest ? s.average.raw : ms);
+                const pb = isBest ? ms : s.pb;
+                const avg = isBest ? s.average : ms;
                 newSegments.push(
                     SegmentPayload.createFrom({
                         id: s.id,
@@ -261,14 +260,14 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                                             <td>
                                                 <TimeRow
                                                     idx={idx}
-                                                    time={segment.average ? msToParts(segment.average.raw) : null}
+                                                    time={segment.average ? msToParts(segment.average) : null}
                                                     onChangeCallback={(idx, ts) => handleTimeChange(idx, ts, false)}
                                                 />
                                             </td>
                                             <td>
                                                 <TimeRow
                                                     idx={idx}
-                                                    time={segment.pb ? msToParts(segment.pb.raw) : null}
+                                                    time={segment.pb ? msToParts(segment.pb) : null}
                                                     onChangeCallback={(idx, ts) => handleTimeChange(idx, ts, true)}
                                                 />
                                             </td>

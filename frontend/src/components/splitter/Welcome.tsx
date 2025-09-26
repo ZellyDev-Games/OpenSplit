@@ -1,10 +1,8 @@
 import { Dispatch } from "../../../wailsjs/go/statemachine/Service";
 import { Command } from "../../App";
 import zdgLogo from "../../assets/images/ZG512.png";
-import useWindowResize from "../../hooks/useWindowResize";
 
 export default function Welcome() {
-    useWindowResize("welcome");
     return (
         <div className="welcome">
             <img src={zdgLogo} alt="" />

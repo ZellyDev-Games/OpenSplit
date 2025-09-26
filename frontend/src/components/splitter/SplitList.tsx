@@ -3,7 +3,7 @@ import { JSX, useEffect, useState } from "react";
 import { EventsOn } from "../../../wailsjs/runtime";
 import SegmentPayload from "../../models/segmentPayload";
 import SessionPayload from "../../models/sessionPayload";
-import { displayFormattedTimeParts, formatDuration, msToParts, stringToParts } from "./Timer";
+import { displayFormattedTimeParts, formatDuration, msToParts } from "./Timer";
 
 export type CompareAgainst = "best" | "average";
 
@@ -30,11 +30,11 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
     useEffect(() => {
         if (sessionPayload?.current_run) {
             setCompletions(
-                sessionPayload.current_run.split_payloads.map((c) => {
-                    const time = displayFormattedTimeParts(formatDuration(stringToParts(c.current_time.formatted)));
+                sessionPayload.current_run.splits.map((c) => {
+                    const time = displayFormattedTimeParts(formatDuration(msToParts(c.current_cumulative)));
                     return {
                         time: `${time[0]}${time[1]}`,
-                        raw: c.current_time.raw,
+                        raw: c.current_duration,
                     };
                 }),
             );
@@ -44,9 +44,9 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
     }, [sessionPayload]);
 
     const getSegmentDisplayTime = (index: number, segment: SegmentPayload): JSX.Element => {
-        const gold = segment.gold?.raw;
-        const average = segment.average?.raw;
-        const best = segment.pb?.raw;
+        const gold = segment.gold;
+        const average = segment.average;
+        const best = segment.pb;
         const target = compareAgainst == "average" ? average : best;
 
         if (index < completions.length) {
@@ -97,16 +97,9 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
     };
 
     const segmentRows =
-        sessionPayload.split_file &&
-        sessionPayload.split_file.segments.map((segment, index) => (
-            <tr
-                key={segment.id ?? index}
-                className={
-                    sessionPayload.current_segment !== null && sessionPayload.current_segment_index === index
-                        ? "selected"
-                        : ""
-                }
-            >
+        sessionPayload.loaded_split_file &&
+        sessionPayload.loaded_split_file.segments.map((segment, index) => (
+            <tr key={segment.id ?? index} className={sessionPayload.current_segment_index === index ? "selected" : ""}>
                 <td className="splitName">{segment.name}</td>
                 <td className="splitComparison">{getSegmentDisplayTime(index, segment)}</td>
             </tr>
@@ -120,10 +113,10 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
         <div className="splitList">
             <div className="gameInfo">
                 <h1 className="gameTitle">
-                    <strong>{sessionPayload.split_file?.game_name}</strong>
+                    <strong>{sessionPayload.loaded_split_file?.game_name}</strong>
                 </h1>
                 <h2 className="gameCategory">
-                    <small>{sessionPayload.split_file?.game_category}</small>
+                    <small>{sessionPayload.loaded_split_file?.game_category}</small>
                 </h2>
             </div>
             <div className="splitContainer">

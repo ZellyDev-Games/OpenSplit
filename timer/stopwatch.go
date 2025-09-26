@@ -1,4 +1,4 @@
-package session
+package timer
 
 import (
 	"context"
@@ -7,6 +7,12 @@ import (
 	"sync"
 	"time"
 )
+
+// TickerInterface wraps time.Ticker to allow DI for testing
+type TickerInterface interface {
+	Ch() <-chan time.Time
+	Stop()
+}
 
 // Stopwatch tracks the passing of time with a monotonic clock
 //
@@ -42,6 +48,8 @@ func (s *Stopwatch) Startup(ctx context.Context) {
 
 // IsRunning returns the running state of the Timer
 func (s *Stopwatch) IsRunning() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.running
 }
 
@@ -86,6 +94,10 @@ func (s *Stopwatch) Reset() {
 	defer s.mu.Unlock()
 	s.running = false
 	s.currentTime = 0
+	select {
+	case s.timeUpdatedChannel <- 0:
+	default:
+	}
 }
 
 // GetCurrentTimeFormatted returns a frontend friendly string representing the current accumulated time.
@@ -153,7 +165,11 @@ func (s *Stopwatch) tickOnce(now time.Time) {
 		s.mu.Lock()
 		s.currentTime = now.Sub(s.startTime)
 		s.mu.Unlock()
-		s.timeUpdatedChannel <- s.currentTime
+		select {
+		case s.timeUpdatedChannel <- s.currentTime:
+		default:
+			fmt.Println("Failed to sent to timeUpdatedChannel")
+		}
 	}
 }
 

@@ -15,11 +15,14 @@ import (
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/hotkeys"
 	"github.com/zellydev-games/opensplit/logger"
+	"github.com/zellydev-games/opensplit/platform"
+	"github.com/zellydev-games/opensplit/repo"
 	"github.com/zellydev-games/opensplit/session"
-	sessionRuntime "github.com/zellydev-games/opensplit/session/runtime"
 	"github.com/zellydev-games/opensplit/statemachine"
+	"github.com/zellydev-games/opensplit/timer"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -39,18 +42,24 @@ func main() {
 	setupLogging(logDir)
 	logger.Info("logging initialized, starting opensplit")
 
-	timerService, timeUpdatedChannel := session.NewStopwatch(session.NewTicker(time.Millisecond * 20))
-	runtimeProvider := sessionRuntime.NewWailsRuntime()
-	fileProvider := &sessionRuntime.FileRuntime{}
+	timerService, timerUpdateChannel := timer.NewStopwatch(timer.NewTicker(time.Millisecond * 20))
+	runtimeProvider := platform.NewWailsRuntime()
+	fileProvider := platform.NewFileRuntime()
+	jsonRepo := repo.NewJsonFile(runtimeProvider, fileProvider)
+	repoService := repo.NewService(jsonRepo)
 
-	jsonFilePersister := session.NewJsonFile(runtimeProvider, fileProvider)
-	sessionService := session.NewService(runtimeProvider, timerService, timeUpdatedChannel, nil)
-	machine := statemachine.InitMachine(runtimeProvider, sessionService, jsonFilePersister)
+	sessionService, sessionUpdateChannel := session.NewService(timerService)
+	machine := statemachine.InitMachine(runtimeProvider, repoService, sessionService)
+
+	// Build UI bridges with model update channels
+	timerUIBridge := bridge.NewTimer(timerUpdateChannel, runtimeProvider)
+	sessionUIBridge := bridge.NewSession(sessionUpdateChannel, runtimeProvider)
 
 	hotkeyProvider, keyInfoChannel := hotkeys.SetupHotkeys()
 	var hotkeyService *hotkeys.Service
 	if hotkeyProvider != nil {
 		hotkeyService = hotkeys.NewService(keyInfoChannel, machine, hotkeyProvider)
+		machine.AttachHotkeyProvider(hotkeyService)
 	}
 
 	err := wails.Run(&options.App{
@@ -71,22 +80,25 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
 			runtime.WindowSetAlwaysOnTop(ctx, true)
+			timerService.Startup(ctx)
 			runtimeProvider.Startup(ctx)
-			sessionService.Startup(ctx)
-			jsonFilePersister.Startup(runtimeProvider, sessionService)
-			machine.Startup()
+			machine.Startup(ctx)
 
-			if hotkeyProvider != nil {
-				hotkeyService.StartDispatcher()
-			}
+			// Start UI pumps
+			sessionUIBridge.StartUIPump()
+			timerUIBridge.StartUIPump()
+
 			startInterruptListener(ctx, hotkeyService)
 			logger.Info("application startup complete")
 		},
 		OnShutdown: func(ctx context.Context) {
+			sessionService.OnShutDown()
 			gracefulShutdown(hotkeyService)
 		},
 		OnBeforeClose: func(ctx context.Context) bool {
-			return sessionService.CleanClose(jsonFilePersister)
+			close(sessionUpdateChannel)
+			timerUIBridge.StopUIPump()
+			return false
 		},
 		Bind: []interface{}{
 			machine,

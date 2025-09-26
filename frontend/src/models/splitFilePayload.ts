@@ -1,18 +1,19 @@
 import RunPayload from "./runPayload";
 import SegmentPayload from "./segmentPayload";
-import StatTime from "./statTime";
-import WindowParams from "./windowParams";
 
 export default class SplitFilePayload {
     id: string = "";
     version: number = 1;
     game_name: string = "";
     game_category: string = "";
-    segments: SegmentPayload[] = [];
-    attempts: number = 0;
+    window_x: number = 100;
+    window_y: number = 100;
+    window_height: number = 550;
+    window_width: number = 350;
     runs: RunPayload[] = [];
-    sob: StatTime = new StatTime();
-    window_params: WindowParams = new WindowParams();
+    segments: SegmentPayload[] = [];
+    sob: number = 0;
+    pb: RunPayload | null = null;
 
     static createFrom = (source: SplitFilePayload): SplitFilePayload => {
         return { ...source };

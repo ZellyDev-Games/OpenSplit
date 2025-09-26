@@ -73,7 +73,7 @@ type Test struct {
 }
 func (t *Test) HelloWorld() (string, error) { return "Hello World!", nil }
 func (t *Test) startup(ctx context.Context) {
-  // If your binding needs to work with Wails runtime (e.g. Open a Save File Dialog)
+  // If your binding needs to work with Wails platform (e.g. Open a Save File Dialog)
   // you need to have a startup method that takes a context.Context, and call it in the OnStartup
   // of options.App below.  This test wouldn't need it, but I'll put it here for completeness sake
   t.ctx = ctx
@@ -113,7 +113,7 @@ provided by Wails.  EventsOn returns a function that unsubscribes to the event.
 func HelloWorldEvent(ctx context.Context) {
   // "session.helloworld" is arbitrary, but <module>:<event> seems to be a standard practice.
   // The second argument will be serialized to JSON and sent over the websocket.
-  // SessionService has a helper method, emitEvent that you should use that wraps runtime.EventsEmit.  This is for testing purposes:
+  // SessionService has a helper method, emitEvent that you should use that wraps platform.EventsEmit.  This is for testing purposes:
   // the ctx passed to Events.Emit must be the one that comes from the App.Startup callback back in main.
   // emitEvent no-ops if the ctx is invalid, allowing unit testing.  I'll show both here for completeness.
   runtime.EventsEmit(ctx, "session:helloworld", "Hello World!")
@@ -121,7 +121,7 @@ func HelloWorldEvent(ctx context.Context) {
 }
 ```
 ```typescript
-import { EventsOn } from "../wailsjs/runtime";
+import { EventsOn } from "../wailsjs/platform";
 
 export function HelloWorlder() {
   useEffect(() => {

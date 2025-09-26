@@ -8,6 +8,9 @@ import (
 	"github.com/google/uuid"
 )
 
+var uid = uuid.MustParse("c9bc9698-0f39-488d-80c6-06308f12b03e")
+var uid2 = uuid.MustParse("05151851-9132-498e-b70a-344ee03c9384")
+
 type MockTimer struct {
 	StartupCalled                 bool
 	Running                       bool
@@ -34,10 +37,12 @@ func (t *MockTimer) Run() {
 }
 
 func (t *MockTimer) Start() {
+	t.Running = true
 	t.StartCalled++
 }
 
 func (t *MockTimer) Pause() {
+	t.Running = false
 	t.PauseCalled++
 }
 
@@ -55,243 +60,318 @@ func (t *MockTimer) GetCurrentTime() time.Duration {
 	return time.Hour*1 + time.Minute*2 + time.Second*3 + time.Millisecond*40
 }
 
-func getService() (*Service, *MockTimer, *SplitFile) {
-	t := new(MockTimer)
-	sf := getSplitFile()
-	return NewService(&MockRuntimeProvider{}, t, nil, sf), t, sf
+type MockRepository struct {
+	LoadCalled   int
+	SaveCalled   int
+	SaveAsCalled int
+}
+
+func (r *MockRepository) Load() (*SplitFile, error) {
+	return &SplitFile{
+		ID:           uid,
+		Version:      1,
+		GameName:     "Test Loaded Game",
+		GameCategory: "Loaded Category",
+		Segments: []Segment{{
+			ID:      uid,
+			Name:    "Segment 1",
+			Gold:    time.Second * 60,
+			Average: time.Second * 70,
+			PB:      time.Second * 50,
+		}, {
+			ID:      uid2,
+			Name:    "Segment 2",
+			Gold:    time.Second * 60,
+			Average: time.Second * 70,
+			PB:      time.Second * 50,
+		}},
+		Attempts: 0,
+		SOB:      0,
+	}, nil
+}
+
+func (m *MockRepository) Save(*SplitFile) error {
+	m.SaveCalled++
+	return nil
+}
+
+func (m *MockRepository) SaveAs(*SplitFile) error {
+	m.SaveAsCalled++
+	return nil
 }
 
 func getSplitFile() *SplitFile {
 	return &SplitFile{
-		id:           uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
-		gameName:     "Test Game",
-		gameCategory: "Test Category",
-		segments: []Segment{{
-			id:   uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
-			name: "Test Segment 1",
+		ID:           uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
+		GameName:     "Test Game",
+		GameCategory: "Test Category",
+		Segments: []Segment{{
+			ID:   uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
+			Name: "Test Segment 1",
 		}, {
-			id:   uuid.MustParse("4bc1a05c-d4f3-4095-887f-519e2fbb54f3"),
-			name: "Test Segment 2",
+			ID:   uuid.MustParse("4bc1a05c-d4f3-4095-887f-519e2fbb54f3"),
+			Name: "Test Segment 2",
 		}},
-		attempts: 0,
-		version:  1,
-		runs:     []Run{},
+		Attempts: 0,
+		Version:  1,
+		Runs:     []Run{},
 	}
 }
 
-func TestServiceSplitWithNoFileLoaded(t *testing.T) {
-	s, _, _ := getService()
-	s.loadedSplitFile = nil
+func getService() (*Service, *MockTimer, *MockRepository, *SplitFile) {
+	t := new(MockTimer)
+	m := new(MockRepository)
+	sf := getSplitFile()
+	service, _ := NewService(t)
+	return service, t, m, sf
+}
+
+func TestSplit(t *testing.T) {
+	s, mt, m, _ := getService()
 	s.Split()
 	if s.currentSegmentIndex != -1 {
-		t.Error("Split increased segment index with no splitfile loaded")
-	}
-}
-
-func TestServiceSplit(t *testing.T) {
-	s, mt, sf := getService()
-
-	if s.currentRun != nil || len(sf.runs) != 0 {
-		t.Error("new Service wasn't started clean")
+		t.Fatalf("Split() before load s.currentSegmentIndex want %d, got %d", -1, s.currentSegmentIndex)
 	}
 
-	// first split
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
+	time.Sleep(splitDebounce + 1*time.Millisecond)
 	s.Split()
+
 	if s.currentSegmentIndex != 0 {
-		t.Error("Split did not increment segment index")
+		t.Fatalf("Split() s.currentSegmentIndex want %d, got %d", 0, s.currentSegmentIndex)
 	}
 
-	if s.currentSegment != &sf.segments[0] {
-		t.Error("Split did not set current segment")
+	if s.dirty == false {
+		t.Fatalf("Split() s.dirty want %v, got %v", true, s.dirty)
 	}
 
-	if mt.ResetCalled != 1 {
-		t.Error("first split did not reset timer")
+	if s.sessionState != Running {
+		t.Fatalf("Split() s.sessionState want %v, got %v", Running, s.sessionState)
 	}
 
-	if mt.StartCalled != 1 {
-		t.Error("first split did not start timer")
+	if !s.timer.IsRunning() {
+		t.Fatalf("Split() s.timer.IsRunning() want %v, got %v", true, s.timer.IsRunning())
 	}
 
-	if sf.attempts != 1 {
-		t.Error("first split did not increment attempts")
+	if s.loadedSplitFile.Attempts != 1 {
+		t.Fatalf("Split() Attempts want %d, got %d", 1, s.loadedSplitFile.Attempts)
 	}
 
-	if s.currentRun == nil {
-		t.Error("first split did not set current run")
-	}
-
-	if len(sf.runs) > 0 {
-		t.Error("first split on new file added run prematurely")
-	}
-
-	// second split
+	time.Sleep(splitDebounce + 1*time.Millisecond)
 	s.Split()
 	if s.currentSegmentIndex != 1 {
-		t.Error("second Split did not increment segment index")
+		t.Fatalf("Split() s.currentSegmentIndex want %d, got %d", 1, s.currentSegmentIndex)
 	}
 
-	if s.currentSegment != &sf.segments[1] {
-		t.Error("second Split did not set current segment")
+	if len(s.currentRun.Splits) != 1 {
+		t.Fatalf("Split() s.currentRun.Splits want %d, got %d", 1, len(s.currentRun.Splits))
 	}
 
-	if mt.ResetCalled != 1 {
-		t.Error("second Split erroneously reset timer")
+	if s.currentRun.Splits[0].SplitSegmentID != uid {
+		t.Fatalf("Split() 1st recorded split segment ID want %s, got %s", uid.String(), s.currentRun.Splits[0].SplitSegmentID.String())
 	}
 
-	if mt.StartCalled != 1 {
-		t.Error("second Split erroneously started timer")
-	}
-
-	if sf.attempts != 1 {
-		t.Error("second Split erroneously incremented attempts")
-	}
-
-	// end split
+	time.Sleep(splitDebounce + 1*time.Millisecond)
 	s.Split()
-	if s.currentSegmentIndex != 1 {
-		t.Error("end Split incremented segment index out of range")
+	if s.sessionState != Finished {
+		t.Fatalf("Split() s.sessionState want %v, got %v", Finished, s.sessionState)
 	}
 
-	if s.currentSegment != &sf.segments[1] {
-		t.Error("end Split erroneously changed current segment")
+	if s.timer.IsRunning() {
+		t.Fatalf("Split() s.timer.IsRunning() want %v, got %v", false, s.timer.IsRunning())
 	}
 
-	if mt.PauseCalled != 1 {
-		t.Error("end Split did not pause timer")
+	totalTime1 := s.currentRun.Splits[0].CurrentDuration
+	totalTime2 := s.currentRun.Splits[1].CurrentDuration
+	totalTime := totalTime1 + totalTime2
+	if s.currentRun.TotalTime != totalTime {
+		t.Fatalf("Split() final split total time want %d, got %d (%d + %d)", totalTime, s.currentRun.TotalTime, totalTime1, totalTime2)
 	}
 
-	if s.finished != true {
-		t.Error("end Split did not finish session")
-	}
-
-	if s.currentRun.completed != true {
-		t.Error("end Split did not set completed flag on currentRun")
-	}
-
-	// reset split
+	time.Sleep(splitDebounce + 1*time.Millisecond)
 	s.Split()
-	if mt.PauseCalled != 2 {
-		t.Error("reset Split did not pause timer")
+	if s.timer.IsRunning() {
+		t.Fatalf("reset Split() timer.IsRunning() want %v, got %v", false, s.timer.IsRunning())
 	}
 
 	if mt.ResetCalled != 2 {
-		t.Error("reset Split did not reset timer")
+		t.Fatalf("Split() timer reset called want %d, got %d", 2, mt.ResetCalled)
 	}
 
-	if s.finished != false {
-		t.Error("reset Split did not unflag finished")
-	}
-
-	if s.currentSegmentIndex != -1 {
-		t.Error("reset Split did not reset segment index")
-	}
-
-	if s.currentSegment != nil {
-		t.Error("reset Split did not reset current segment")
-	}
-
-	if len(sf.runs) != 1 {
-		t.Error("reset did not add finished run to splitfile")
-	}
-
-	// first split, new attempt
+	time.Sleep(splitDebounce + 1*time.Millisecond)
 	s.Split()
 	if s.currentSegmentIndex != 0 {
-		t.Error("new attempt Split did not increment segment index")
+		t.Fatalf("Split() s.currentSegmentIndex want %d, got %d", 0, s.currentSegmentIndex)
 	}
 
-	if s.currentSegment != &sf.segments[0] {
-		t.Error("new attempt Split did not set current segment")
+	if s.sessionState != Running {
+		t.Fatalf("Split() s.sessionState want %v, got %v", Running, s.sessionState)
 	}
 
-	if mt.ResetCalled != 3 {
-		t.Error("new attempt split did not reset timer")
+	if !s.timer.IsRunning() {
+		t.Fatalf("Split() s.timer.IsRunning() want %v, got %v", true, s.timer.IsRunning())
 	}
 
-	if mt.StartCalled != 2 {
-		t.Error("new attempt split did not start timer")
+	if s.loadedSplitFile.Attempts != 2 {
+		t.Fatalf("Split() Attempts want %d, got %d", 1, s.loadedSplitFile.Attempts)
 	}
 
-	if sf.attempts != 2 {
-		t.Error("new attempt split did not increment attempts")
+	if len(s.loadedSplitFile.Runs) != 1 {
+		t.Fatalf("Split() Runs count want %d, got %d", 1, len(s.loadedSplitFile.Runs))
+	}
+}
+
+func TestUndo(t *testing.T) {
+	s, _, m, _ := getService()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
+	s.Split()
+
+	// Should do nothing on the first segment
+	s.Undo()
+	if s.currentSegmentIndex != 0 {
+		t.Fatalf("Undo() on first segment currentSegmentIndex want %d, got %d", 0, s.currentSegmentIndex)
 	}
 
-	if &sf.runs[0] == s.currentRun {
-		t.Error("new attempt split did not set a new run")
+	time.Sleep(splitDebounce + 1*time.Millisecond)
+	s.Split()
+
+	time.Sleep(splitDebounce + 1*time.Millisecond)
+	s.Split()
+	s.Undo()
+	if s.currentSegmentIndex != 1 {
+		t.Fatalf("Undo() on third segment currentSegmentIndex want %d, got %d", 1, s.currentSegmentIndex)
+	}
+
+	if len(s.currentRun.Splits) != 1 {
+		t.Fatalf("Undo() on third segment split count want %d, got %d", 1, len(s.currentRun.Splits))
+	}
+}
+
+func TestSkip(t *testing.T) {
+	s, _, m, _ := getService()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
+	s.Split()
+	s.Skip()
+	if s.currentSegmentIndex != 1 {
+		t.Fatalf("Skip() currentSegmentIndex want %d, got %d", 1, s.currentSegmentIndex)
+	}
+
+	if len(s.currentRun.Splits) != 0 {
+		t.Fatalf("Skip() currentRun.Splits count want %d, got %d", 0, len(s.currentRun.Splits))
 	}
 }
 
 func TestPause(t *testing.T) {
-	s, mt, _ := getService()
-	mt.Running = true
+	s, _, m, _ := getService()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
 	s.Pause()
-	if mt.PauseCalled != 1 {
-		t.Error("session Pause did not pause timer")
+	if s.sessionState != Idle {
+		t.Fatalf("Pause() before run start sessionState want %v, got %v", Idle, s.sessionState)
 	}
 
-	mt.Running = false
+	s.Split()
 	s.Pause()
-	if mt.StartCalled != 1 {
-		t.Error("session Pause toggle did not start timer")
+	if s.sessionState != Paused {
+		t.Fatalf("Pause() sessionState want %v, got %v", Paused, s.sessionState)
+	}
+
+	if s.timer.IsRunning() {
+		t.Fatalf("Pause() timer.IsRunning() want %v, got %v", false, s.timer.IsRunning())
+	}
+
+	s.Pause()
+	if s.sessionState != Running {
+		t.Fatalf("Pause() toggle sessionState want %v, got %v", Running, s.sessionState)
+	}
+
+	if !s.timer.IsRunning() {
+		t.Fatalf("Pause() toggle timer.IsRunning() want %v, got %v", true, s.timer.IsRunning())
 	}
 }
 
 func TestReset(t *testing.T) {
-	s, mt, _ := getService()
-	s.finished = true
+	s, mt, m, _ := getService()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
+	s.Split()
 	s.Reset()
-	if mt.PauseCalled != 1 {
-		t.Error("session Reset did not pause timer")
-	}
 
-	if mt.ResetCalled != 1 {
-		t.Error("session Reset did not reset timer")
-	}
-
-	if s.finished != false {
-		t.Error("session Reset did not unflag finished")
+	if mt.ResetCalled != 2 {
+		t.Fatalf("Reset() timer Reset called want %d, got %d", 2, mt.ResetCalled)
 	}
 
 	if s.currentSegmentIndex != -1 {
-		t.Error("session Reset did not reset segment index")
+		t.Fatalf("Reset() current segment index want %d, got %d", -1, s.currentSegmentIndex)
 	}
 
-	if s.currentSegment != nil {
-		t.Error("session Reset did not reset current segment")
-	}
-}
-
-func TestGetSessionStatus(t *testing.T) {
-	s, _, _ := getService()
-	payload := s.getServicePayload()
-	statusPayload := s.GetSessionStatus()
-
-	if statusPayload.SplitFile.GameName != payload.SplitFile.GameName {
-		t.Error("GetSessionStatus did not return expected payload")
+	if s.sessionState != Idle {
+		t.Fatalf("Reset() sessionState want %v, got %v", Idle, s.sessionState)
 	}
 }
 
-func TestGetLoadedSplitFile(t *testing.T) {
-	s, _, _ := getService()
-	payload := s.loadedSplitFile.GetPayload()
-	loadedPayload := s.GetLoadedSplitFile()
+func TestDirty(t *testing.T) {
+	s, _, m, _ := getService()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
+	if s.Dirty() {
+		t.Fatalf("Dirty() before split want %v, got %v", false, s.Dirty())
+	}
 
-	if loadedPayload == nil || payload.GameName != loadedPayload.GameName {
-		t.Error("GetLoadedSplitFile did not return expected payload")
+	s.Split()
+
+	if !s.Dirty() {
+		t.Fatalf("Dirty() after split want %v, got %v", true, s.Dirty())
 	}
 }
 
-func TestSetLoadedSplitFile(t *testing.T) {
-	s, mt, _ := getService()
+func TestState(t *testing.T) {
+	s, _, m, _ := getService()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
+	if s.State() != Idle {
+		t.Fatalf("State() before split want %v, got %v", Idle, s.State())
+	}
+	s.Split()
 
-	s.SetLoadedSplitFile(nil)
+	if s.State() != Running {
+		t.Fatalf("State() after split want %v, got %v", Running, s.State())
+	}
+}
 
-	if mt.PauseCalled != 1 {
-		t.Error("load split file did not pause timer")
+func TestIndex(t *testing.T) {
+	s, _, m, _ := getService()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
+	if s.Index() != -1 {
+		t.Fatalf("Index() after split want %v, got %v", -1, s.Index())
 	}
 
-	if mt.ResetCalled != 1 {
-		t.Error("load split file did not reset timer")
+	s.Split()
+	if s.Index() != 0 {
+		t.Fatalf("Index() after split want %v, got %v", 0, s.Index())
 	}
+}
+
+func TestRun(t *testing.T) {
+	s, _, m, _ := getService()
+	sf, _ := m.Load()
+	s.SetLoadedSplitFile(sf)
+	_, clean := s.Run()
+	if clean {
+		t.Fatalf("Run() returned clean flag with currentRun == nil")
+	}
+	s.Split()
+	r, clean := s.Run()
+	if !clean {
+		t.Fatalf("Run() returned not clean flag with valid currentRun")
+	}
+
+	if r.ID == uuid.Nil {
+		t.Fatalf("Run() new run didn't get ID")
+	}
+
 }
