@@ -11,6 +11,7 @@ type Repository interface {
 	Load() ([]byte, error)
 	Save([]byte) error
 	SaveAs([]byte) error
+	ClearCachedFileName()
 }
 
 type Service struct {
@@ -40,4 +41,8 @@ func (s *Service) Save(splitFile *dto.SplitFile, X int, Y int, Width int, Height
 		return err
 	}
 	return s.repository.Save(payload)
+}
+
+func (s *Service) Close() {
+	s.repository.ClearCachedFileName()
 }
