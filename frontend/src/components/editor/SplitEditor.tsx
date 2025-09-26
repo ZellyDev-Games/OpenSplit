@@ -123,8 +123,8 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
             sob: splitFilePayload?.sob ?? 0,
         });
 
-        const payload = JSON.stringify(newSpiltFilePayload)
-        console.log(payload)
+        const payload = JSON.stringify(newSpiltFilePayload);
+        console.log(payload);
         await Dispatch(Command.SUBMIT, payload);
     };
 

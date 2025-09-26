@@ -6,10 +6,10 @@ export default class SplitFilePayload {
     version: number = 1;
     game_name: string = "";
     game_category: string = "";
-    window_x: number = 100
-    window_y: number = 100
-    window_height: number = 550
-    window_width: number = 350
+    window_x: number = 100;
+    window_y: number = 100;
+    window_height: number = 550;
+    window_width: number = 350;
     runs: RunPayload[] = [];
     segments: SegmentPayload[] = [];
     sob: number = 0;

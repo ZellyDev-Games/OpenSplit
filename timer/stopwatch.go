@@ -168,6 +168,7 @@ func (s *Stopwatch) tickOnce(now time.Time) {
 		select {
 		case s.timeUpdatedChannel <- s.currentTime:
 		default:
+			fmt.Println("Failed to sent to timeUpdatedChannel")
 		}
 	}
 }

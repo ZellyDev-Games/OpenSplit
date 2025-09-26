@@ -102,7 +102,6 @@ type Service struct {
 	lastSplitTime        time.Time
 	dirty                bool
 	sessionUpdateChannel chan *Service
-	shuttingDown         bool
 }
 
 // NewService creates a new Service from the passed in components.

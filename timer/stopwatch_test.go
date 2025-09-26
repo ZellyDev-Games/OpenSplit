@@ -18,19 +18,21 @@ func TestRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.Startup(ctx)
 	s.running = true
+
+	go func() {
+		select {
+		case got := <-timeUpdatedChannel:
+			if got != 42*time.Millisecond {
+				t.Errorf("time updated: got %v, want %v", got, 42*time.Millisecond)
+			}
+		case <-time.After(time.Millisecond * 100):
+			t.Errorf("channel was not sent to")
+		}
+	}()
+	
 	base := time.Unix(0, 0)
 	s.startTime = base
 	mockT.ch <- time.Unix(0, 42e6)
-
-	select {
-	case got := <-timeUpdatedChannel:
-		if got != 42*time.Millisecond {
-			t.Errorf("time updated: got %v, want %v", got, 42*time.Millisecond)
-		}
-	case <-time.After(time.Millisecond * 100):
-		t.Errorf("channel was not sent to")
-	}
-
 	cancel()
 }
 

@@ -122,7 +122,8 @@ func getService() (*Service, *MockTimer, *MockRepository, *SplitFile) {
 	t := new(MockTimer)
 	m := new(MockRepository)
 	sf := getSplitFile()
-	return NewService(t), t, m, sf
+	service, _ := NewService(t)
+	return service, t, m, sf
 }
 
 func TestSplit(t *testing.T) {

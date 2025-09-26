@@ -99,14 +99,7 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
     const segmentRows =
         sessionPayload.loaded_split_file &&
         sessionPayload.loaded_split_file.segments.map((segment, index) => (
-            <tr
-                key={segment.id ?? index}
-                className={
-                    sessionPayload.current_segment_index === index
-                        ? "selected"
-                        : ""
-                }
-            >
+            <tr key={segment.id ?? index} className={sessionPayload.current_segment_index === index ? "selected" : ""}>
                 <td className="splitName">{segment.name}</td>
                 <td className="splitComparison">{getSegmentDisplayTime(index, segment)}</td>
             </tr>

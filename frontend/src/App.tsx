@@ -57,7 +57,7 @@ function App() {
 
     // Subscribe to state updates from the backend
     useEffect(() => {
-        console.log("mounting")
+        console.log("mounting");
         const unsubStateUpdates = EventsOn("state:enter", (...params: stateEnterParams) => {
             switch (params[0]) {
                 case State.WELCOME:
@@ -79,17 +79,17 @@ function App() {
         });
 
         const unsubSessionUpdates = EventsOn("session:update", (updatedSession: SessionPayload) => {
-            setModel(prev => {
+            setModel((prev) => {
                 console.log("[APP]", updatedSession);
                 if (prev.tag === State.RUNNING) {
                     return { tag: State.RUNNING, sessionPayload: updatedSession };
                 }
-                return prev
+                return prev;
             });
-        })
+        });
 
         return () => {
-            console.log("unmounting")
+            console.log("unmounting");
             unsubStateUpdates();
             unsubSessionUpdates();
         };
