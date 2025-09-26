@@ -37,6 +37,7 @@ func (r Running) Receive(command Command, params *string) (DispatchReply, error)
 	case CLOSE:
 		logger.Debug(fmt.Sprintf("Running received CLOSE command: %v", params))
 		machine.sessionService.CloseRun()
+		machine.repoService.Close()
 		machine.changeState(WELCOME, nil)
 	case EDIT:
 		logger.Debug(fmt.Sprintf("Running received EDIT command: %v", params))

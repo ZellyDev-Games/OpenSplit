@@ -91,12 +91,9 @@ func main() {
 			startInterruptListener(ctx, hotkeyService)
 			logger.Info("application startup complete")
 		},
-		OnShutdown: func(ctx context.Context) {
+		OnBeforeClose: func(ctx context.Context) bool {
 			sessionService.OnShutDown()
 			gracefulShutdown(hotkeyService)
-		},
-		OnBeforeClose: func(ctx context.Context) bool {
-			close(sessionUpdateChannel)
 			timerUIBridge.StopUIPump()
 			return false
 		},

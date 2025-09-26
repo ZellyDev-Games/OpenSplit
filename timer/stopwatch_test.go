@@ -29,7 +29,7 @@ func TestRun(t *testing.T) {
 			t.Errorf("channel was not sent to")
 		}
 	}()
-	
+
 	base := time.Unix(0, 0)
 	s.startTime = base
 	mockT.ch <- time.Unix(0, 42e6)
