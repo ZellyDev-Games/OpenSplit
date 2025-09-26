@@ -7,7 +7,7 @@ import Welcome from "./components/splitter/Welcome";
 import SessionPayload from "./models/sessionPayload";
 import SplitFilePayload from "./models/splitFilePayload";
 
-enum State {
+export enum State {
     WELCOME = 0,
     NEWFILE = 1,
     EDITING = 2,
@@ -57,7 +57,8 @@ function App() {
 
     // Subscribe to state updates from the backend
     useEffect(() => {
-        return EventsOn("state:enter", (...params: stateEnterParams) => {
+        console.log("mounting")
+        const unsubStateUpdates = EventsOn("state:enter", (...params: stateEnterParams) => {
             switch (params[0]) {
                 case State.WELCOME:
                     setModel({ tag: State.WELCOME });
@@ -76,6 +77,22 @@ function App() {
                     setModel({ tag: State.RUNNING, sessionPayload: params[1] });
             }
         });
+
+        const unsubSessionUpdates = EventsOn("session:update", (updatedSession: SessionPayload) => {
+            setModel(prev => {
+                console.log("[APP]", updatedSession);
+                if (prev.tag === State.RUNNING) {
+                    return { tag: State.RUNNING, sessionPayload: updatedSession };
+                }
+                return prev
+            });
+        })
+
+        return () => {
+            console.log("unmounting")
+            unsubStateUpdates();
+            unsubSessionUpdates();
+        };
     }, []);
 
     return (

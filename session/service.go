@@ -3,7 +3,6 @@ package session
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 	"time"
 
@@ -42,18 +41,6 @@ type Timer interface {
 	Reset()
 	GetCurrentTimeFormatted() string
 	GetCurrentTime() time.Duration
-}
-
-// FileProvider wraps os hooks and file operations to allow DI for testing.
-type FileProvider interface {
-	WriteFile(string, []byte, os.FileMode) error
-	ReadFile(string) ([]byte, error)
-	MkdirAll(string, os.FileMode) error
-	UserHomeDir() (string, error)
-}
-
-type RuntimeProvider interface {
-	EventsEmit(string, ...any)
 }
 
 // Split represents an advancement of a run through the Segments.
@@ -98,7 +85,6 @@ type SplitFile struct {
 	SOB          time.Duration
 	Runs         []Run
 	PB           *Run
-	PBTotalTime  time.Duration
 }
 
 // Service represents the current state of a run.
@@ -107,17 +93,15 @@ type SplitFile struct {
 // current Run / SplitFile, and communicates timer updates to the frontend
 // If there's one struct that's key to understand in OpenSplit, it's this one.
 type Service struct {
-	mu                    sync.Mutex
-	timer                 Timer
-	loadedSplitFile       *SplitFile
-	currentRun            *Run
-	currentSegmentIndex   int
-	sessionState          State
-	lastSplitTime         time.Time
-	dirty                 bool
-	timerUpdateChannel    chan time.Duration
-	timerEventStopChannel chan any
-	runtimeProvider       RuntimeProvider
+	mu                   sync.Mutex
+	timer                Timer
+	loadedSplitFile      *SplitFile
+	currentRun           *Run
+	currentSegmentIndex  int
+	sessionState         State
+	lastSplitTime        time.Time
+	dirty                bool
+	sessionUpdateChannel chan *Service
 }
 
 // NewService creates a new Service from the passed in components.
@@ -125,19 +109,20 @@ type Service struct {
 // Generally in real code splitFile should be nil and will be populated by the
 // statemachine.Service via UpdateSplitFile or LoadSplitFile
 // Timer updates will be sent over the timeUpdatedChannel at approximately 60FPS.
-func NewService(timer Timer, timerUpdateChannel chan time.Duration, runtimeProvider RuntimeProvider) *Service {
+func NewService(timer Timer) (*Service, chan *Service) {
 	service := &Service{
-		timer:               timer,
-		currentSegmentIndex: -1,
-		timerUpdateChannel:  timerUpdateChannel,
-		runtimeProvider:     runtimeProvider,
+		timer:                timer,
+		currentSegmentIndex:  -1,
+		sessionUpdateChannel: make(chan *Service),
 	}
-	return service
+
+	return service, service.sessionUpdateChannel
 }
 
 func (s *Service) SetLoadedSplitFile(sf *SplitFile) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	defer s.sendUpdate()
 	s.loadedSplitFile = sf
 }
 
@@ -145,6 +130,8 @@ func (s *Service) SetLoadedSplitFile(sf *SplitFile) {
 func (s *Service) Split() SplitResult {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	defer s.sendUpdate()
+
 	if !s.debounced() {
 		return SplitNoop
 	}
@@ -156,7 +143,6 @@ func (s *Service) Split() SplitResult {
 		return s.advanceRun()
 	case Finished:
 		s.resetLocked()
-		close(s.timerEventStopChannel)
 		return SplitReset
 	case Paused:
 		return SplitNoop
@@ -168,6 +154,7 @@ func (s *Service) Split() SplitResult {
 func (s *Service) Undo() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	defer s.sendUpdate()
 
 	if s.currentRun == nil || s.currentSegmentIndex <= 0 || s.sessionState == Idle || len(s.currentRun.Splits) == 0 {
 		return
@@ -192,6 +179,8 @@ func (s *Service) Undo() {
 func (s *Service) Skip() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	defer s.sendUpdate()
+
 	if s.currentRun == nil ||
 		s.currentSegmentIndex >= len(s.loadedSplitFile.Segments)-1 ||
 		s.sessionState == Idle ||
@@ -206,6 +195,8 @@ func (s *Service) Skip() {
 func (s *Service) Pause() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	defer s.sendUpdate()
+
 	if s.sessionState != Running && s.sessionState != Paused {
 		return
 	}
@@ -263,6 +254,7 @@ func (s *Service) Run() (Run, bool) {
 
 // resetLocked assumed that the system is under lock when called.
 func (s *Service) resetLocked() {
+	defer s.sendUpdate()
 	s.timer.Pause()
 	s.timer.Reset()
 	if s.currentRun != nil {
@@ -305,25 +297,10 @@ func (s *Service) startNewRun() SplitResult {
 	s.currentSegmentIndex = 0
 	s.currentRun = &Run{
 		ID:               uuid.New(),
+		Splits:           make([]Split, 0),
 		SplitFileVersion: s.loadedSplitFile.Version,
 	}
 	s.dirty = true
-
-	// Start the timer event loop. event can be listened to by anything on the frontend, it's primary use is to
-	// provide the UI with the current cumulative time with centisecond precision.  Close the channel when we need
-	// to terminate this loop.
-	s.timerEventStopChannel = make(chan any)
-	go func() {
-		for {
-			select {
-			case <-s.timerEventStopChannel:
-				return
-			case t := <-s.timerUpdateChannel:
-				s.runtimeProvider.EventsEmit("timer:update", t.Milliseconds())
-			}
-		}
-	}()
-
 	return SplitStarted
 }
 
@@ -358,4 +335,13 @@ func (s *Service) advanceRun() SplitResult {
 	}
 	s.currentSegmentIndex++
 	return SplitAdvanced
+}
+
+func (s *Service) sendUpdate() {
+	select {
+	case s.sessionUpdateChannel <- s:
+		logger.Debug(fmt.Sprintf("sendUpdate(): %v", s.currentRun))
+	default:
+		logger.Debug("sendUpdate() failed")
+	}
 }

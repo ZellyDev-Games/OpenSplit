@@ -35,7 +35,7 @@ func (s *Service) Save(splitFile *dto.SplitFile, X int, Y int, Width int, Height
 	splitFile.WindowY = Y
 	splitFile.WindowWidth = Width
 	splitFile.WindowHeight = Height
-	payload, err := adapters.SplitFileToFrontENd(splitFile)
+	payload, err := adapters.SplitFileToFrontEnd(splitFile)
 	if err != nil {
 		return err
 	}

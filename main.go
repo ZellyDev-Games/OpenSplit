@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/hotkeys"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/platform"
@@ -44,11 +45,15 @@ func main() {
 	timerService, timerUpdateChannel := timer.NewStopwatch(timer.NewTicker(time.Millisecond * 20))
 	runtimeProvider := platform.NewWailsRuntime()
 	fileProvider := platform.NewFileRuntime()
-
 	jsonRepo := repo.NewJsonFile(runtimeProvider, fileProvider)
 	repoService := repo.NewService(jsonRepo)
-	sessionService := session.NewService(timerService, timerUpdateChannel, runtimeProvider)
+
+	sessionService, sessionUpdateChannel := session.NewService(timerService)
 	machine := statemachine.InitMachine(runtimeProvider, repoService, sessionService)
+
+	// Build UI bridges with model update channels
+	timerUIBridge := bridge.NewTimer(timerUpdateChannel, runtimeProvider)
+	sessionUIBridge := bridge.NewSession(sessionUpdateChannel, runtimeProvider)
 
 	hotkeyProvider, keyInfoChannel := hotkeys.SetupHotkeys()
 	var hotkeyService *hotkeys.Service
@@ -78,6 +83,11 @@ func main() {
 			timerService.Startup(ctx)
 			runtimeProvider.Startup(ctx)
 			machine.Startup(ctx)
+
+			// Start UI pumps
+			sessionUIBridge.StartUIPump()
+			timerUIBridge.StartUIPump()
+
 			startInterruptListener(ctx, hotkeyService)
 			logger.Info("application startup complete")
 		},
@@ -85,6 +95,8 @@ func main() {
 			gracefulShutdown(hotkeyService)
 		},
 		OnBeforeClose: func(ctx context.Context) bool {
+			close(sessionUpdateChannel)
+			timerUIBridge.StopUIPump()
 			return false
 		},
 		Bind: []interface{}{

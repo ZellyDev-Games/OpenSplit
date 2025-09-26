@@ -31,7 +31,7 @@ func (s *SplitFile) BuildStats() {
 		}
 	}
 
-	PB, totalTime, err := getPB(s.Runs)
+	PB, _, err := getPB(s.Runs)
 	if err != nil {
 		logger.Debug(fmt.Sprintf("No PB found: %s", err))
 	}
@@ -47,7 +47,6 @@ func (s *SplitFile) BuildStats() {
 
 	s.SOB = SOB
 	s.PB = PB
-	s.PBTotalTime = totalTime
 }
 
 func getPB(runs []Run) (*Run, time.Duration, error) {

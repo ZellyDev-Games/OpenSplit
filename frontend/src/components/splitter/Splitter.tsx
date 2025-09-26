@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
 
 import { Dispatch } from "../../../wailsjs/go/statemachine/Service";
-import { EventsOn } from "../../../wailsjs/runtime";
 import { Command } from "../../App";
 import { MenuItem, useContextMenu } from "../../hooks/useContextMenu";
 import SessionPayload from "../../models/sessionPayload";
@@ -16,12 +15,6 @@ type SplitterParams = {
 export default function Splitter({ sessionPayload }: SplitterParams) {
     const contextMenu = useContextMenu();
     const [contextMenuItems, setContextMenuItems] = React.useState<MenuItem[]>([]);
-    const [session, setSession] = React.useState<SessionPayload>(sessionPayload);
-
-    // Subscribe to session updates from the backend
-    useEffect(() => {
-        return EventsOn("session:update", (payload: SessionPayload) => setSession(payload));
-    }, []);
 
     useEffect(() => {
         (async () => {
@@ -65,7 +58,7 @@ export default function Splitter({ sessionPayload }: SplitterParams) {
     return (
         <div {...contextMenu.bind} className="splitter">
             <ContextMenu state={contextMenu.state} close={contextMenu.close} items={contextMenuItems} />
-            <SplitList sessionPayload={session} />
+            <SplitList sessionPayload={sessionPayload} />
             <Timer />
         </div>
     );

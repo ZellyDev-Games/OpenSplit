@@ -17,8 +17,8 @@ type Split struct {
 
 type Run struct {
 	ID               string  `json:"id"`
-	SplitFileID      string  `json:"splitfile_id"`
-	SplitFileVersion int     `json:"splitfile_version"`
+	SplitFileID      string  `json:"split_file_id"`
+	SplitFileVersion int     `json:"split_file_version"`
 	TotalTime        int64   `json:"total_time"`
 	Splits           []Split `json:"splits"`
 	Completed        bool    `json:"completed"`
@@ -38,5 +38,4 @@ type SplitFile struct {
 	Segments     []Segment `json:"segments"`
 	SOB          int64     `json:"sob"`
 	PB           *Run      `json:"pb"`
-	PBTotalTime  int64     `json:"pb_total_time"`
 }

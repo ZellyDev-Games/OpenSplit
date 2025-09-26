@@ -22,7 +22,6 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
     const [time, setTime] = useState(0);
 
     useEffect(() => {
-        console.log("From SplitList: ", sessionPayload);
         return EventsOn("timer:update", (val: number) => {
             setTime(val);
         });
@@ -31,11 +30,11 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
     useEffect(() => {
         if (sessionPayload?.current_run) {
             setCompletions(
-                sessionPayload.current_run.split_payloads.map((c) => {
-                    const time = displayFormattedTimeParts(formatDuration(msToParts(c.current_time)));
+                sessionPayload.current_run.splits.map((c) => {
+                    const time = displayFormattedTimeParts(formatDuration(msToParts(c.current_cumulative)));
                     return {
                         time: `${time[0]}${time[1]}`,
-                        raw: c.current_time,
+                        raw: c.current_duration,
                     };
                 }),
             );

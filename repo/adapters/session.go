@@ -25,7 +25,7 @@ func DomainToSession(session *session.Service) *dto.Session {
 		}
 
 		for _, r := range sessionSplitFile.Runs {
-			var splits []dto.Split
+			var splits = make([]dto.Split, 0)
 			for _, s := range r.Splits {
 				splits = append(splits, dto.Split{
 					SplitIndex:        s.SplitIndex,
@@ -61,7 +61,7 @@ func DomainToSession(session *session.Service) *dto.Session {
 
 		currentRun, ok := session.Run()
 		if ok {
-			var splits []dto.Split
+			var splits = make([]dto.Split, 0)
 			for _, s := range currentRun.Splits {
 				splits = append(splits, dto.Split{
 					SplitIndex:        s.SplitIndex,
@@ -85,7 +85,7 @@ func DomainToSession(session *session.Service) *dto.Session {
 		LoadedSplitFile:     dtoSplitFile,
 		CurrentRun:          dtoCurrentRun,
 		CurrentSegmentIndex: session.Index(),
-		SessionState:        session.State(),
+		SessionState:        dto.SessionState(session.State()),
 		Dirty:               session.Dirty(),
 	}
 }

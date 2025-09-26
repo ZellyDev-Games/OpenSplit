@@ -48,6 +48,8 @@ func (s *Stopwatch) Startup(ctx context.Context) {
 
 // IsRunning returns the running state of the Timer
 func (s *Stopwatch) IsRunning() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.running
 }
 
@@ -92,6 +94,7 @@ func (s *Stopwatch) Reset() {
 	defer s.mu.Unlock()
 	s.running = false
 	s.currentTime = 0
+	s.timeUpdatedChannel <- 0
 }
 
 // GetCurrentTimeFormatted returns a frontend friendly string representing the current accumulated time.

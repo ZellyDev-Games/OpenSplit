@@ -14,7 +14,6 @@ func DomainToSplitFile(splitFile *session.SplitFile) *dto.SplitFile {
 	var segments []dto.Segment
 	var runs []dto.Run
 	var PB *dto.Run
-	PBTotalTime := int64(0)
 
 	for _, segment := range splitFile.Segments {
 		segments = append(segments, dto.Segment{
@@ -38,7 +37,7 @@ func DomainToSplitFile(splitFile *session.SplitFile) *dto.SplitFile {
 		}
 
 		runs = append(runs, dto.Run{
-			ID:               splitFile.ID.String(),
+			ID:               run.ID.String(),
 			SplitFileID:      splitFile.ID.String(),
 			SplitFileVersion: splitFile.Version,
 			TotalTime:        run.TotalTime.Milliseconds(),
@@ -66,8 +65,6 @@ func DomainToSplitFile(splitFile *session.SplitFile) *dto.SplitFile {
 			Splits:           splits,
 			Completed:        splitFile.PB.Completed,
 		}
-
-		PBTotalTime = splitFile.PB.TotalTime.Milliseconds()
 	}
 
 	return &dto.SplitFile{
@@ -83,7 +80,6 @@ func DomainToSplitFile(splitFile *session.SplitFile) *dto.SplitFile {
 		WindowY:      splitFile.WindowY,
 		Version:      splitFile.Version,
 		PB:           PB,
-		PBTotalTime:  PBTotalTime,
 	}
 }
 
@@ -103,7 +99,6 @@ func SplitFileToDomain(payload *dto.SplitFile) (*session.SplitFile, error) {
 	var runs []session.Run
 	var segments []session.Segment
 	var PB *session.Run
-	PBTotalTime := time.Duration(0)
 
 	for _, segment := range payload.Segments {
 		sid, err := uuid.Parse(segment.ID)
@@ -125,7 +120,7 @@ func SplitFileToDomain(payload *dto.SplitFile) (*session.SplitFile, error) {
 		rid, err := uuid.Parse(run.ID)
 		if err != nil {
 			logger.Error("failed to parse run ID from payload payload")
-			continue
+			return nil, err
 		}
 		var splits []session.Split
 		for _, split := range run.Splits {
@@ -152,9 +147,9 @@ func SplitFileToDomain(payload *dto.SplitFile) (*session.SplitFile, error) {
 	}
 
 	if payload.PB != nil {
-		id, err := uuid.Parse(payload.PB.ID)
+		pbid, err := uuid.Parse(payload.PB.ID)
 		if err == nil {
-			var splits []session.Split
+			var splits = make([]session.Split, 0)
 			for _, s := range payload.PB.Splits {
 				splitSegmentID, err := uuid.Parse(s.SplitSegmentID)
 				if err != nil {
@@ -171,16 +166,16 @@ func SplitFileToDomain(payload *dto.SplitFile) (*session.SplitFile, error) {
 			}
 
 			PB = &session.Run{
-				ID:               id,
+				ID:               pbid,
 				TotalTime:        time.Duration(payload.PB.TotalTime) * time.Millisecond,
 				Splits:           splits,
 				Completed:        payload.PB.Completed,
 				SplitFileVersion: payload.PB.SplitFileVersion,
 			}
 
-			PBTotalTime = time.Duration(payload.PB.TotalTime) * time.Millisecond
 		} else {
-			logger.Error("failed to parse PB ID from payload payload, PB will be nil in domain model")
+			logger.Error("failed to parse PB ID from payload payload")
+			return nil, err
 		}
 	}
 
@@ -197,7 +192,6 @@ func SplitFileToDomain(payload *dto.SplitFile) (*session.SplitFile, error) {
 		WindowY:      payload.WindowY,
 		Runs:         runs,
 		PB:           PB,
-		PBTotalTime:  PBTotalTime,
 	}, nil
 }
 
@@ -225,6 +219,6 @@ func FrontendToSplitFile(payload string) (*dto.SplitFile, error) {
 	return &sf, nil
 }
 
-func SplitFileToFrontENd(sf *dto.SplitFile) ([]byte, error) {
+func SplitFileToFrontEnd(sf *dto.SplitFile) ([]byte, error) {
 	return json.Marshal(sf)
 }

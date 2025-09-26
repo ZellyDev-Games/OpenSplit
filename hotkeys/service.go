@@ -32,6 +32,7 @@ type Service struct {
 	hotkeyProvider HotkeyProvider
 	dispatcher     Dispatcher
 	internalStop   chan struct{}
+	hooked         bool
 }
 
 // NewService creates a new hotkeys.Service that holds a chan KeyInfo, a reference to a Dispatcher (usually session.Service)
@@ -50,21 +51,29 @@ func NewService(keyInfoChannel chan KeyInfo, dispatcher Dispatcher, provider Hot
 // StartDispatcher creates an internal channel that shuts down the dispatch loop when closed, starts the HotkeyProvider
 // OS Hook, and starts the dispatch loop that listens on hotkeyChannel for KeyInfo events
 func (s *Service) StartDispatcher() {
+	if s.hooked {
+		return
+	}
 	s.internalStop = make(chan struct{})
 	err := s.hotkeyProvider.StartHook()
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to add hotkey provider hook: %s", err))
 	}
+	s.hooked = true
 	go s.dispatch()
 }
 
 // StopDispatcher unhooks the HotkeyProvider from the OS, and closes the internal stop channel to stop the dispatch loop
 func (s *Service) StopDispatcher() {
+	if !s.hooked {
+		return
+	}
 	err := s.hotkeyProvider.Unhook()
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to unhook hotkey provider: %s", err))
 	}
 	close(s.internalStop)
+	s.hooked = false
 }
 
 // dispatch listens for the internalStop channel to close (generally via StopDispatcher), and listens for a hotkey
