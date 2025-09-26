@@ -102,6 +102,7 @@ type Service struct {
 	lastSplitTime        time.Time
 	dirty                bool
 	sessionUpdateChannel chan *Service
+	shuttingDown         bool
 }
 
 // NewService creates a new Service from the passed in components.
@@ -113,7 +114,7 @@ func NewService(timer Timer) (*Service, chan *Service) {
 	service := &Service{
 		timer:                timer,
 		currentSegmentIndex:  -1,
-		sessionUpdateChannel: make(chan *Service),
+		sessionUpdateChannel: make(chan *Service, 128),
 	}
 
 	return service, service.sessionUpdateChannel
@@ -226,7 +227,9 @@ func (s *Service) CloseRun() {
 }
 
 func (s *Service) SplitFile() *SplitFile {
-	return s.loadedSplitFile
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.deepCopySplitFile()
 }
 
 // Dirty returns the unsaved changes status of the session
@@ -250,6 +253,18 @@ func (s *Service) Run() (Run, bool) {
 	r := *s.currentRun
 	r.Splits = append([]Split(nil), r.Splits...)
 	return r, true
+}
+
+// OnShutDown is intended to be called by Wails OnBeforeShutDown to ensure that the session update channel is shutdown
+// cleanly.
+func (s *Service) OnShutDown() {
+	s.mu.Lock()
+	oldChan := s.sessionUpdateChannel
+	s.sessionUpdateChannel = nil
+	s.mu.Unlock()
+	if oldChan != nil {
+		close(oldChan)
+	}
 }
 
 // resetLocked assumed that the system is under lock when called.
@@ -337,11 +352,89 @@ func (s *Service) advanceRun() SplitResult {
 	return SplitAdvanced
 }
 
+// sendUpdate must be called when s.mu is held by the caller
 func (s *Service) sendUpdate() {
+	if s.sessionUpdateChannel == nil {
+		return
+	}
 	select {
 	case s.sessionUpdateChannel <- s:
-		logger.Debug(fmt.Sprintf("sendUpdate(): %v", s.currentRun))
 	default:
-		logger.Debug("sendUpdate() failed")
+	}
+}
+
+func (s *Service) deepCopySplitFile() *SplitFile {
+	if s.loadedSplitFile == nil {
+		return nil
+	}
+
+	var segments []Segment
+	var runs []Run
+	var PB *Run
+
+	for _, segment := range s.loadedSplitFile.Segments {
+		segments = append(segments, Segment{
+			ID:      segment.ID,
+			Name:    segment.Name,
+			Gold:    segment.Gold,
+			Average: segment.Average,
+			PB:      segment.PB,
+		})
+	}
+
+	for _, run := range s.loadedSplitFile.Runs {
+		var splits []Split
+		for _, split := range run.Splits {
+			splits = append(splits, Split{
+				SplitIndex:        split.SplitIndex,
+				SplitSegmentID:    split.SplitSegmentID,
+				CurrentCumulative: split.CurrentCumulative,
+				CurrentDuration:   split.CurrentDuration,
+			})
+		}
+
+		runs = append(runs, Run{
+			ID:               run.ID,
+			SplitFileVersion: run.SplitFileVersion,
+			TotalTime:        run.TotalTime,
+			Splits:           splits,
+			Completed:        run.Completed,
+		})
+	}
+
+	if s.loadedSplitFile.PB != nil {
+		var splits []Split
+		for _, s := range s.loadedSplitFile.PB.Splits {
+			splits = append(splits, Split{
+				SplitIndex:        s.SplitIndex,
+				SplitSegmentID:    s.SplitSegmentID,
+				CurrentCumulative: s.CurrentCumulative,
+				CurrentDuration:   s.CurrentDuration,
+			})
+		}
+
+		PB = &Run{
+			ID:               s.loadedSplitFile.PB.ID,
+			SplitFileVersion: s.loadedSplitFile.PB.SplitFileVersion,
+			TotalTime:        s.loadedSplitFile.PB.TotalTime,
+			Splits:           splits,
+			Completed:        s.loadedSplitFile.PB.Completed,
+		}
+	}
+
+	return &SplitFile{
+		ID:           s.loadedSplitFile.ID,
+		GameName:     s.loadedSplitFile.GameName,
+		GameCategory: s.loadedSplitFile.GameCategory,
+		Runs:         runs,
+		Segments:     segments,
+		SOB:          s.loadedSplitFile.SOB,
+		WindowWidth:  s.loadedSplitFile.WindowWidth,
+		WindowHeight: s.loadedSplitFile.WindowHeight,
+		WindowX:      s.loadedSplitFile.WindowX,
+		WindowY:      s.loadedSplitFile.WindowY,
+		Version:      s.loadedSplitFile.Version,
+		PB:           PB,
+		Attempts:     s.loadedSplitFile.Attempts,
 	}
 }

@@ -19,7 +19,11 @@ func NewSession(sessionUpdatedChannel chan *session.Service, runtimeProvider Run
 
 func (s *Session) StartUIPump() {
 	go func() {
-		for updatedSession := range s.sessionUpdatedChannel {
+		for {
+			updatedSession, ok := <-s.sessionUpdatedChannel
+			if !ok {
+				return
+			}
 			s.runtimeProvider.EventsEmit("session:update", adapters.DomainToSession(updatedSession))
 		}
 	}()

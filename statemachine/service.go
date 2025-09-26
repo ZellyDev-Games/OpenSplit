@@ -57,6 +57,8 @@ type RuntimeProvider interface {
 	OpenFileDialog(runtime.OpenDialogOptions) (string, error)
 	MessageDialog(runtime.MessageDialogOptions) (string, error)
 	EventsEmit(string, ...any)
+	WindowGetSize() (int, int)
+	WindowGetPosition() (int, int)
 	Quit()
 }
 

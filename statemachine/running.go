@@ -3,7 +3,6 @@ package statemachine
 import (
 	"fmt"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo/adapters"
 )
@@ -45,8 +44,8 @@ func (r Running) Receive(command Command, params *string) (DispatchReply, error)
 	case SAVE:
 		logger.Debug(fmt.Sprintf("Running received SAVE command: %v", params))
 		sf := machine.sessionService.SplitFile()
-		w, h := runtime.WindowGetSize(machine.ctx)
-		x, y := runtime.WindowGetPosition(machine.ctx)
+		w, h := machine.runtimeProvider.WindowGetSize()
+		x, y := machine.runtimeProvider.WindowGetPosition()
 		dto := adapters.DomainToSplitFile(sf)
 		err := machine.repoService.Save(dto, x, y, w, h)
 		if err != nil {

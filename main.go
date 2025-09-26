@@ -92,6 +92,7 @@ func main() {
 			logger.Info("application startup complete")
 		},
 		OnShutdown: func(ctx context.Context) {
+			sessionService.OnShutDown()
 			gracefulShutdown(hotkeyService)
 		},
 		OnBeforeClose: func(ctx context.Context) bool {

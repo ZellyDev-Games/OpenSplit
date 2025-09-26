@@ -94,7 +94,10 @@ func (s *Stopwatch) Reset() {
 	defer s.mu.Unlock()
 	s.running = false
 	s.currentTime = 0
-	s.timeUpdatedChannel <- 0
+	select {
+	case s.timeUpdatedChannel <- 0:
+	default:
+	}
 }
 
 // GetCurrentTimeFormatted returns a frontend friendly string representing the current accumulated time.
@@ -162,7 +165,10 @@ func (s *Stopwatch) tickOnce(now time.Time) {
 		s.mu.Lock()
 		s.currentTime = now.Sub(s.startTime)
 		s.mu.Unlock()
-		s.timeUpdatedChannel <- s.currentTime
+		select {
+		case s.timeUpdatedChannel <- s.currentTime:
+		default:
+		}
 	}
 }
 
