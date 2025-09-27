@@ -13,11 +13,10 @@ func (m *mockTicker) Stop()                {}
 
 func TestRun(t *testing.T) {
 	mockT := &mockTicker{}
-	mockT.ch = make(chan time.Time)
+	mockT.ch = make(chan time.Time, 1)
 	s, timeUpdatedChannel := NewStopwatch(mockT)
 	ctx, cancel := context.WithCancel(context.Background())
 	s.Startup(ctx)
-	s.running = true
 
 	go func() {
 		select {
@@ -30,8 +29,7 @@ func TestRun(t *testing.T) {
 		}
 	}()
 
-	base := time.Unix(0, 0)
-	s.startTime = base
+	s.Run()
 	mockT.ch <- time.Unix(0, 42e6)
 	cancel()
 }

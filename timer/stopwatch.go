@@ -3,9 +3,10 @@ package timer
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"sync"
 	"time"
+
+	"github.com/zellydev-games/opensplit/logger"
 )
 
 // TickerInterface wraps time.Ticker to allow DI for testing
@@ -26,11 +27,12 @@ type Stopwatch struct {
 	mu                 sync.Mutex
 	timeUpdatedChannel chan time.Duration
 	ticker             TickerInterface
+	startupOnce        sync.Once
 }
 
 // NewStopwatch returns a Stopwatch and a channel that sends the currentTime at approximately 60 FPS.
 func NewStopwatch(t TickerInterface) (*Stopwatch, chan time.Duration) {
-	timeUpdatedChannel := make(chan time.Duration)
+	timeUpdatedChannel := make(chan time.Duration, 1)
 	return &Stopwatch{
 		ctx:                nil,
 		currentTime:        0,
@@ -42,8 +44,10 @@ func NewStopwatch(t TickerInterface) (*Stopwatch, chan time.Duration) {
 
 // Startup receives a context.Context from Wails.run
 func (s *Stopwatch) Startup(ctx context.Context) {
-	s.ctx = ctx
-	s.Run()
+	s.startupOnce.Do(func() {
+		s.ctx = ctx
+		s.Run()
+	})
 }
 
 // IsRunning returns the running state of the Timer
@@ -54,6 +58,10 @@ func (s *Stopwatch) IsRunning() bool {
 }
 
 func (s *Stopwatch) Run() {
+	if s.ctx == nil {
+		logger.Error("Run called before Startup in stopwatch")
+		return
+	}
 	go func() {
 		defer s.ticker.Stop()
 		for {
@@ -100,13 +108,10 @@ func (s *Stopwatch) Reset() {
 	}
 }
 
-// GetCurrentTimeFormatted returns a frontend friendly string representing the current accumulated time.
-func (s *Stopwatch) GetCurrentTimeFormatted() string {
-	return strconv.FormatInt(s.currentTime.Milliseconds(), 10)
-}
-
 // GetCurrentTime allows public read access to the currentTime
 func (s *Stopwatch) GetCurrentTime() time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.currentTime
 }
 
@@ -161,15 +166,16 @@ func PayloadRawTimeToDuration(ms int64) time.Duration {
 }
 
 func (s *Stopwatch) tickOnce(now time.Time) {
+	s.mu.Lock()
 	if s.running {
-		s.mu.Lock()
 		s.currentTime = now.Sub(s.startTime)
 		s.mu.Unlock()
 		select {
 		case s.timeUpdatedChannel <- s.currentTime:
 		default:
-			fmt.Println("Failed to sent to timeUpdatedChannel")
 		}
+	} else {
+		s.mu.Unlock()
 	}
 }
 

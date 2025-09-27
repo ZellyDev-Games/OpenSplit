@@ -39,7 +39,6 @@ type Timer interface {
 	Start()
 	Pause()
 	Reset()
-	GetCurrentTimeFormatted() string
 	GetCurrentTime() time.Duration
 }
 

@@ -7,6 +7,7 @@ import SessionPayload from "../../models/sessionPayload";
 import { ContextMenu } from "../ContextMenu";
 import SplitList from "./SplitList";
 import Timer from "./Timer";
+import {WindowSetPosition, WindowSetSize} from "../../../wailsjs/runtime";
 
 type SplitterParams = {
     sessionPayload: SessionPayload;
@@ -19,6 +20,12 @@ export default function Splitter({ sessionPayload }: SplitterParams) {
     useEffect(() => {
         (async () => {
             setContextMenuItems(await buildContextMenu());
+
+            sessionPayload.loaded_split_file &&
+                WindowSetSize(sessionPayload.loaded_split_file.window_width, sessionPayload.loaded_split_file.window_height)
+
+            sessionPayload.loaded_split_file &&
+                WindowSetPosition(sessionPayload.loaded_split_file.window_x, sessionPayload.loaded_split_file.window_y)
         })();
     }, [sessionPayload]);
 
