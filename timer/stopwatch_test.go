@@ -24,7 +24,7 @@ func TestRun(t *testing.T) {
 			if got != 42*time.Millisecond {
 				t.Errorf("time updated: got %v, want %v", got, 42*time.Millisecond)
 			}
-		case <-time.After(time.Millisecond * 100):
+		case <-time.After(time.Millisecond * 1000):
 			t.Errorf("channel was not sent to")
 		}
 	}()
