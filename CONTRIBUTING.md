@@ -98,11 +98,11 @@ Include a screenshot/GIF when submitting a skin PR. 🎨
    `chore(ci): add nightly workflow`
 3. **Run tests locally**: `task test`
 4. **Run lint locally** `task lint`
-4. **Open a Pull Request**:
+5. **Open a Pull Request**:
   - Fill out the PR template
   - Add screenshots/GIFs for UI changes
   - Link issues with `Fixes #123` when applicable
-5. **Address review** feedback; we squash or rebase as needed.
+6. **Address review** feedback; we squash or rebase as needed.
 
 For larger features, open an issue to discuss approach before coding.
 
@@ -153,4 +153,4 @@ By contributing, you agree that your contributions are licensed under the **MIT 
 
 ## Thank You
 
-Your time and ideas make OpenSplit better for everyone. If you get stuck or want guidance on where to start, open a Discussion or issue.
+Your time and ideas make OpenSplit better for everyone. If you get stuck or want guidance on where to start, open a Discussion or issue, or find us on Discord.

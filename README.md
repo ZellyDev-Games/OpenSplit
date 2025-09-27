@@ -23,7 +23,7 @@
 - 🕒 **Fast, readable timer** built for speedrunning.
 - 🎨 **Fully skinnable UI** — drop CSS-based skins (tokens + components + images) into a folder and switch at runtime.
 - 🎮 **Global hotkeys** (Windows first; cross-platform planned).
-- 🔎 **Speedrun.com integration** (planned) to search games, categories, and fetch art.
+- 🔎 **Speedrun.com integration** to search games, categories, and fetch art.
 - 🧰 **Modern stack**: Go + React/TypeScript via Wails.
 
 > Status: early development/alpha. Expect rapid change and frequent nightlies.
@@ -46,7 +46,7 @@
 ### Run the app
 1. Download a nightly for your OS (or build from source).
 2. Unzip and run the binary. On macOS, you may need to right-click → Open the first time.
-3. From the app, right click and select `Edit Splits` to create a new split file.
+3. Click "Create Split File" to get started.
 
 ### Create your first splits (basic flow)
 - Create a new split file (Game + Category).
@@ -59,8 +59,8 @@
 
 ## Features (current & roadmap)
 - **Timer**: HH:MM:SS.cc display with centiseconds; formatting adapts to hours/minutes.
-- **Skins**: theme tokens + component styles + images; per-skin folder with live switching.
-- **Split editor**: add/rename/reorder segments; total attempts.
+- **Skins**: theme tokens + component styles + images; per-skin folder with live switching (coming soon).
+- **Split editor**: add/rename/remove; total attempts.
 - **Hotkeys**: Windows global hooks implemented; cross-platform planned.
 - **Data**: simple JSON split files (`.osf`) for portability.
 - **Integrations**: Speedrun.com lookup for game/category art (partially implemented).
