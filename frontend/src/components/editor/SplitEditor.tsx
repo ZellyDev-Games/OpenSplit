@@ -120,6 +120,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
             game_category: gameCategory,
             segments: segmentPayloads,
             attempts: Number(attempts),
+            pb: splitFilePayload?.pb ?? null,
             sob: splitFilePayload?.sob ?? 0,
         });
 

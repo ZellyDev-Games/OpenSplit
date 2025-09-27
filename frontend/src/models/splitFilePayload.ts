@@ -14,6 +14,7 @@ export default class SplitFilePayload {
     segments: SegmentPayload[] = [];
     sob: number = 0;
     pb: RunPayload | null = null;
+    attempts: number = 0;
 
     static createFrom = (source: SplitFilePayload): SplitFilePayload => {
         return { ...source };

@@ -1,8 +1,10 @@
 import { Dispatch } from "../../../wailsjs/go/statemachine/Service";
+import { WindowSetSize } from "../../../wailsjs/runtime";
 import { Command } from "../../App";
 import zdgLogo from "../../assets/images/ZG512.png";
 
 export default function Welcome() {
+    WindowSetSize(320, 580);
     return (
         <div className="welcome">
             <img src={zdgLogo} alt="" />
