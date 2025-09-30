@@ -65,13 +65,13 @@ func TestSave(t *testing.T) {
 	m := &MockRuntimeProvider{}
 	f := &MockFileProvider{}
 	j := NewJsonFile(m, f)
-	err := j.Save([]byte(""))
+	err := j.SaveSplitFile([]byte(""))
 	if err != nil {
 		t.Error(err)
 	}
 
 	if m.SaveCalled != 1 {
-		t.Error("Save() never opened SaveFileDialog")
+		t.Error("SaveSplitFile() never opened SaveFileDialog")
 	}
 
 	if f.WriteFileCalled != 1 {
@@ -83,18 +83,18 @@ func TestLoad(t *testing.T) {
 	m := &MockRuntimeProvider{}
 	f := &MockFileProvider{}
 	j := NewJsonFile(m, f)
-	payload, err := j.Load()
+	payload, err := j.LoadSplitFile()
 	if err != nil {
 		t.Error(err)
 	}
 
 	if m.LoadCalled != 1 {
-		t.Error("Load() never opened OpenFileDialog")
+		t.Error("LoadSplitFile() never opened OpenFileDialog")
 	}
 
 	want := `{"game_name":"Final Fight (SNES)","game_category":"Any%","segments":[{"id":"bb846ce5-e710-4ed7-a648-d09d7de8bc73","name":"Streets","best_time":"0:01:01.00","average_time":"0:01:02.03"},{"id":"d6450ae3-6dfe-40ee-bc51-f4ebfd17a960","name":"Subway 2","best_time":"1:01:03.04","average_time":"1:02:03.04"},{"id":"bb866bc5-b452-4556-bd8e-3c74b965573e","name":"Fin","best_time":"2:00:04.05","average_time":"2:01:05.00"}],"attempts":5}`
 
 	if string(payload) != want {
-		t.Errorf("Load didn't return expected payload")
+		t.Errorf("LoadSplitFile didn't return expected payload")
 	}
 }

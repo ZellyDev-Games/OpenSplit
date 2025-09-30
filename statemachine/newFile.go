@@ -1,6 +1,7 @@
 package statemachine
 
 import (
+	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo/adapters"
 )
@@ -23,13 +24,13 @@ func (n *NewFile) OnEnter() error {
 	return nil
 }
 func (n *NewFile) OnExit() error { return nil }
-func (n *NewFile) Receive(command Command, payload *string) (DispatchReply, error) {
+func (n *NewFile) Receive(command dispatcher.Command, payload *string) (dispatcher.DispatchReply, error) {
 	switch command {
-	case CANCEL:
+	case dispatcher.CANCEL:
 		machine.changeState(WELCOME)
-	case SUBMIT:
+	case dispatcher.SUBMIT:
 		if payload == nil {
-			return DispatchReply{
+			return dispatcher.DispatchReply{
 				Code:    1,
 				Message: "nil payload received",
 			}, nil
@@ -37,21 +38,21 @@ func (n *NewFile) Receive(command Command, payload *string) (DispatchReply, erro
 		dto, err := adapters.FrontendToSplitFile(*payload)
 		if err != nil {
 			logger.Error(err.Error())
-			return DispatchReply{2, err.Error()}, err
+			return dispatcher.DispatchReply{2, err.Error()}, err
 		}
-		err = machine.repoService.Save(dto, 100, 100, 390, 550)
+		err = machine.repoService.SaveSplitFile(dto, 100, 100, 390, 550)
 		if err != nil {
-			return DispatchReply{4, "failed to save dto: " + err.Error()}, err
+			return dispatcher.DispatchReply{4, "failed to save dto: " + err.Error()}, err
 		}
 		sf, err := adapters.SplitFileToDomain(dto)
 		if err != nil {
-			return DispatchReply{5, err.Error()}, err
+			return dispatcher.DispatchReply{5, err.Error()}, err
 		}
 		machine.sessionService.SetLoadedSplitFile(sf)
 		machine.changeState(RUNNING)
-		return DispatchReply{}, nil
+		return dispatcher.DispatchReply{}, nil
 	default:
 		panic("unhandled default case")
 	}
-	return DispatchReply{}, nil
+	return dispatcher.DispatchReply{}, nil
 }

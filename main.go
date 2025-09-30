@@ -16,6 +16,7 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/bridge"
+	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/hotkeys"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/platform"
@@ -55,10 +56,13 @@ func main() {
 	timerUIBridge := bridge.NewTimer(timerUpdateChannel, runtimeProvider)
 	sessionUIBridge := bridge.NewSession(sessionUpdateChannel, runtimeProvider)
 
+	// Build dispatcher that can receive commands from frontend or backend and dispatch them to the state machine
+	commandDispatcher := dispatcher.NewService(machine)
+
 	hotkeyProvider, keyInfoChannel := hotkeys.SetupHotkeys()
 	var hotkeyService *hotkeys.Service
 	if hotkeyProvider != nil {
-		hotkeyService = hotkeys.NewService(keyInfoChannel, machine, hotkeyProvider)
+		hotkeyService = hotkeys.NewService(keyInfoChannel, commandDispatcher, hotkeyProvider)
 		machine.AttachHotkeyProvider(hotkeyService)
 	}
 
@@ -98,7 +102,7 @@ func main() {
 			return false
 		},
 		Bind: []interface{}{
-			machine,
+			commandDispatcher,
 		},
 	})
 

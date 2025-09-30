@@ -70,11 +70,11 @@ func (j *JsonFile) ClearCachedFileName() {
 }
 
 func (j *JsonFile) SaveAs(payload []byte) error {
-	return j.Save(payload)
+	return j.SaveSplitFile(payload)
 }
 
-// Save takes a payload marshalled as bytes and saves it to disk
-func (j *JsonFile) Save(payload []byte) error {
+// SaveSplitFile takes a payload marshalled as bytes and saves it to disk
+func (j *JsonFile) SaveSplitFile(payload []byte) error {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		logger.Error("save failed: " + err.Error())
@@ -113,9 +113,9 @@ func (j *JsonFile) Save(payload []byte) error {
 	return err
 }
 
-// Load reads a JSON (*.osf) file from the path returned from the open file dialog
+// LoadSplitFile reads a JSON (*.osf) file from the path returned from the open file dialog
 // and unserializes it into a SplitFilePayload
-func (j *JsonFile) Load() ([]byte, error) {
+func (j *JsonFile) LoadSplitFile() ([]byte, error) {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		return nil, err
@@ -149,6 +149,50 @@ func (j *JsonFile) Load() ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func (j *JsonFile) SaveConfig(configServicePayload []byte) error {
+	defaultDirectoryBase, err := j.fileProvider.UserHomeDir()
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to get user home directory: %s", err.Error()))
+		return err
+	}
+
+	configDirectory := path.Join(defaultDirectoryBase, "OpenSplit")
+	err = j.fileProvider.MkdirAll(configDirectory, 0755)
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to create OpenSplit user data folder: %s", err.Error()))
+		return err
+	}
+
+	err = j.fileProvider.WriteFile(path.Join(configDirectory, "os-config.json"), configServicePayload, 0644)
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to save split file: %s", err.Error()))
+		return err
+	}
+	return err
+}
+
+func (j *JsonFile) LoadConfig() ([]byte, error) {
+	defaultDirectoryBase, err := j.fileProvider.UserHomeDir()
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to get user home directory: %s", err.Error()))
+		return nil, err
+	}
+
+	configDirectory := path.Join(defaultDirectoryBase, "OpenSplit")
+	err = j.fileProvider.MkdirAll(configDirectory, 0755)
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to create OpenSplit user data folder: %s", err.Error()))
+		return nil, err
+	}
+
+	data, err := j.fileProvider.ReadFile(path.Join(configDirectory, "os-config.json"))
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to load OpenSplit config: %s", err.Error()))
+		return nil, err
+	}
+	return data, err
 }
 
 func (j *JsonFile) getDefaultDirectory() (string, error) {

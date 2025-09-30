@@ -3,20 +3,14 @@ package hotkeys
 import (
 	"fmt"
 
+	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/logger"
-	"github.com/zellydev-games/opensplit/statemachine"
 )
 
 // HotkeyProvider must be implemented by any OS specific hotkey system to be used by the hotkeys.Service
 type HotkeyProvider interface {
 	StartHook() error
 	Unhook() error
-}
-
-// Dispatcher is generally implemented by the statemachine.Service created by the application,
-// but this interface is useful for testing purposes
-type Dispatcher interface {
-	Dispatch(command statemachine.Command, payload *string) (statemachine.DispatchReply, error)
 }
 
 // KeyInfo is the Go-friendly struct to capture key code and key name data from the OS
@@ -30,7 +24,7 @@ type KeyInfo struct {
 type Service struct {
 	hotkeyChannel  chan KeyInfo
 	hotkeyProvider HotkeyProvider
-	dispatcher     Dispatcher
+	dispatcher     *dispatcher.Service
 	internalStop   chan struct{}
 	hooked         bool
 }
@@ -40,7 +34,7 @@ type Service struct {
 //
 // The common pattern used in OpenSplit is to create a HotkeyProvider with a constructor func that also returns a
 // chan KeyInfo it sends keypress information to, and use that as the first parameter to this constructor func.
-func NewService(keyInfoChannel chan KeyInfo, dispatcher Dispatcher, provider HotkeyProvider) *Service {
+func NewService(keyInfoChannel chan KeyInfo, dispatcher *dispatcher.Service, provider HotkeyProvider) *Service {
 	return &Service{
 		hotkeyChannel:  keyInfoChannel,
 		dispatcher:     dispatcher,
@@ -94,7 +88,7 @@ func (s *Service) dispatch() {
 			}
 			switch keyInfo.KeyCode {
 			case 32: // Space
-				reply, err := s.dispatcher.Dispatch(statemachine.SPLIT, nil)
+				reply, err := s.dispatcher.Dispatch(dispatcher.SPLIT, nil)
 				if err != nil || reply.Code != 0 {
 					logger.Error(fmt.Sprintf("failed to dispatch hotkey Split: %s - code %d", err, reply.Code))
 				}

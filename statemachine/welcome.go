@@ -3,6 +3,7 @@ package statemachine
 import (
 	"fmt"
 
+	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/logger"
 )
 
@@ -25,22 +26,26 @@ func (w *Welcome) OnEnter() error {
 	return nil
 }
 func (w *Welcome) OnExit() error { return nil }
-func (w *Welcome) Receive(command Command, payload *string) (DispatchReply, error) {
+func (w *Welcome) Receive(command dispatcher.Command, payload *string) (dispatcher.DispatchReply, error) {
 	switch command {
-	case LOAD:
+	case dispatcher.LOAD:
 		logger.Debug("Welcome received command LOAD")
-		sf, err := machine.repoService.Load()
+		sf, err := machine.repoService.LoadSplitFile()
 		if err != nil {
-			return DispatchReply{1, "failed to load dto: " + err.Error()}, err
+			return dispatcher.DispatchReply{Code: 1, Message: "failed to load dto: " + err.Error()}, err
 		}
 		machine.sessionService.SetLoadedSplitFile(sf)
 		machine.changeState(RUNNING)
-		return DispatchReply{}, nil
-	case NEW:
+		return dispatcher.DispatchReply{}, nil
+	case dispatcher.NEW:
 		logger.Debug("Welcome received command NEW")
 		machine.changeState(NEWFILE)
-		return DispatchReply{}, nil
+		return dispatcher.DispatchReply{}, nil
+	case dispatcher.EDIT:
+		logger.Debug("Welcome received command EDIT")
+		machine.changeState(CONFIG)
+		return dispatcher.DispatchReply{}, nil
 	default:
-		return DispatchReply{}, fmt.Errorf("invalid command %d for state Welcome", command)
+		return dispatcher.DispatchReply{}, fmt.Errorf("invalid command %d for state Welcome", command)
 	}
 }

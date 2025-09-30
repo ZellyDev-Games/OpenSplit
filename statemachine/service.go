@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/zellydev-games/opensplit/config"
+	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo"
 	"github.com/zellydev-games/opensplit/session"
@@ -13,24 +15,6 @@ import (
 
 // machine is a private singleton instance of a *Service that represents a state machine.
 var machine *Service
-
-// Command bytes are sent to the Service.Dispatch method receiver to indicate the state machine should take some action.
-type Command byte
-
-const (
-	QUIT Command = iota
-	NEW
-	LOAD
-	EDIT
-	CANCEL
-	SUBMIT
-	CLOSE
-	RESET
-	SAVE
-	SPLIT
-	UNDO
-	SKIP
-)
 
 // StateID is a compact identifier for a State
 type StateID byte
@@ -40,15 +24,8 @@ const (
 	NEWFILE
 	EDITING
 	RUNNING
+	CONFIG
 )
-
-// DispatchReply is sent in response to Dispatch
-//
-// Code greater than zero indicates an error situation
-type DispatchReply struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
 
 // RuntimeProvider wraps Wails.runtimeProvider calls to allow for DI for testing.
 type RuntimeProvider interface {
@@ -72,7 +49,7 @@ type HotkeyProvider interface {
 type state interface {
 	OnEnter() error
 	OnExit() error
-	Receive(command Command, payload *string) (DispatchReply, error)
+	Receive(command dispatcher.Command, payload *string) (dispatcher.DispatchReply, error)
 	String() string
 }
 
@@ -84,6 +61,7 @@ type Service struct {
 	repoService     *repo.Service
 	runtimeProvider RuntimeProvider
 	hotkeyProvider  HotkeyProvider
+	configService   *config.Service
 }
 
 // InitMachine sets the global singleton, and gives it a friendly default state
@@ -107,23 +85,23 @@ func (s *Service) AttachHotkeyProvider(provider HotkeyProvider) {
 	s.hotkeyProvider = provider
 }
 
-// Dispatch allows external facing code to send Command bytes to the state machine
-func (s *Service) Dispatch(command Command, payload *string) (DispatchReply, error) {
+// ReceiveDispatch allows external facing code to send Command bytes to the state machine
+func (s *Service) ReceiveDispatch(command dispatcher.Command, payload *string) (dispatcher.DispatchReply, error) {
 	if s.currentState == nil {
 		logger.Error("command sent to state machine without a loaded state")
-		return DispatchReply{}, errors.New("command sent to state machine without a loaded state")
+		return dispatcher.DispatchReply{}, errors.New("command sent to state machine without a loaded state")
 	}
 
-	if command == RESET {
+	if command == dispatcher.RESET {
 		logger.Debug("RESET command dispatched from front end")
 		s.changeState(WELCOME)
-		return DispatchReply{}, nil
+		return dispatcher.DispatchReply{}, nil
 	}
 
-	if command == QUIT {
+	if command == dispatcher.QUIT {
 		logger.Debug("QUIT command dispatched from front end")
 		s.runtimeProvider.Quit()
-		return DispatchReply{}, nil
+		return dispatcher.DispatchReply{}, nil
 	}
 
 	logger.Debug(fmt.Sprintf("%d command dispatched to state %s", command, s.currentState.String()))
@@ -152,6 +130,9 @@ func (s *Service) changeState(newState StateID, context ...interface{}) {
 	case RUNNING:
 		logger.Debug("entering state Running")
 		s.currentState, _ = NewRunningState()
+	case CONFIG:
+		logger.Debug("entering state Service")
+		s.currentState, _ = NewConfigState()
 	default:
 		panic("unhandled default case")
 	}

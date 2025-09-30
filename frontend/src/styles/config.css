@@ -1,0 +1,27 @@
+@layer components {
+    .options {
+        flex-grow: 1;
+    }
+
+    .hotkeyContainer {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-end;
+    }
+
+    .hotkeyID {
+        width: 150px;
+    }
+
+    .hotkeyValue {
+        font-weight: normal;
+        font-style: italic;
+        flex: 1;
+        font-size: 14px;
+    }
+
+    .actions {
+        display: flex;
+        justify-content: flex-end;
+    }
+}

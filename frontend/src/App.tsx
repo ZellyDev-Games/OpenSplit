@@ -6,19 +6,23 @@ import Splitter from "./components/splitter/Splitter";
 import Welcome from "./components/splitter/Welcome";
 import SessionPayload from "./models/sessionPayload";
 import SplitFilePayload from "./models/splitFilePayload";
+import Config from "./components/Config";
+import {KeyConfig} from "./models/keyInfo";
 
 export enum State {
     WELCOME = 0,
     NEWFILE = 1,
     EDITING = 2,
     RUNNING = 3,
+    CONFIG  = 4
 }
 
 type Model =
     | { tag: State.WELCOME }
     | { tag: State.NEWFILE; speedRunAPIBase: string }
     | { tag: State.EDITING; splitFilePayload: SplitFilePayload | null; speedRunAPIBase: string }
-    | { tag: State.RUNNING; sessionPayload: SessionPayload };
+    | { tag: State.RUNNING; sessionPayload: SessionPayload }
+    | {tag: State.CONFIG; keyConfig: KeyConfig}
 
 export enum Command {
     QUIT,
@@ -36,7 +40,8 @@ type stateEnterParams =
     | [State.WELCOME, null]
     | [State.NEWFILE, null]
     | [State.EDITING, SplitFilePayload | null]
-    | [State.RUNNING, SessionPayload];
+    | [State.RUNNING, SessionPayload]
+    | [State.CONFIG, KeyConfig]
 
 type StateViewProps = { model: Model };
 function StateRouter({ model }: StateViewProps) {
@@ -49,6 +54,15 @@ function StateRouter({ model }: StateViewProps) {
             return <SplitEditor splitFilePayload={model.splitFilePayload} speedRunAPIBase={model.speedRunAPIBase} />;
         case State.RUNNING:
             return <Splitter sessionPayload={model.sessionPayload} />;
+        case State.CONFIG:
+            const fakeConfig : KeyConfig[] = [{
+                command: "Split",
+                info: { name: "SPACE", code: 32 }
+            },{
+                command: "Undo Split",
+                info: { name: "BACKSPACE", code: null }
+            }]
+            return <Config hotkeys={fakeConfig} />;
     }
 }
 
