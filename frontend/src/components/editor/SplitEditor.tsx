@@ -2,7 +2,7 @@ import { faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useEffect, useRef, useState } from "react";
 
-import { Dispatch } from "../../../wailsjs/go/statemachine/Service";
+import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
 import { WindowCenter, WindowSetSize } from "../../../wailsjs/runtime";
 import { Command } from "../../App";
 import { useClickOutside } from "../../hooks/useClickOutside";

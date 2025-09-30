@@ -1,4 +1,4 @@
-import { Dispatch } from "../../../wailsjs/go/statemachine/Service";
+import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
 import { WindowSetSize } from "../../../wailsjs/runtime";
 import { Command } from "../../App";
 import zdgLogo from "../../assets/images/ZG512.png";

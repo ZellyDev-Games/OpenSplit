@@ -1,4 +1,4 @@
-export namespace statemachine {
+export namespace dispatcher {
 	
 	export class DispatchReply {
 	    code: number;

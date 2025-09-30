@@ -21,8 +21,8 @@ func KeyInfoToPayload(info hotkeys.KeyInfo) ([]byte, error) {
 	return json.Marshal(info)
 }
 
-func PayloadToConfigKeyInfo(payload []byte) (config.KeyInfo, error) {
-	var keyInfo config.KeyInfo
+func PayloadToConfigKeyInfo(payload []byte) (hotkeys.KeyInfo, error) {
+	var keyInfo hotkeys.KeyInfo
 	err := json.Unmarshal(payload, &keyInfo)
 	return keyInfo, err
 }
