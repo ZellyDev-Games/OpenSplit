@@ -4,10 +4,11 @@ package hotkeys
 
 import (
 	"fmt"
-	"github.com/zellydev-games/opensplit/logger"
 	"runtime"
 	"syscall"
 	"unsafe"
+
+	"github.com/zellydev-games/opensplit/logger"
 
 	"golang.org/x/sys/windows"
 )

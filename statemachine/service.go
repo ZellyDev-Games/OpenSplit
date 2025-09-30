@@ -40,7 +40,10 @@ type RuntimeProvider interface {
 }
 
 type HotkeyProvider interface {
-	StartDispatcher()
+	// StartDispatcher tells the underlying hotkey service to begin listening for key presses, and dispatch commands
+	//
+	// getRaw will force the dispatcher to dispatch dispatcher.SUBMIT with the pressed hotkeys.KeyInfo with every keypress
+	StartDispatcher(getRaw bool)
 	StopDispatcher()
 }
 
@@ -51,6 +54,7 @@ type state interface {
 	OnExit() error
 	Receive(command dispatcher.Command, payload *string) (dispatcher.DispatchReply, error)
 	String() string
+	ID() StateID
 }
 
 // Service represents a state machine and holds references to all the tools to allow states to do useful work
@@ -65,11 +69,12 @@ type Service struct {
 }
 
 // InitMachine sets the global singleton, and gives it a friendly default state
-func InitMachine(runtimeProvider RuntimeProvider, repoService *repo.Service, sessionService *session.Service) *Service {
+func InitMachine(runtimeProvider RuntimeProvider, repoService *repo.Service, sessionService *session.Service, configService *config.Service) *Service {
 	machine = &Service{
 		sessionService:  sessionService,
 		runtimeProvider: runtimeProvider,
 		repoService:     repoService,
+		configService:   configService,
 	}
 	return machine
 }
@@ -92,19 +97,13 @@ func (s *Service) ReceiveDispatch(command dispatcher.Command, payload *string) (
 		return dispatcher.DispatchReply{}, errors.New("command sent to state machine without a loaded state")
 	}
 
-	if command == dispatcher.RESET {
-		logger.Debug("RESET command dispatched from front end")
-		s.changeState(WELCOME)
-		return dispatcher.DispatchReply{}, nil
-	}
-
 	if command == dispatcher.QUIT {
 		logger.Debug("QUIT command dispatched from front end")
 		s.runtimeProvider.Quit()
 		return dispatcher.DispatchReply{}, nil
 	}
 
-	logger.Debug(fmt.Sprintf("%d command dispatched to state %s", command, s.currentState.String()))
+	logger.Debug(fmt.Sprintf("command %d dispatched to state %s", command, s.currentState.String()))
 	return s.currentState.Receive(command, payload)
 }
 
@@ -131,8 +130,9 @@ func (s *Service) changeState(newState StateID, context ...interface{}) {
 		logger.Debug("entering state Running")
 		s.currentState, _ = NewRunningState()
 	case CONFIG:
-		logger.Debug("entering state Service")
-		s.currentState, _ = NewConfigState()
+		logger.Debug("entering state Config")
+		configState, _ := NewConfigState(s.currentState.ID())
+		s.currentState = configState
 	default:
 		panic("unhandled default case")
 	}

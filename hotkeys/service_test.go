@@ -3,7 +3,7 @@ package hotkeys
 import (
 	"testing"
 
-	"github.com/zellydev-games/opensplit/statemachine"
+	"github.com/zellydev-games/opensplit/dispatcher"
 )
 
 type MockHotkeyProvider struct {
@@ -15,9 +15,9 @@ type MockDispatcher struct {
 	DispatchCalled int
 }
 
-func (m *MockDispatcher) Dispatch(command statemachine.Command, payload *string) (statemachine.DispatchReply, error) {
+func (m *MockDispatcher) Dispatch(command dispatcher.Command, payload *string) (dispatcher.DispatchReply, error) {
 	m.DispatchCalled++
-	return statemachine.DispatchReply{}, nil
+	return dispatcher.DispatchReply{}, nil
 }
 
 func (m *MockHotkeyProvider) StartHook() error {

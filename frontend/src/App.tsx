@@ -1,20 +1,20 @@
 import React, { useEffect } from "react";
 
 import { EventsOn } from "../wailsjs/runtime";
+import Config from "./components/Config";
 import SplitEditor from "./components/editor/SplitEditor";
 import Splitter from "./components/splitter/Splitter";
 import Welcome from "./components/splitter/Welcome";
+import {ConfigPayload} from "./models/configPayload";
 import SessionPayload from "./models/sessionPayload";
 import SplitFilePayload from "./models/splitFilePayload";
-import Config from "./components/Config";
-import {KeyConfig} from "./models/keyInfo";
 
 export enum State {
     WELCOME = 0,
     NEWFILE = 1,
     EDITING = 2,
     RUNNING = 3,
-    CONFIG  = 4
+    CONFIG = 4,
 }
 
 type Model =
@@ -22,7 +22,7 @@ type Model =
     | { tag: State.NEWFILE; speedRunAPIBase: string }
     | { tag: State.EDITING; splitFilePayload: SplitFilePayload | null; speedRunAPIBase: string }
     | { tag: State.RUNNING; sessionPayload: SessionPayload }
-    | {tag: State.CONFIG; keyConfig: KeyConfig}
+    | { tag: State.CONFIG; configPayload: ConfigPayload };
 
 export enum Command {
     QUIT,
@@ -34,6 +34,10 @@ export enum Command {
     CLOSE,
     RESET,
     SAVE,
+    SPLIT,
+    UNDO,
+    SKIP,
+    PAUSE
 }
 
 type stateEnterParams =
@@ -41,7 +45,7 @@ type stateEnterParams =
     | [State.NEWFILE, null]
     | [State.EDITING, SplitFilePayload | null]
     | [State.RUNNING, SessionPayload]
-    | [State.CONFIG, KeyConfig]
+    | [State.CONFIG, ConfigPayload];
 
 type StateViewProps = { model: Model };
 function StateRouter({ model }: StateViewProps) {
@@ -55,14 +59,7 @@ function StateRouter({ model }: StateViewProps) {
         case State.RUNNING:
             return <Splitter sessionPayload={model.sessionPayload} />;
         case State.CONFIG:
-            const fakeConfig : KeyConfig[] = [{
-                command: "Split",
-                info: { name: "SPACE", code: 32 }
-            },{
-                command: "Undo Split",
-                info: { name: "BACKSPACE", code: null }
-            }]
-            return <Config hotkeys={fakeConfig} />;
+            return <Config configPayload={model.configPayload} />;
     }
 }
 
@@ -71,7 +68,6 @@ function App() {
 
     // Subscribe to state updates from the backend
     useEffect(() => {
-        console.log("mounting");
         const unsubStateUpdates = EventsOn("state:enter", (...params: stateEnterParams) => {
             switch (params[0]) {
                 case State.WELCOME:
@@ -89,6 +85,10 @@ function App() {
                     break;
                 case State.RUNNING:
                     setModel({ tag: State.RUNNING, sessionPayload: params[1] });
+                    break;
+                case State.CONFIG:
+                    console.log(params[1])
+                    setModel({ tag: State.CONFIG, configPayload: params[1] });
             }
         });
 
@@ -103,7 +103,6 @@ function App() {
         });
 
         return () => {
-            console.log("unmounting");
             unsubStateUpdates();
             unsubSessionUpdates();
         };

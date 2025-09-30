@@ -1,10 +1,12 @@
 package statemachine
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/logger"
+	"github.com/zellydev-games/opensplit/repo"
 )
 
 // Welcome greets the user by indicating the frontend should display the Welcome screen
@@ -20,8 +22,26 @@ func (w *Welcome) String() string {
 	return "Welcome"
 }
 
+func (w *Welcome) ID() StateID {
+	return WELCOME
+}
+
 // OnEnter sets the context from the Wails app and signals the frontend to show the Welcome component
 func (w *Welcome) OnEnter() error {
+	err := machine.repoService.LoadConfig(machine.configService)
+	if err != nil {
+		if errors.Is(err, repo.ErrConfigMissing) {
+			machine.configService.CreateDefaultConfig()
+			err = machine.repoService.SaveConfig(machine.configService)
+			if err != nil {
+				logger.Error(fmt.Sprintf("failed to create default config: %s", err.Error()))
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
 	machine.runtimeProvider.EventsEmit("state:enter", WELCOME)
 	return nil
 }

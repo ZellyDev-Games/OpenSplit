@@ -253,18 +253,6 @@ func (s *Service) Run() (Run, bool) {
 	return r, true
 }
 
-// OnShutDown is intended to be called by Wails OnBeforeShutDown to ensure that the session update channel is shutdown
-// cleanly.
-func (s *Service) OnShutDown() {
-	s.mu.Lock()
-	oldChan := s.sessionUpdateChannel
-	s.sessionUpdateChannel = nil
-	s.mu.Unlock()
-	if oldChan != nil {
-		close(oldChan)
-	}
-}
-
 // resetLocked assumed that the system is under lock when called.
 func (s *Service) resetLocked() {
 	defer s.sendUpdate()

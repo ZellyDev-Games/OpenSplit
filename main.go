@@ -16,6 +16,7 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/bridge"
+	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/hotkeys"
 	"github.com/zellydev-games/opensplit/logger"
@@ -43,18 +44,21 @@ func main() {
 	setupLogging(logDir)
 	logger.Info("logging initialized, starting opensplit")
 
-	timerService, timerUpdateChannel := timer.NewStopwatch(timer.NewTicker(time.Millisecond * 20))
 	runtimeProvider := platform.NewWailsRuntime()
 	fileProvider := platform.NewFileRuntime()
 	jsonRepo := repo.NewJsonFile(runtimeProvider, fileProvider)
+
+	timerService, timerUpdateChannel := timer.NewStopwatch(timer.NewTicker(time.Millisecond * 20))
 	repoService := repo.NewService(jsonRepo)
+	configService, configUpdateChannel := config.NewService()
 
 	sessionService, sessionUpdateChannel := session.NewService(timerService)
-	machine := statemachine.InitMachine(runtimeProvider, repoService, sessionService)
+	machine := statemachine.InitMachine(runtimeProvider, repoService, sessionService, configService)
 
 	// Build UI bridges with model update channels
 	timerUIBridge := bridge.NewTimer(timerUpdateChannel, runtimeProvider)
 	sessionUIBridge := bridge.NewSession(sessionUpdateChannel, runtimeProvider)
+	configUIBridge := bridge.NewConfig(configUpdateChannel, runtimeProvider)
 
 	// Build dispatcher that can receive commands from frontend or backend and dispatch them to the state machine
 	commandDispatcher := dispatcher.NewService(machine)
@@ -83,7 +87,6 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
-			runtime.WindowSetAlwaysOnTop(ctx, true)
 			timerService.Startup(ctx)
 			runtimeProvider.Startup(ctx)
 			machine.Startup(ctx)
@@ -91,14 +94,14 @@ func main() {
 			// Start UI pumps
 			sessionUIBridge.StartUIPump()
 			timerUIBridge.StartUIPump()
+			configUIBridge.StartUIPump()
 
 			startInterruptListener(ctx, hotkeyService)
+			runtime.WindowSetAlwaysOnTop(ctx, true)
 			logger.Info("application startup complete")
 		},
 		OnBeforeClose: func(ctx context.Context) bool {
-			sessionService.OnShutDown()
 			gracefulShutdown(hotkeyService)
-			timerUIBridge.StopUIPump()
 			return false
 		},
 		Bind: []interface{}{

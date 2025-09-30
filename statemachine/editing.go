@@ -35,16 +35,16 @@ func (e *Editing) Receive(command dispatcher.Command, payload *string) (dispatch
 		}
 		dto, err := adapters.FrontendToSplitFile(*payload)
 		if err != nil {
-			return dispatcher.DispatchReply{2, err.Error()}, err
+			return dispatcher.DispatchReply{Code: 2, Message: err.Error()}, err
 		}
 		err = machine.repoService.SaveSplitFile(dto, dto.WindowX, dto.WindowY, dto.WindowWidth, dto.WindowHeight)
 		if err != nil {
-			return dispatcher.DispatchReply{4, "failed to save dto: " + err.Error()}, err
+			return dispatcher.DispatchReply{Code: 4, Message: "failed to save dto: " + err.Error()}, err
 		}
 
 		sf, err := adapters.SplitFileToDomain(dto)
 		if err != nil {
-			return dispatcher.DispatchReply{5, err.Error()}, err
+			return dispatcher.DispatchReply{Code: 5, Message: err.Error()}, err
 		}
 		machine.sessionService.SetLoadedSplitFile(sf)
 		machine.changeState(RUNNING)
@@ -58,4 +58,7 @@ func (e *Editing) Receive(command dispatcher.Command, payload *string) (dispatch
 
 func (e *Editing) String() string {
 	return "Editing"
+}
+func (e *Editing) ID() StateID {
+	return EDITING
 }

@@ -31,7 +31,3 @@ func (t *Timer) StartUIPump() {
 		}
 	}()
 }
-
-func (t *Timer) StopUIPump() {
-	close(t.timerEventStopChannel)
-}

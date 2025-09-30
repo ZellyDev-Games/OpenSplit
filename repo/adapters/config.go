@@ -17,10 +17,6 @@ func FrontEndToConfig(configServiceBytes []byte) (*config.Service, error) {
 	return &configService, err
 }
 
-func KeyInfoToPayload(info hotkeys.KeyInfo) ([]byte, error) {
-	return json.Marshal(info)
-}
-
 func PayloadToConfigKeyInfo(payload []byte) (hotkeys.KeyInfo, error) {
 	var keyInfo hotkeys.KeyInfo
 	err := json.Unmarshal(payload, &keyInfo)

@@ -1,11 +1,16 @@
 package repo
 
 import (
+	"errors"
+
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dto"
 	"github.com/zellydev-games/opensplit/repo/adapters"
 	"github.com/zellydev-games/opensplit/session"
 )
+
+// ErrConfigMissing signals to the caller that the config file is not there (first run, or user moved it), so generate a default
+var ErrConfigMissing = errors.New("config missing")
 
 // Repository defines a contract for a repo provider to operate against
 type Repository interface {
@@ -58,10 +63,18 @@ func (s *Service) SaveConfig(configService *config.Service) error {
 	return s.repository.SaveConfig(payload)
 }
 
-func (s *Service) LoadConfig() (*config.Service, error) {
+func (s *Service) LoadConfig(c *config.Service) error {
 	b, err := s.repository.LoadConfig()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return adapters.FrontEndToConfig(b)
+
+	newConfig, err := adapters.FrontEndToConfig(b)
+	if err != nil {
+		return err
+	}
+
+	c.SpeedRunAPIBase = newConfig.SpeedRunAPIBase
+	c.KeyConfig = newConfig.KeyConfig
+	return nil
 }
