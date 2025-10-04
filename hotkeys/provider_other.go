@@ -14,6 +14,6 @@ func (h *HotkeyProviderStub) Unhook() error {
 	return nil
 }
 
-func SetupHotkeys() {
-	return HotkeyProviderStub{}
+func SetupHotkeys() *HotkeyProviderStub {
+	return &HotkeyProviderStub{}
 }
