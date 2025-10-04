@@ -8,6 +8,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dispatcher"
+	"github.com/zellydev-games/opensplit/keyinfo"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo"
 	"github.com/zellydev-games/opensplit/session"
@@ -40,11 +41,8 @@ type RuntimeProvider interface {
 }
 
 type HotkeyProvider interface {
-	// StartDispatcher tells the underlying hotkey service to begin listening for key presses, and dispatch commands
-	//
-	// getRaw will force the dispatcher to dispatch dispatcher.SUBMIT with the pressed hotkeys.KeyInfo with every keypress
-	StartDispatcher(getRaw bool)
-	StopDispatcher()
+	StartHook(func(data keyinfo.KeyData)) error
+	Unhook() error
 }
 
 // state implementations can be operated by the Service and do meaningful work, and communicate state to the frontend

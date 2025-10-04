@@ -5,7 +5,7 @@ import Config from "./components/Config";
 import SplitEditor from "./components/editor/SplitEditor";
 import Splitter from "./components/splitter/Splitter";
 import Welcome from "./components/splitter/Welcome";
-import {ConfigPayload} from "./models/configPayload";
+import { ConfigPayload } from "./models/configPayload";
 import SessionPayload from "./models/sessionPayload";
 import SplitFilePayload from "./models/splitFilePayload";
 
@@ -37,7 +37,7 @@ export enum Command {
     SPLIT,
     UNDO,
     SKIP,
-    PAUSE
+    PAUSE,
 }
 
 type stateEnterParams =
@@ -74,20 +74,20 @@ function App() {
                     setModel({ tag: State.WELCOME });
                     break;
                 case State.NEWFILE:
-                    setModel({ tag: State.NEWFILE, speedRunAPIBase: "https://speedrun.com/api/v1" });
+                    setModel({ tag: State.NEWFILE, speedRunAPIBase: "https://www.speedrun.com/api/v1" });
                     break;
                 case State.EDITING:
                     setModel({
                         tag: State.EDITING,
                         splitFilePayload: params[1],
-                        speedRunAPIBase: "https://speedrun.com/api/v1",
+                        speedRunAPIBase: "https://www.speedrun.com/api/v1",
                     });
                     break;
                 case State.RUNNING:
                     setModel({ tag: State.RUNNING, sessionPayload: params[1] });
                     break;
                 case State.CONFIG:
-                    console.log(params[1])
+                    console.log(params[1]);
                     setModel({ tag: State.CONFIG, configPayload: params[1] });
             }
         });

@@ -5,9 +5,11 @@ package hotkeys
 import (
 	"fmt"
 	"runtime"
+	"sync"
 	"syscall"
 	"unsafe"
 
+	"github.com/zellydev-games/opensplit/keyinfo"
 	"github.com/zellydev-games/opensplit/logger"
 
 	"golang.org/x/sys/windows"
@@ -57,26 +59,17 @@ type point struct {
 // that calls GetMessage provided by user32.dll to inform Windows that our thread is cooperating, and therefore
 // eligible to have the callback executed.
 type WindowsManager struct {
-	hhookHandle uintptr
-	callback    uintptr
-	hookThread  windows.Handle
-	keyChannel  chan KeyInfo
+	hhookHandle        uintptr
+	callback           uintptr
+	hookThread         windows.Handle
+	hooked             bool
+	keyPressedCallback func(info keyinfo.KeyData)
+	mu                 sync.Mutex
 }
 
-// NewWindowsHotkeyManager Returns a new WindowsHotkeyManager, and a channel that it will send KeyInfo events to
-//
-// The channel in the second return is suitable for use by hotkeys.Service
-func NewWindowsHotkeyManager() (*WindowsManager, chan KeyInfo) {
-	manager := new(WindowsManager)
-	manager.keyChannel = make(chan KeyInfo)
-	return manager, manager.keyChannel
-}
-
-func SetupHotkeys() (HotkeyProvider, chan KeyInfo) {
-	var hotkeyProvider HotkeyProvider
-	var keyInfoChannel chan KeyInfo
-	hotkeyProvider, keyInfoChannel = NewWindowsHotkeyManager()
-	return hotkeyProvider, keyInfoChannel
+// SetupHotkeys implements the HotKeyProvider interface to deliver a manager and channel to the caller
+func SetupHotkeys() *WindowsManager {
+	return new(WindowsManager)
 }
 
 // StartHook converts handleKeyDown into a Windows callback via syscall, and installs it to the locked OS thread with
@@ -85,18 +78,23 @@ func SetupHotkeys() (HotkeyProvider, chan KeyInfo) {
 //
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowshookexw
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmessagew
-func (h *WindowsManager) StartHook() error {
+func (w *WindowsManager) StartHook(callback func(data keyinfo.KeyData)) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.hooked {
+		logger.Warn("StartHook() called on hooked manager")
+		return nil
+	}
+
+	w.keyPressedCallback = callback
+
 	go func() {
 		// Messages are sent to the thread that installed the hook, so lock this function down to just that thread
 		runtime.LockOSThread()
-		h.hookThread = windows.CurrentThread()
-
-		logger.Debug("setting windows hook")
-
-		h.callback = syscall.NewCallback(h.handleKeyDown)
-		logger.Debug("created keyboard callback")
+		w.hookThread = windows.CurrentThread()
+		w.callback = syscall.NewCallback(w.handleKeyDown)
 		hhook, _, err := setWindowsHook.Call(whKeyboardLL,
-			h.callback,
+			w.callback,
 			0,
 			0)
 		if hhook == 0 {
@@ -104,16 +102,14 @@ func (h *WindowsManager) StartHook() error {
 			return
 		}
 
-		h.hhookHandle = hhook
+		w.hhookHandle = hhook
 		logger.Debug(fmt.Sprintf("hook set at address %d", hhook))
-
-		logger.Debug("starting message pump")
 		for {
 			msg := &threadMessage{}
 			ret, _, _ := getMessage.Call(uintptr(unsafe.Pointer(msg)), 0, 0, 0)
 			if ret == 0 {
 				logger.Debug("WM_QUIT received, quitting message loop")
-				err = h.Unhook()
+				err = w.Unhook()
 				if err != nil {
 					return
 				}
@@ -122,25 +118,36 @@ func (h *WindowsManager) StartHook() error {
 		}
 	}()
 
+	w.hooked = true
 	return nil
 }
 
 // Unhook called unhookWindowsHook with the address of our hook handle to inform the OS to stop calling our callback
 //
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-unhookwindowshookex
-func (h *WindowsManager) Unhook() error {
-	ret, _, err := unhookWindowsHook.Call(h.hhookHandle)
+func (w *WindowsManager) Unhook() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if !w.hooked {
+		logger.Warn("Unhook() called on unhooked manager")
+		return nil
+	}
+
+	ret, _, err := unhookWindowsHook.Call(w.hhookHandle)
 	if ret == 0 {
 		logger.Error(err.Error())
 		return err
 	}
-	logger.Debug(fmt.Sprintf("hook removed at address %d", h.hhookHandle))
+
+	logger.Debug(fmt.Sprintf("hook removed at address %d", w.hhookHandle))
+	w.hooked = false
 	return nil
 }
 
 // handleKeyDown is called by the OS after StartHook installs it. The callback receives nCode, lparam, and wparam as
 // defined by the Win32 API: https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelkeyboardproc
-func (h *WindowsManager) handleKeyDown(nCode uintptr, identifier uintptr, kbHookStruct uintptr) uintptr {
+func (w *WindowsManager) handleKeyDown(nCode uintptr, identifier uintptr, kbHookStruct uintptr) uintptr {
 	// If nCode is less than zero we're obligated to pass the message along
 	if int(nCode) < 0 {
 		ret, _, _ := callNextHook.Call(uintptr(0), nCode, identifier, kbHookStruct)
@@ -167,9 +174,11 @@ func (h *WindowsManager) handleKeyDown(nCode uintptr, identifier uintptr, kbHook
 			}
 
 			localeString := windows.UTF16ToString(buf)
-			h.keyChannel <- KeyInfo{
-				KeyCode:    int(hookInfo.vkCode),
-				LocaleName: localeString,
+			if w.keyPressedCallback != nil {
+				w.keyPressedCallback(keyinfo.KeyData{
+					KeyCode:    int(hookInfo.vkCode),
+					LocaleName: localeString,
+				})
 			}
 		}
 

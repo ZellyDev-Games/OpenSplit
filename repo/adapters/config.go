@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/zellydev-games/opensplit/config"
-	"github.com/zellydev-games/opensplit/hotkeys"
 )
 
 func ConfigToFrontEnd(configService *config.Service) ([]byte, error) {
@@ -15,10 +14,4 @@ func FrontEndToConfig(configServiceBytes []byte) (*config.Service, error) {
 	var configService config.Service
 	err := json.Unmarshal(configServiceBytes, &configService)
 	return &configService, err
-}
-
-func PayloadToConfigKeyInfo(payload []byte) (hotkeys.KeyInfo, error) {
-	var keyInfo hotkeys.KeyInfo
-	err := json.Unmarshal(payload, &keyInfo)
-	return keyInfo, err
 }

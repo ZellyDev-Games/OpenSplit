@@ -19,7 +19,7 @@ func TestBuildStats(t *testing.T) {
 		SplitFileVersion: 1,
 		TotalTime:        time.Second * 35,
 		Completed:        true,
-		Splits: []Split{{
+		Splits: []*Split{{
 			SplitIndex:        0,
 			SplitSegmentID:    sf.Segments[0].ID,
 			CurrentCumulative: time.Second * 25,
@@ -35,7 +35,7 @@ func TestBuildStats(t *testing.T) {
 		SplitFileVersion: 1,
 		TotalTime:        time.Second * 90,
 		Completed:        true,
-		Splits: []Split{{
+		Splits: []*Split{{
 			SplitIndex:        0,
 			SplitSegmentID:    sf.Segments[0].ID,
 			CurrentCumulative: time.Second * 60,
@@ -51,7 +51,7 @@ func TestBuildStats(t *testing.T) {
 		SplitFileVersion: 1,
 		TotalTime:        time.Second * 34,
 		Completed:        true,
-		Splits: []Split{{
+		Splits: []*Split{{
 			SplitIndex:        0,
 			SplitSegmentID:    sf.Segments[0].ID,
 			CurrentCumulative: time.Second * 30,

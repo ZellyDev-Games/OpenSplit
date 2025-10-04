@@ -5,7 +5,3 @@
 export function Dispatch(arg1, arg2) {
   return window['go']['dispatcher']['Service']['Dispatch'](arg1, arg2);
 }
-
-export function MapHotkey(arg1, arg2) {
-  return window['go']['dispatcher']['Service']['MapHotkey'](arg1, arg2);
-}

@@ -26,14 +26,17 @@ func DomainToSplitFile(splitFile *session.SplitFile) *dto.SplitFile {
 	}
 
 	for _, run := range splitFile.Runs {
-		var splits []dto.Split
+		var splits = make([]*dto.Split, len(run.Segments))
 		for _, split := range run.Splits {
-			splits = append(splits, dto.Split{
+			if split == nil {
+				continue
+			}
+			splits[split.SplitIndex] = &dto.Split{
 				SplitIndex:        split.SplitIndex,
 				SplitSegmentID:    split.SplitSegmentID.String(),
 				CurrentCumulative: split.CurrentCumulative.Milliseconds(),
 				CurrentDuration:   split.CurrentDuration.Milliseconds(),
-			})
+			}
 		}
 
 		runs = append(runs, dto.Run{
@@ -43,18 +46,22 @@ func DomainToSplitFile(splitFile *session.SplitFile) *dto.SplitFile {
 			TotalTime:        run.TotalTime.Milliseconds(),
 			Splits:           splits,
 			Completed:        run.Completed,
+			Segments:         segments,
 		})
 	}
 
 	if splitFile.PB != nil {
-		var splits []dto.Split
+		var splits = make([]*dto.Split, len(splitFile.PB.Segments))
 		for _, s := range splitFile.PB.Splits {
-			splits = append(splits, dto.Split{
+			if s == nil {
+				continue
+			}
+			splits[s.SplitIndex] = &dto.Split{
 				SplitIndex:        s.SplitIndex,
 				SplitSegmentID:    s.SplitSegmentID.String(),
 				CurrentCumulative: s.CurrentCumulative.Milliseconds(),
 				CurrentDuration:   s.CurrentDuration.Milliseconds(),
-			})
+			}
 		}
 
 		PB = &dto.Run{
@@ -122,20 +129,23 @@ func SplitFileToDomain(payload *dto.SplitFile) (*session.SplitFile, error) {
 			logger.Error("failed to parse run ID from payload payload")
 			return nil, err
 		}
-		var splits []session.Split
+		var splits = make([]*session.Split, len(run.Segments))
 		for _, split := range run.Splits {
+			if split == nil {
+				continue
+			}
 			sid, err := uuid.Parse(split.SplitSegmentID)
 			if err != nil {
 				logger.Error("failed to parse segment ID from split payload")
 				return nil, err
 			}
 
-			splits = append(splits, session.Split{
+			splits[split.SplitIndex] = &session.Split{
 				SplitIndex:        split.SplitIndex,
 				SplitSegmentID:    sid,
 				CurrentCumulative: time.Duration(split.CurrentCumulative) * time.Millisecond,
 				CurrentDuration:   time.Duration(split.CurrentDuration) * time.Millisecond,
-			})
+			}
 		}
 		runs = append(runs, session.Run{
 			ID:               rid,
@@ -143,26 +153,30 @@ func SplitFileToDomain(payload *dto.SplitFile) (*session.SplitFile, error) {
 			Splits:           splits,
 			Completed:        run.Completed,
 			SplitFileVersion: run.SplitFileVersion,
+			Segments:         segments,
 		})
 	}
 
 	if payload.PB != nil {
 		pbid, err := uuid.Parse(payload.PB.ID)
 		if err == nil {
-			var splits = make([]session.Split, 0)
+			var splits = make([]*session.Split, len(payload.PB.Segments))
 			for _, s := range payload.PB.Splits {
+				if s == nil {
+					continue
+				}
 				splitSegmentID, err := uuid.Parse(s.SplitSegmentID)
 				if err != nil {
 					logger.Error("failed to parse split ID from payload payload")
 					continue
 				}
 
-				splits = append(splits, session.Split{
+				splits[s.SplitIndex] = &session.Split{
 					SplitIndex:        s.SplitIndex,
 					SplitSegmentID:    splitSegmentID,
 					CurrentCumulative: time.Duration(s.CurrentCumulative) * time.Millisecond,
 					CurrentDuration:   time.Duration(s.CurrentDuration) * time.Millisecond,
-				})
+				}
 			}
 
 			PB = &session.Run{
@@ -171,6 +185,7 @@ func SplitFileToDomain(payload *dto.SplitFile) (*session.SplitFile, error) {
 				Splits:           splits,
 				Completed:        payload.PB.Completed,
 				SplitFileVersion: payload.PB.SplitFileVersion,
+				Segments:         segments,
 			}
 
 		} else {

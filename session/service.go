@@ -65,7 +65,8 @@ type Segment struct {
 type Run struct {
 	ID               uuid.UUID
 	TotalTime        time.Duration
-	Splits           []Split
+	Splits           []*Split
+	Segments         []Segment
 	Completed        bool
 	SplitFileVersion int
 }
@@ -155,22 +156,30 @@ func (s *Service) Undo() {
 	defer s.mu.Unlock()
 	defer s.sendUpdate()
 
-	if s.currentRun == nil || s.currentSegmentIndex <= 0 || s.sessionState == Idle || len(s.currentRun.Splits) == 0 {
+	if s.currentRun == nil || s.currentSegmentIndex <= 0 || s.sessionState == Idle {
 		return
 	}
 
-	s.currentRun.Splits = s.currentRun.Splits[:len(s.currentRun.Splits)-1]
+	s.currentSegmentIndex--
+
+	// nil out the split at the current index
+	s.currentRun.Splits[s.currentSegmentIndex] = nil
+
+	// recompute TotalTime from last non-nil split
+	total := time.Duration(0)
+	for i := s.currentSegmentIndex - 1; i >= 0; i-- {
+		if sp := s.currentRun.Splits[i]; sp != nil {
+			total = sp.CurrentCumulative
+			break
+		}
+	}
+	s.currentRun.TotalTime = total
+
 	if s.sessionState == Finished {
 		s.sessionState = Running
+		s.timer.Start()
 	}
 
-	s.currentSegmentIndex = len(s.currentRun.Splits)
-
-	if s.currentSegmentIndex != 0 {
-		s.currentRun.TotalTime = s.currentRun.Splits[len(s.currentRun.Splits)-1].CurrentCumulative
-	} else {
-		s.currentRun.TotalTime = 0
-	}
 	s.dirty = true
 }
 
@@ -249,7 +258,7 @@ func (s *Service) Run() (Run, bool) {
 		return Run{}, false
 	}
 	r := *s.currentRun
-	r.Splits = append([]Split(nil), r.Splits...)
+	r.Splits = append([]*Split(nil), r.Splits...)
 	return r, true
 }
 
@@ -298,7 +307,8 @@ func (s *Service) startNewRun() SplitResult {
 	s.currentSegmentIndex = 0
 	s.currentRun = &Run{
 		ID:               uuid.New(),
-		Splits:           make([]Split, 0),
+		Splits:           make([]*Split, len(s.loadedSplitFile.Segments)),
+		Segments:         append([]Segment(nil), s.loadedSplitFile.Segments...),
 		SplitFileVersion: s.loadedSplitFile.Version,
 	}
 	s.dirty = true
@@ -306,7 +316,6 @@ func (s *Service) startNewRun() SplitResult {
 }
 
 func (s *Service) advanceRun() SplitResult {
-	// defensive, prevents us from panic in case something really went wrong
 	if s.currentSegmentIndex < 0 || s.currentSegmentIndex >= len(s.loadedSplitFile.Segments) {
 		logger.Warn(
 			fmt.Sprintf("Split() called in Running state, but current segment index is out of bounds: %d",
@@ -314,27 +323,34 @@ func (s *Service) advanceRun() SplitResult {
 		return SplitNoop
 	}
 	now := s.timer.GetCurrentTime()
+
+	// find prev cumulative from the last non-nil split
 	prev := time.Duration(0)
-	if s.currentSegmentIndex > 0 {
-		prev = s.currentRun.Splits[s.currentSegmentIndex-1].CurrentCumulative
+	for i := s.currentSegmentIndex - 1; i >= 0; i-- {
+		if sp := s.currentRun.Splits[i]; sp != nil {
+			prev = sp.CurrentCumulative
+			break
+		}
 	}
+
 	segTime := now - prev
 
-	s.currentRun.Splits = append(s.currentRun.Splits, Split{
+	s.currentRun.Splits[s.currentSegmentIndex] = &Split{
 		SplitIndex:        s.currentSegmentIndex,
 		SplitSegmentID:    s.loadedSplitFile.Segments[s.currentSegmentIndex].ID,
 		CurrentCumulative: now,
 		CurrentDuration:   segTime,
-	})
-	s.dirty = true
+	}
 
-	if s.currentSegmentIndex >= len(s.loadedSplitFile.Segments)-1 {
+	s.dirty = true
+	s.currentSegmentIndex++
+
+	if s.currentSegmentIndex > len(s.loadedSplitFile.Segments)-1 {
 		s.timer.Pause()
 		s.sessionState = Finished
 		s.currentRun.TotalTime = now
 		return SplitFinished
 	}
-	s.currentSegmentIndex++
 	return SplitAdvanced
 }
 
@@ -369,14 +385,28 @@ func (s *Service) deepCopySplitFile() *SplitFile {
 	}
 
 	for _, run := range s.loadedSplitFile.Runs {
-		var splits []Split
+		var runSegments = make([]Segment, len(run.Segments))
+		for i, segment := range run.Segments {
+			runSegments[i] = Segment{
+				ID:      segment.ID,
+				Name:    segment.Name,
+				Gold:    segment.Gold,
+				Average: segment.Average,
+				PB:      segment.PB,
+			}
+		}
+
+		var splits = make([]*Split, len(run.Segments))
 		for _, split := range run.Splits {
-			splits = append(splits, Split{
+			if split == nil {
+				continue
+			}
+			splits[split.SplitIndex] = &Split{
 				SplitIndex:        split.SplitIndex,
 				SplitSegmentID:    split.SplitSegmentID,
 				CurrentCumulative: split.CurrentCumulative,
 				CurrentDuration:   split.CurrentDuration,
-			})
+			}
 		}
 
 		runs = append(runs, Run{
@@ -385,18 +415,33 @@ func (s *Service) deepCopySplitFile() *SplitFile {
 			TotalTime:        run.TotalTime,
 			Splits:           splits,
 			Completed:        run.Completed,
+			Segments:         runSegments,
 		})
 	}
 
 	if s.loadedSplitFile.PB != nil {
-		var splits []Split
+		var pbSegments = make([]Segment, len(s.loadedSplitFile.Segments))
+		for i, segment := range s.loadedSplitFile.PB.Segments {
+			pbSegments[i] = Segment{
+				ID:      segment.ID,
+				Name:    segment.Name,
+				Gold:    segment.Gold,
+				Average: segment.Average,
+				PB:      segment.PB,
+			}
+		}
+
+		var splits = make([]*Split, len(s.loadedSplitFile.Segments))
 		for _, s := range s.loadedSplitFile.PB.Splits {
-			splits = append(splits, Split{
+			if s == nil {
+				continue
+			}
+			splits[s.SplitIndex] = &Split{
 				SplitIndex:        s.SplitIndex,
 				SplitSegmentID:    s.SplitSegmentID,
 				CurrentCumulative: s.CurrentCumulative,
 				CurrentDuration:   s.CurrentDuration,
-			})
+			}
 		}
 
 		PB = &Run{
@@ -405,6 +450,7 @@ func (s *Service) deepCopySplitFile() *SplitFile {
 			TotalTime:        s.loadedSplitFile.PB.TotalTime,
 			Splits:           splits,
 			Completed:        s.loadedSplitFile.PB.Completed,
+			Segments:         pbSegments,
 		}
 	}
 

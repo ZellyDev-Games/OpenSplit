@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/zellydev-games/opensplit/dispatcher"
+	"github.com/zellydev-games/opensplit/keyinfo"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo/adapters"
 )
@@ -19,7 +20,16 @@ func (r *Running) OnEnter() error {
 	sessionDto := adapters.DomainToSession(machine.sessionService)
 
 	if machine.hotkeyProvider != nil {
-		machine.hotkeyProvider.StartDispatcher(false)
+		err := machine.hotkeyProvider.StartHook(func(data keyinfo.KeyData) {
+			for command, keyData := range machine.configService.KeyConfig {
+				if keyData.KeyCode == data.KeyCode {
+					_, _ = machine.ReceiveDispatch(command, nil)
+				}
+			}
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	machine.runtimeProvider.EventsEmit("state:enter", RUNNING, sessionDto)
@@ -28,12 +38,15 @@ func (r *Running) OnEnter() error {
 
 func (r *Running) OnExit() error {
 	if machine.hotkeyProvider != nil {
-		machine.hotkeyProvider.StopDispatcher()
+		err := machine.hotkeyProvider.Unhook()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (r *Running) Receive(command dispatcher.Command, params *string) (dispatcher.DispatchReply, error) {
+func (r *Running) Receive(command dispatcher.Command, _ *string) (dispatcher.DispatchReply, error) {
 	switch command {
 	case dispatcher.CLOSE:
 		logger.Debug("Running received CLOSE command")
@@ -58,9 +71,16 @@ func (r *Running) Receive(command dispatcher.Command, params *string) (dispatche
 	case dispatcher.SPLIT:
 		logger.Debug("Running received SPLIT command")
 		machine.sessionService.Split()
-		return dispatcher.DispatchReply{}, nil
+	case dispatcher.UNDO:
+		machine.sessionService.Undo()
+	case dispatcher.SKIP:
+		machine.sessionService.Skip()
+	case dispatcher.PAUSE:
+		machine.sessionService.Pause()
+	case dispatcher.RESET:
+		machine.sessionService.Reset()
 	default:
-		panic("unhandled default case in Running")
+		logger.Warn(fmt.Sprintf("unhandled default case in Running: %d", command))
 	}
 
 	return dispatcher.DispatchReply{}, nil

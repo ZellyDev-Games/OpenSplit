@@ -30,7 +30,7 @@ export default function Splitter({ sessionPayload }: SplitterParams) {
                 WindowSetPosition(sessionPayload.loaded_split_file.window_x, sessionPayload.loaded_split_file.window_y);
             }
         })();
-    }, [sessionPayload]);
+    }, [sessionPayload.loaded_split_file?.id]);
 
     const buildContextMenu = async (): Promise<MenuItem[]> => {
         const contextMenuItems: MenuItem[] = [];

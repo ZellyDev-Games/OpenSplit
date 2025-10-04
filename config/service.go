@@ -1,18 +1,21 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"runtime"
+	"sync"
 
 	"github.com/zellydev-games/opensplit/dispatcher"
-	"github.com/zellydev-games/opensplit/hotkeys"
+	"github.com/zellydev-games/opensplit/keyinfo"
 	"github.com/zellydev-games/opensplit/logger"
 )
 
 // Service holds configuration options so that Service.GetEnvironment can work for both backend and frontend.
 type Service struct {
+	mu                   sync.Mutex
 	SpeedRunAPIBase      string                                 `json:"speed_run_API_base"`
-	KeyConfig            map[dispatcher.Command]hotkeys.KeyInfo `json:"key_config"`
+	KeyConfig            map[dispatcher.Command]keyinfo.KeyData `json:"key_config"`
 	configUpdatedChannel chan<- *Service
 }
 
@@ -39,8 +42,10 @@ func (s *Service) GetEnvironment() *Service {
 }
 
 // UpdateKeyBinding changes the ConfigPayload for the given command.
-func (s *Service) UpdateKeyBinding(command dispatcher.Command, newKeyInfo hotkeys.KeyInfo) {
-	s.KeyConfig[command] = newKeyInfo
+func (s *Service) UpdateKeyBinding(command dispatcher.Command, data keyinfo.KeyData) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.KeyConfig[command] = data
 	s.sendUIBridgeUpdate()
 
 }
@@ -49,28 +54,42 @@ func (s *Service) UpdateKeyBinding(command dispatcher.Command, newKeyInfo hotkey
 //
 // Useful if the config file hasn't been created yet (first run)
 func (s *Service) CreateDefaultConfig() {
-	s.KeyConfig = map[dispatcher.Command]hotkeys.KeyInfo{}
+	s.KeyConfig = map[dispatcher.Command]keyinfo.KeyData{}
 	switch runtime.GOOS {
 	case "windows":
-		s.KeyConfig[dispatcher.SPLIT] = hotkeys.KeyInfo{
+		s.KeyConfig[dispatcher.SPLIT] = keyinfo.KeyData{
 			KeyCode:    32,
 			LocaleName: "SPACE",
 		}
-		s.KeyConfig[dispatcher.UNDO] = hotkeys.KeyInfo{}
-		s.KeyConfig[dispatcher.SKIP] = hotkeys.KeyInfo{}
-		s.KeyConfig[dispatcher.PAUSE] = hotkeys.KeyInfo{}
-		s.KeyConfig[dispatcher.RESET] = hotkeys.KeyInfo{}
+		s.KeyConfig[dispatcher.UNDO] = keyinfo.KeyData{}
+		s.KeyConfig[dispatcher.SKIP] = keyinfo.KeyData{}
+		s.KeyConfig[dispatcher.PAUSE] = keyinfo.KeyData{}
+		s.KeyConfig[dispatcher.RESET] = keyinfo.KeyData{}
 
 	default:
 		logger.Warn("OS not yet supported, setting zero value defaults to prevent crash, but hotkeys almost certainly will not work")
-		s.KeyConfig[dispatcher.SPLIT] = hotkeys.KeyInfo{}
-		s.KeyConfig[dispatcher.UNDO] = hotkeys.KeyInfo{}
-		s.KeyConfig[dispatcher.SKIP] = hotkeys.KeyInfo{}
-		s.KeyConfig[dispatcher.PAUSE] = hotkeys.KeyInfo{}
-		s.KeyConfig[dispatcher.RESET] = hotkeys.KeyInfo{}
+		s.KeyConfig[dispatcher.SPLIT] = keyinfo.KeyData{}
+		s.KeyConfig[dispatcher.UNDO] = keyinfo.KeyData{}
+		s.KeyConfig[dispatcher.SKIP] = keyinfo.KeyData{}
+		s.KeyConfig[dispatcher.PAUSE] = keyinfo.KeyData{}
+		s.KeyConfig[dispatcher.RESET] = keyinfo.KeyData{}
 	}
 
 	s.sendUIBridgeUpdate()
+}
+
+// MapHotkey ranges through the loaded keyMap to find out if a button you just pressed is in it
+func (s *Service) MapHotkey(info keyinfo.KeyData) *dispatcher.Command {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for command, keyInfo := range s.KeyConfig {
+		if keyInfo.KeyCode == info.KeyCode {
+			return &command
+		}
+	}
+	logger.Debug(fmt.Sprintf("hotkey not found: %s (%d)", info.LocaleName, info.KeyCode))
+	return nil
 }
 
 func (s *Service) sendUIBridgeUpdate() {

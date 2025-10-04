@@ -46,7 +46,7 @@ func (w *Welcome) OnEnter() error {
 	return nil
 }
 func (w *Welcome) OnExit() error { return nil }
-func (w *Welcome) Receive(command dispatcher.Command, payload *string) (dispatcher.DispatchReply, error) {
+func (w *Welcome) Receive(command dispatcher.Command, _ *string) (dispatcher.DispatchReply, error) {
 	switch command {
 	case dispatcher.LOAD:
 		logger.Debug("Welcome received command LOAD")

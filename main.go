@@ -63,12 +63,8 @@ func main() {
 	// Build dispatcher that can receive commands from frontend or backend and dispatch them to the state machine
 	commandDispatcher := dispatcher.NewService(machine)
 
-	hotkeyProvider, keyInfoChannel := hotkeys.SetupHotkeys()
-	var hotkeyService *hotkeys.Service
-	if hotkeyProvider != nil {
-		hotkeyService = hotkeys.NewService(keyInfoChannel, commandDispatcher, hotkeyProvider)
-		machine.AttachHotkeyProvider(hotkeyService)
-	}
+	var hotkeyProvider statemachine.HotkeyProvider = hotkeys.SetupHotkeys()
+	machine.AttachHotkeyProvider(hotkeyProvider)
 
 	err := wails.Run(&options.App{
 		Title:     "OpenSplit",
@@ -96,12 +92,12 @@ func main() {
 			timerUIBridge.StartUIPump()
 			configUIBridge.StartUIPump()
 
-			startInterruptListener(ctx, hotkeyService)
+			startInterruptListener(ctx, hotkeyProvider)
 			runtime.WindowSetAlwaysOnTop(ctx, true)
 			logger.Info("application startup complete")
 		},
 		OnBeforeClose: func(ctx context.Context) bool {
-			gracefulShutdown(hotkeyService)
+			gracefulShutdown(hotkeyProvider)
 			return false
 		},
 		Bind: []interface{}{
@@ -162,7 +158,7 @@ func setupPaths() (string, string, string) {
 	return appDir, logDir, skinDir
 }
 
-func startInterruptListener(ctx context.Context, hotkeyService *hotkeys.Service) {
+func startInterruptListener(ctx context.Context, hotkeyProvider statemachine.HotkeyProvider) {
 	go func() {
 		ch := make(chan os.Signal, 1)
 		signal.Notify(ch, os.Interrupt, syscall.SIGTERM) // disables default exit for these
@@ -170,7 +166,7 @@ func startInterruptListener(ctx context.Context, hotkeyService *hotkeys.Service)
 		logger.Info(fmt.Sprintf("received exit signal %s", s))
 
 		// Do cleanup *now* so we don't depend on Wails calling OnShutdown
-		gracefulShutdown(hotkeyService)
+		gracefulShutdown(hotkeyProvider)
 
 		// Ask Wails to quit (this will still call OnShutdown in normal paths)
 		runtime.Quit(ctx)
@@ -184,9 +180,9 @@ func startInterruptListener(ctx context.Context, hotkeyService *hotkeys.Service)
 	}()
 }
 
-func gracefulShutdown(hotkeyService *hotkeys.Service) {
+func gracefulShutdown(hotkeyService statemachine.HotkeyProvider) {
 	shutdownOnce.Do(func() {
-		hotkeyService.StopDispatcher()
+		_ = hotkeyService.Unhook()
 		logger.Info("shutdown complete")
 		close(shutdownDone)
 	})

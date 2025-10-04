@@ -16,12 +16,13 @@ type Split struct {
 }
 
 type Run struct {
-	ID               string  `json:"id"`
-	SplitFileID      string  `json:"split_file_id"`
-	SplitFileVersion int     `json:"split_file_version"`
-	TotalTime        int64   `json:"total_time"`
-	Splits           []Split `json:"splits"`
-	Completed        bool    `json:"completed"`
+	ID               string    `json:"id"`
+	SplitFileID      string    `json:"split_file_id"`
+	SplitFileVersion int       `json:"split_file_version"`
+	TotalTime        int64     `json:"total_time"`
+	Splits           []*Split  `json:"splits"`
+	Segments         []Segment `json:"segments"`
+	Completed        bool      `json:"completed"`
 }
 
 // SplitFile represents the data and history of a game/category combo.

@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 
-import {EventsOn, WindowSetSize} from "../../wailsjs/runtime";
-import {ConfigPayload} from "../models/configPayload";
-import {Dispatch} from "../../wailsjs/go/dispatcher/Service";
-import {Command} from "../App";
+import { Dispatch } from "../../wailsjs/go/dispatcher/Service";
+import { EventsOn, WindowSetSize } from "../../wailsjs/runtime";
+import { Command } from "../App";
+import { ConfigPayload } from "../models/configPayload";
 
 export type ConfigParams = {
     configPayload: ConfigPayload;
 };
 
-const RECORDING_ARMED = 10
+const RECORDING_ARMED = 10;
 
 export default function Config({ configPayload }: ConfigParams) {
     const [recording, setRecording] = useState(false);
@@ -21,31 +21,48 @@ export default function Config({ configPayload }: ConfigParams) {
             console.log("received update from backend", newConfigPayload);
             setConfig(newConfigPayload);
             setRecording(false);
-        })
+        });
     }, []);
 
     const armHotkey = async (command: Command) => {
-        const reply = await Dispatch(command, null)
+        const reply = await Dispatch(command, null);
         if (reply.code == RECORDING_ARMED) {
-            console.log("backend confirms recording is armed")
+            console.log("backend confirms recording is armed");
             setRecording(true);
         }
-    }
+    };
+
+    const displayHotkeyRows = () => {
+        const commands: [Command, string][] = [
+            [Command.SPLIT, "Split"],
+            [Command.UNDO, "Undo Split"],
+            [Command.SKIP, "Skip Split"],
+            [Command.PAUSE, "Pause Run"],
+            [Command.RESET, "Reset Run"],
+        ];
+
+        return commands.map((command: [Command, string]) => (
+            <div className="row" key={command[0]}>
+                <div className="hotkeyContainer">
+                    <p className="hotkeyID">{command[1]}: </p>
+                    <p className="hotkeyValue">
+                        {(config.key_config[command[0]].key_code && config.key_config[command[0]].locale_name) ||
+                            "No Key Assignment"}
+                    </p>
+                    <button disabled={recording} onClick={() => armHotkey(command[0])}>
+                        {(recording && "Recording") || "Record Hotkey"}
+                    </button>
+                </div>
+            </div>
+        ));
+    };
 
     return (
         <div className="container form-container">
             <h2>OpenSplit Configuration</h2>
             <div className="options">
                 <h3>Hotkeys</h3>
-                    <div className="row">
-                        <div className="hotkeyContainer">
-                            <p className="hotkeyID">Split: </p>
-                            <p className="hotkeyValue">
-                                {(config.key_config[Command.SPLIT].key_code && config.key_config[Command.SPLIT].locale_name) || "No Key Assignment"}
-                            </p>
-                            <button disabled={recording} onClick={() => armHotkey(Command.SPLIT)}>Record Hotkey</button>
-                        </div>
-                    </div>
+                {displayHotkeyRows()}
             </div>
             <div className="actions">
                 <button onClick={() => Dispatch(Command.SUBMIT, JSON.stringify(config))}>Save</button>
