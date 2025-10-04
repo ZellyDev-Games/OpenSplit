@@ -1,4 +1,4 @@
-import { Dispatch } from "../../../wailsjs/go/statemachine/Service";
+import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
 import { WindowSetSize } from "../../../wailsjs/runtime";
 import { Command } from "../../App";
 import zdgLogo from "../../assets/images/ZG512.png";
@@ -25,6 +25,14 @@ export default function Welcome() {
                 Load Split File
             </button>
             <button
+                onClick={async () => {
+                    await Dispatch(Command.EDIT, null);
+                }}
+            >
+                OpenSplit Settings
+            </button>
+
+            <button
                 style={{ marginTop: 30 }}
                 onClick={async () => {
                     await Dispatch(Command.QUIT, null);
@@ -40,7 +48,7 @@ export default function Welcome() {
                     await Dispatch(Command.RESET, null);
                 }}
             >
-                Reset All Preferences
+                <small>Reset All Preferences</small>
             </button>
 
             <div id="cw">

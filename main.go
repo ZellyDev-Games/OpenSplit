@@ -16,6 +16,8 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/bridge"
+	"github.com/zellydev-games/opensplit/config"
+	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/hotkeys"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/platform"
@@ -42,25 +44,27 @@ func main() {
 	setupLogging(logDir)
 	logger.Info("logging initialized, starting opensplit")
 
-	timerService, timerUpdateChannel := timer.NewStopwatch(timer.NewTicker(time.Millisecond * 20))
 	runtimeProvider := platform.NewWailsRuntime()
 	fileProvider := platform.NewFileRuntime()
 	jsonRepo := repo.NewJsonFile(runtimeProvider, fileProvider)
+
+	timerService, timerUpdateChannel := timer.NewStopwatch(timer.NewTicker(time.Millisecond * 20))
 	repoService := repo.NewService(jsonRepo)
+	configService, configUpdateChannel := config.NewService()
 
 	sessionService, sessionUpdateChannel := session.NewService(timerService)
-	machine := statemachine.InitMachine(runtimeProvider, repoService, sessionService)
+	machine := statemachine.InitMachine(runtimeProvider, repoService, sessionService, configService)
 
 	// Build UI bridges with model update channels
 	timerUIBridge := bridge.NewTimer(timerUpdateChannel, runtimeProvider)
 	sessionUIBridge := bridge.NewSession(sessionUpdateChannel, runtimeProvider)
+	configUIBridge := bridge.NewConfig(configUpdateChannel, runtimeProvider)
 
-	hotkeyProvider, keyInfoChannel := hotkeys.SetupHotkeys()
-	var hotkeyService *hotkeys.Service
-	if hotkeyProvider != nil {
-		hotkeyService = hotkeys.NewService(keyInfoChannel, machine, hotkeyProvider)
-		machine.AttachHotkeyProvider(hotkeyService)
-	}
+	// Build dispatcher that can receive commands from frontend or backend and dispatch them to the state machine
+	commandDispatcher := dispatcher.NewService(machine)
+
+	var hotkeyProvider statemachine.HotkeyProvider = hotkeys.SetupHotkeys()
+	machine.AttachHotkeyProvider(hotkeyProvider)
 
 	err := wails.Run(&options.App{
 		Title:     "OpenSplit",
@@ -79,7 +83,6 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
-			runtime.WindowSetAlwaysOnTop(ctx, true)
 			timerService.Startup(ctx)
 			runtimeProvider.Startup(ctx)
 			machine.Startup(ctx)
@@ -87,18 +90,18 @@ func main() {
 			// Start UI pumps
 			sessionUIBridge.StartUIPump()
 			timerUIBridge.StartUIPump()
+			configUIBridge.StartUIPump()
 
-			startInterruptListener(ctx, hotkeyService)
+			startInterruptListener(ctx, hotkeyProvider)
+			runtime.WindowSetAlwaysOnTop(ctx, true)
 			logger.Info("application startup complete")
 		},
 		OnBeforeClose: func(ctx context.Context) bool {
-			sessionService.OnShutDown()
-			gracefulShutdown(hotkeyService)
-			timerUIBridge.StopUIPump()
+			gracefulShutdown(hotkeyProvider)
 			return false
 		},
 		Bind: []interface{}{
-			machine,
+			commandDispatcher,
 		},
 	})
 
@@ -155,7 +158,7 @@ func setupPaths() (string, string, string) {
 	return appDir, logDir, skinDir
 }
 
-func startInterruptListener(ctx context.Context, hotkeyService *hotkeys.Service) {
+func startInterruptListener(ctx context.Context, hotkeyProvider statemachine.HotkeyProvider) {
 	go func() {
 		ch := make(chan os.Signal, 1)
 		signal.Notify(ch, os.Interrupt, syscall.SIGTERM) // disables default exit for these
@@ -163,7 +166,7 @@ func startInterruptListener(ctx context.Context, hotkeyService *hotkeys.Service)
 		logger.Info(fmt.Sprintf("received exit signal %s", s))
 
 		// Do cleanup *now* so we don't depend on Wails calling OnShutdown
-		gracefulShutdown(hotkeyService)
+		gracefulShutdown(hotkeyProvider)
 
 		// Ask Wails to quit (this will still call OnShutdown in normal paths)
 		runtime.Quit(ctx)
@@ -177,9 +180,9 @@ func startInterruptListener(ctx context.Context, hotkeyService *hotkeys.Service)
 	}()
 }
 
-func gracefulShutdown(hotkeyService *hotkeys.Service) {
+func gracefulShutdown(hotkeyService statemachine.HotkeyProvider) {
 	shutdownOnce.Do(func() {
-		hotkeyService.StopDispatcher()
+		_ = hotkeyService.Unhook()
 		logger.Info("shutdown complete")
 		close(shutdownDone)
 	})

@@ -1,9 +1,12 @@
 package statemachine
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/logger"
+	"github.com/zellydev-games/opensplit/repo"
 )
 
 // Welcome greets the user by indicating the frontend should display the Welcome screen
@@ -19,28 +22,50 @@ func (w *Welcome) String() string {
 	return "Welcome"
 }
 
+func (w *Welcome) ID() StateID {
+	return WELCOME
+}
+
 // OnEnter sets the context from the Wails app and signals the frontend to show the Welcome component
 func (w *Welcome) OnEnter() error {
+	err := machine.repoService.LoadConfig(machine.configService)
+	if err != nil {
+		if errors.Is(err, repo.ErrConfigMissing) {
+			machine.configService.CreateDefaultConfig()
+			err = machine.repoService.SaveConfig(machine.configService)
+			if err != nil {
+				logger.Error(fmt.Sprintf("failed to create default config: %s", err.Error()))
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
 	machine.runtimeProvider.EventsEmit("state:enter", WELCOME)
 	return nil
 }
 func (w *Welcome) OnExit() error { return nil }
-func (w *Welcome) Receive(command Command, payload *string) (DispatchReply, error) {
+func (w *Welcome) Receive(command dispatcher.Command, _ *string) (dispatcher.DispatchReply, error) {
 	switch command {
-	case LOAD:
+	case dispatcher.LOAD:
 		logger.Debug("Welcome received command LOAD")
-		sf, err := machine.repoService.Load()
+		sf, err := machine.repoService.LoadSplitFile()
 		if err != nil {
-			return DispatchReply{1, "failed to load dto: " + err.Error()}, err
+			return dispatcher.DispatchReply{Code: 1, Message: "failed to load dto: " + err.Error()}, err
 		}
 		machine.sessionService.SetLoadedSplitFile(sf)
 		machine.changeState(RUNNING)
-		return DispatchReply{}, nil
-	case NEW:
+		return dispatcher.DispatchReply{}, nil
+	case dispatcher.NEW:
 		logger.Debug("Welcome received command NEW")
 		machine.changeState(NEWFILE)
-		return DispatchReply{}, nil
+		return dispatcher.DispatchReply{}, nil
+	case dispatcher.EDIT:
+		logger.Debug("Welcome received command EDIT")
+		machine.changeState(CONFIG)
+		return dispatcher.DispatchReply{}, nil
 	default:
-		return DispatchReply{}, fmt.Errorf("invalid command %d for state Welcome", command)
+		return dispatcher.DispatchReply{}, fmt.Errorf("invalid command %d for state Welcome", command)
 	}
 }

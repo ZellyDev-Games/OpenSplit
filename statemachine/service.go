@@ -6,6 +6,9 @@ import (
 	"fmt"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/zellydev-games/opensplit/config"
+	"github.com/zellydev-games/opensplit/dispatcher"
+	"github.com/zellydev-games/opensplit/keyinfo"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo"
 	"github.com/zellydev-games/opensplit/session"
@@ -13,24 +16,6 @@ import (
 
 // machine is a private singleton instance of a *Service that represents a state machine.
 var machine *Service
-
-// Command bytes are sent to the Service.Dispatch method receiver to indicate the state machine should take some action.
-type Command byte
-
-const (
-	QUIT Command = iota
-	NEW
-	LOAD
-	EDIT
-	CANCEL
-	SUBMIT
-	CLOSE
-	RESET
-	SAVE
-	SPLIT
-	UNDO
-	SKIP
-)
 
 // StateID is a compact identifier for a State
 type StateID byte
@@ -40,15 +25,8 @@ const (
 	NEWFILE
 	EDITING
 	RUNNING
+	CONFIG
 )
-
-// DispatchReply is sent in response to Dispatch
-//
-// Code greater than zero indicates an error situation
-type DispatchReply struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
 
 // RuntimeProvider wraps Wails.runtimeProvider calls to allow for DI for testing.
 type RuntimeProvider interface {
@@ -63,8 +41,8 @@ type RuntimeProvider interface {
 }
 
 type HotkeyProvider interface {
-	StartDispatcher()
-	StopDispatcher()
+	StartHook(func(data keyinfo.KeyData)) error
+	Unhook() error
 }
 
 // state implementations can be operated by the Service and do meaningful work, and communicate state to the frontend
@@ -72,8 +50,9 @@ type HotkeyProvider interface {
 type state interface {
 	OnEnter() error
 	OnExit() error
-	Receive(command Command, payload *string) (DispatchReply, error)
+	Receive(command dispatcher.Command, payload *string) (dispatcher.DispatchReply, error)
 	String() string
+	ID() StateID
 }
 
 // Service represents a state machine and holds references to all the tools to allow states to do useful work
@@ -84,14 +63,16 @@ type Service struct {
 	repoService     *repo.Service
 	runtimeProvider RuntimeProvider
 	hotkeyProvider  HotkeyProvider
+	configService   *config.Service
 }
 
 // InitMachine sets the global singleton, and gives it a friendly default state
-func InitMachine(runtimeProvider RuntimeProvider, repoService *repo.Service, sessionService *session.Service) *Service {
+func InitMachine(runtimeProvider RuntimeProvider, repoService *repo.Service, sessionService *session.Service, configService *config.Service) *Service {
 	machine = &Service{
 		sessionService:  sessionService,
 		runtimeProvider: runtimeProvider,
 		repoService:     repoService,
+		configService:   configService,
 	}
 	return machine
 }
@@ -107,26 +88,20 @@ func (s *Service) AttachHotkeyProvider(provider HotkeyProvider) {
 	s.hotkeyProvider = provider
 }
 
-// Dispatch allows external facing code to send Command bytes to the state machine
-func (s *Service) Dispatch(command Command, payload *string) (DispatchReply, error) {
+// ReceiveDispatch allows external facing code to send Command bytes to the state machine
+func (s *Service) ReceiveDispatch(command dispatcher.Command, payload *string) (dispatcher.DispatchReply, error) {
 	if s.currentState == nil {
 		logger.Error("command sent to state machine without a loaded state")
-		return DispatchReply{}, errors.New("command sent to state machine without a loaded state")
+		return dispatcher.DispatchReply{}, errors.New("command sent to state machine without a loaded state")
 	}
 
-	if command == RESET {
-		logger.Debug("RESET command dispatched from front end")
-		s.changeState(WELCOME)
-		return DispatchReply{}, nil
-	}
-
-	if command == QUIT {
+	if command == dispatcher.QUIT {
 		logger.Debug("QUIT command dispatched from front end")
 		s.runtimeProvider.Quit()
-		return DispatchReply{}, nil
+		return dispatcher.DispatchReply{}, nil
 	}
 
-	logger.Debug(fmt.Sprintf("%d command dispatched to state %s", command, s.currentState.String()))
+	logger.Debug(fmt.Sprintf("command %d dispatched to state %s", command, s.currentState.String()))
 	return s.currentState.Receive(command, payload)
 }
 
@@ -152,6 +127,10 @@ func (s *Service) changeState(newState StateID, context ...interface{}) {
 	case RUNNING:
 		logger.Debug("entering state Running")
 		s.currentState, _ = NewRunningState()
+	case CONFIG:
+		logger.Debug("entering state Config")
+		configState, _ := NewConfigState(s.currentState.ID())
+		s.currentState = configState
 	default:
 		panic("unhandled default case")
 	}

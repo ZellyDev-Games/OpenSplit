@@ -25,14 +25,17 @@ func DomainToSession(session *session.Service) *dto.Session {
 		}
 
 		for _, r := range sessionSplitFile.Runs {
-			var splits = make([]dto.Split, 0)
+			var splits = make([]*dto.Split, len(sessionSplitFile.Segments))
 			for _, s := range r.Splits {
-				splits = append(splits, dto.Split{
+				if s == nil {
+					continue
+				}
+				splits[s.SplitIndex] = &dto.Split{
 					SplitIndex:        s.SplitIndex,
 					SplitSegmentID:    s.SplitSegmentID.String(),
 					CurrentCumulative: s.CurrentCumulative.Milliseconds(),
 					CurrentDuration:   s.CurrentDuration.Milliseconds(),
-				})
+				}
 			}
 
 			runs = append(runs, dto.Run{
@@ -42,6 +45,7 @@ func DomainToSession(session *session.Service) *dto.Session {
 				TotalTime:        r.TotalTime.Milliseconds(),
 				Splits:           splits,
 				Completed:        r.Completed,
+				Segments:         segments,
 			})
 		}
 
@@ -61,14 +65,17 @@ func DomainToSession(session *session.Service) *dto.Session {
 
 		currentRun, ok := session.Run()
 		if ok {
-			var splits = make([]dto.Split, 0)
+			var splits = make([]*dto.Split, len(currentRun.Segments))
 			for _, s := range currentRun.Splits {
-				splits = append(splits, dto.Split{
+				if s == nil {
+					continue
+				}
+				splits[s.SplitIndex] = &dto.Split{
 					SplitIndex:        s.SplitIndex,
 					SplitSegmentID:    s.SplitSegmentID.String(),
 					CurrentCumulative: s.CurrentCumulative.Milliseconds(),
 					CurrentDuration:   s.CurrentDuration.Milliseconds(),
-				})
+				}
 			}
 
 			dtoCurrentRun = &dto.Run{
@@ -78,6 +85,7 @@ func DomainToSession(session *session.Service) *dto.Session {
 				TotalTime:        currentRun.TotalTime.Milliseconds(),
 				Splits:           splits,
 				Completed:        currentRun.Completed,
+				Segments:         segments,
 			}
 		}
 	}

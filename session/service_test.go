@@ -164,10 +164,6 @@ func TestSplit(t *testing.T) {
 		t.Fatalf("Split() s.currentSegmentIndex want %d, got %d", 1, s.currentSegmentIndex)
 	}
 
-	if len(s.currentRun.Splits) != 1 {
-		t.Fatalf("Split() s.currentRun.Splits want %d, got %d", 1, len(s.currentRun.Splits))
-	}
-
 	if s.currentRun.Splits[0].SplitSegmentID != uid {
 		t.Fatalf("Split() 1st recorded split segment ID want %s, got %s", uid.String(), s.currentRun.Splits[0].SplitSegmentID.String())
 	}
@@ -244,8 +240,8 @@ func TestUndo(t *testing.T) {
 		t.Fatalf("Undo() on third segment currentSegmentIndex want %d, got %d", 1, s.currentSegmentIndex)
 	}
 
-	if len(s.currentRun.Splits) != 1 {
-		t.Fatalf("Undo() on third segment split count want %d, got %d", 1, len(s.currentRun.Splits))
+	if s.currentRun.Splits[1] != nil {
+		t.Fatalf("Undo() on second split should have set second split to nil")
 	}
 }
 
@@ -259,8 +255,8 @@ func TestSkip(t *testing.T) {
 		t.Fatalf("Skip() currentSegmentIndex want %d, got %d", 1, s.currentSegmentIndex)
 	}
 
-	if len(s.currentRun.Splits) != 0 {
-		t.Fatalf("Skip() currentRun.Splits count want %d, got %d", 0, len(s.currentRun.Splits))
+	if s.currentRun.Splits[0] != nil {
+		t.Fatalf("Skip() skipped split should be nil")
 	}
 }
 

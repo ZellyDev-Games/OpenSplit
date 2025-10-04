@@ -37,6 +37,9 @@ func (s *SplitFile) BuildStats() {
 	}
 
 	for _, pbSplit := range PB.Splits {
+		if pbSplit == nil {
+			continue
+		}
 		for i, seg := range s.Segments {
 			if pbSplit.SplitSegmentID == seg.ID {
 				seg.PB = pbSplit.CurrentDuration
@@ -77,6 +80,9 @@ func (s *SplitFile) perSegmentAggregates(runs []Run) (golds map[uuid.UUID]time.D
 
 	for _, run := range runs {
 		for _, sp := range run.Splits {
+			if sp == nil {
+				continue
+			}
 			if cur, ok := golds[sp.SplitSegmentID]; !ok || sp.CurrentDuration < cur {
 				golds[sp.SplitSegmentID] = sp.CurrentDuration
 			}

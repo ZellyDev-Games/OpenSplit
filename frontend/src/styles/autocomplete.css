@@ -4,6 +4,7 @@
         background-color: #282828;
         width: 50%;
         z-index: 9999;
+        top: 150px;
     }
 
     .autocomplete ul {

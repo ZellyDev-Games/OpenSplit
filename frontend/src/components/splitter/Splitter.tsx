@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 
-import { Dispatch } from "../../../wailsjs/go/statemachine/Service";
+import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
 import { WindowSetPosition, WindowSetSize } from "../../../wailsjs/runtime";
 import { Command } from "../../App";
 import { MenuItem, useContextMenu } from "../../hooks/useContextMenu";
@@ -30,7 +30,7 @@ export default function Splitter({ sessionPayload }: SplitterParams) {
                 WindowSetPosition(sessionPayload.loaded_split_file.window_x, sessionPayload.loaded_split_file.window_y);
             }
         })();
-    }, [sessionPayload]);
+    }, [sessionPayload.loaded_split_file?.id]);
 
     const buildContextMenu = async (): Promise<MenuItem[]> => {
         const contextMenuItems: MenuItem[] = [];

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -11,6 +12,14 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/logger"
 )
+
+// ErrUserCancelledSave is a error that informs the calling system that the user cancelled a file open/load dialog.
+//
+// Wails generates exported bound methods to typescript functions that return a promise, if a not nil error is returned
+// as the second return, Wails will reject the promise instead of fulfilling it. So this isn't necessarily an error
+// that needs to be handled, but it is a convenient way to communicate to the frontend to catch()
+// a promise instead of fulfilling it so that it doesn't try to do anything with an empty data structure.
+var ErrUserCancelledSave = errors.New("user cancelled file open operation")
 
 // RuntimeProvider wraps Wails.runtimeProvider calls to allow for DI for testing.
 type RuntimeProvider interface {
@@ -40,20 +49,6 @@ type JsonFile struct {
 	lastUsedDirectory string
 }
 
-// UserCancelledSave is a error that informs the calling system that the user cancelled a file open/load dialog.
-//
-// Wails generates exported bound methods to typescript functions that return a promise, if a not nil error is returned
-// as the second return, Wails will reject the promise instead of fulfilling it. So this isn't necessarily an error
-// that needs to be handled, but it is a convenient way to communicate to the frontend to catch()
-// a promise instead of fulfilling it so that it doesn't try to do anything with an empty data structure.
-type UserCancelledSave struct {
-	Err error
-}
-
-func (u UserCancelledSave) Error() string {
-	return u.Err.Error()
-}
-
 // NewJsonFile creates a JsonFile with the provided RuntimeProvider and FileProvider
 //
 // In production code this will always be platform.WailsRuntime and platform.FileRuntime
@@ -70,11 +65,11 @@ func (j *JsonFile) ClearCachedFileName() {
 }
 
 func (j *JsonFile) SaveAs(payload []byte) error {
-	return j.Save(payload)
+	return j.SaveSplitFile(payload)
 }
 
-// Save takes a payload marshalled as bytes and saves it to disk
-func (j *JsonFile) Save(payload []byte) error {
+// SaveSplitFile takes a payload marshalled as bytes and saves it to disk
+func (j *JsonFile) SaveSplitFile(payload []byte) error {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		logger.Error("save failed: " + err.Error())
@@ -98,7 +93,7 @@ func (j *JsonFile) Save(payload []byte) error {
 
 		if filename == "" {
 			logger.Debug("user cancelled save")
-			return UserCancelledSave{errors.New("user cancelled save")}
+			return ErrUserCancelledSave
 		}
 
 		j.fileName = filename
@@ -113,9 +108,9 @@ func (j *JsonFile) Save(payload []byte) error {
 	return err
 }
 
-// Load reads a JSON (*.osf) file from the path returned from the open file dialog
+// LoadSplitFile reads a JSON (*.osf) file from the path returned from the open file dialog
 // and unserializes it into a SplitFilePayload
-func (j *JsonFile) Load() ([]byte, error) {
+func (j *JsonFile) LoadSplitFile() ([]byte, error) {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		return nil, err
@@ -137,7 +132,7 @@ func (j *JsonFile) Load() ([]byte, error) {
 
 	if filename == "" {
 		logger.Debug("user cancelled load")
-		return nil, UserCancelledSave{errors.New("user cancelled load")}
+		return nil, ErrUserCancelledSave
 	}
 
 	j.fileName = filename
@@ -149,6 +144,53 @@ func (j *JsonFile) Load() ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func (j *JsonFile) SaveConfig(configServicePayload []byte) error {
+	defaultDirectoryBase, err := j.fileProvider.UserHomeDir()
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to get user home directory: %s", err.Error()))
+		return err
+	}
+
+	configDirectory := path.Join(defaultDirectoryBase, "OpenSplit")
+	err = j.fileProvider.MkdirAll(configDirectory, 0755)
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to create OpenSplit user data folder: %s", err.Error()))
+		return err
+	}
+
+	err = j.fileProvider.WriteFile(path.Join(configDirectory, "os-config.json"), configServicePayload, 0644)
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to save split file: %s", err.Error()))
+		return err
+	}
+	return err
+}
+
+func (j *JsonFile) LoadConfig() ([]byte, error) {
+	defaultDirectoryBase, err := j.fileProvider.UserHomeDir()
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to get user home directory: %s", err.Error()))
+		return nil, err
+	}
+
+	configDirectory := path.Join(defaultDirectoryBase, "OpenSplit")
+	err = j.fileProvider.MkdirAll(configDirectory, 0755)
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to create OpenSplit user data folder: %s", err.Error()))
+		return nil, err
+	}
+
+	data, err := j.fileProvider.ReadFile(filepath.Join(configDirectory, "os-config.json"))
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, ErrConfigMissing
+		}
+		logger.Error(fmt.Sprintf("failed to load OpenSplit config: %s", err.Error()))
+		return nil, err
+	}
+	return data, err
 }
 
 func (j *JsonFile) getDefaultDirectory() (string, error) {

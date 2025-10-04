@@ -1,21 +1,100 @@
 package config
 
-import "os"
+import (
+	"fmt"
+	"os"
+	"runtime"
+	"sync"
 
-// Config holds configuration options so that Service.GetConfig can work for both backend and frontend.
-type Config struct {
-	SpeedRunAPIBase string `json:"speed_run_API_base"`
+	"github.com/zellydev-games/opensplit/dispatcher"
+	"github.com/zellydev-games/opensplit/keyinfo"
+	"github.com/zellydev-games/opensplit/logger"
+)
+
+// Service holds configuration options so that Service.GetEnvironment can work for both backend and frontend.
+type Service struct {
+	mu                   sync.Mutex
+	SpeedRunAPIBase      string                                 `json:"speed_run_API_base"`
+	KeyConfig            map[dispatcher.Command]keyinfo.KeyData `json:"key_config"`
+	configUpdatedChannel chan<- *Service
 }
 
-// GetConfig is designed to expose configuration options from the environment or other sources (config files) to the
+func NewService() (*Service, chan *Service) {
+	updateChannel := make(chan *Service)
+	return &Service{
+		SpeedRunAPIBase:      "",
+		KeyConfig:            nil,
+		configUpdatedChannel: updateChannel,
+	}, updateChannel
+}
+
+// GetEnvironment is designed to expose configuration options from the environment or other sources (config files) to the
 // frontend.  Go services can just read the environment, but the frontend has no reliable way to do so, so this func
 // is bound to the app in main which generates a typescript function for the frontend.
-func (c *Config) GetConfig() *Config {
+func (s *Service) GetEnvironment() *Service {
 	speedRunBase := os.Getenv("SPEEDRUN_API_BASE")
 	if speedRunBase == "" {
 		speedRunBase = "https://www.speedrun.com/api/v1"
 	}
-	return &Config{
+	return &Service{
 		SpeedRunAPIBase: speedRunBase,
+	}
+}
+
+// UpdateKeyBinding changes the ConfigPayload for the given command.
+func (s *Service) UpdateKeyBinding(command dispatcher.Command, data keyinfo.KeyData) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.KeyConfig[command] = data
+	s.sendUIBridgeUpdate()
+
+}
+
+// CreateDefaultConfig sets the service's options to reasonable defaults.
+//
+// Useful if the config file hasn't been created yet (first run)
+func (s *Service) CreateDefaultConfig() {
+	s.KeyConfig = map[dispatcher.Command]keyinfo.KeyData{}
+	switch runtime.GOOS {
+	case "windows":
+		s.KeyConfig[dispatcher.SPLIT] = keyinfo.KeyData{
+			KeyCode:    32,
+			LocaleName: "SPACE",
+		}
+		s.KeyConfig[dispatcher.UNDO] = keyinfo.KeyData{}
+		s.KeyConfig[dispatcher.SKIP] = keyinfo.KeyData{}
+		s.KeyConfig[dispatcher.PAUSE] = keyinfo.KeyData{}
+		s.KeyConfig[dispatcher.RESET] = keyinfo.KeyData{}
+
+	default:
+		logger.Warn("OS not yet supported, setting zero value defaults to prevent crash, but hotkeys almost certainly will not work")
+		s.KeyConfig[dispatcher.SPLIT] = keyinfo.KeyData{}
+		s.KeyConfig[dispatcher.UNDO] = keyinfo.KeyData{}
+		s.KeyConfig[dispatcher.SKIP] = keyinfo.KeyData{}
+		s.KeyConfig[dispatcher.PAUSE] = keyinfo.KeyData{}
+		s.KeyConfig[dispatcher.RESET] = keyinfo.KeyData{}
+	}
+
+	s.sendUIBridgeUpdate()
+}
+
+// MapHotkey ranges through the loaded keyMap to find out if a button you just pressed is in it
+func (s *Service) MapHotkey(info keyinfo.KeyData) *dispatcher.Command {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for command, keyInfo := range s.KeyConfig {
+		if keyInfo.KeyCode == info.KeyCode {
+			return &command
+		}
+	}
+	logger.Debug(fmt.Sprintf("hotkey not found: %s (%d)", info.LocaleName, info.KeyCode))
+	return nil
+}
+
+func (s *Service) sendUIBridgeUpdate() {
+	select {
+	case s.configUpdatedChannel <- s:
+	default:
 	}
 }

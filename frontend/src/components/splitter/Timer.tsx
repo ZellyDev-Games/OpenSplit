@@ -70,23 +70,6 @@ export default function Timer() {
     );
 }
 
-export function stringToParts(time: string): TimeParts {
-    let negative = false;
-    if (time[0] === "-") {
-        negative = true;
-        time = time.slice(1);
-    }
-
-    const timeParts = time.split(":");
-    return {
-        negative: negative,
-        hours: Number(timeParts[0]),
-        minutes: Number(timeParts[1]),
-        seconds: Number(timeParts[2].split(".")[0]),
-        centis: Number(timeParts[2].split(".")[1]),
-    };
-}
-
 export function msToParts(ms: number): TimeParts {
     const negative = ms < 0;
     const abs = Math.abs(ms);

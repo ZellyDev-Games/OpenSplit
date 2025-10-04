@@ -8,6 +8,7 @@ import { displayFormattedTimeParts, formatDuration, msToParts } from "./Timer";
 export type CompareAgainst = "best" | "average";
 
 type Completion = {
+    segmentID: string;
     time: string;
     raw: number;
 };
@@ -29,15 +30,19 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
 
     useEffect(() => {
         if (sessionPayload?.current_run) {
-            setCompletions(
-                sessionPayload.current_run.splits.map((c) => {
+            const completions: Completion[] = [];
+            sessionPayload.current_run.splits.forEach((c) => {
+                if (c != null) {
                     const time = displayFormattedTimeParts(formatDuration(msToParts(c.current_cumulative)));
-                    return {
+                    completions.push({
+                        segmentID: c.split_segment_id,
                         time: `${time[0]}${time[1]}`,
                         raw: c.current_duration,
-                    };
-                }),
-            );
+                    });
+                }
+            });
+
+            setCompletions(completions);
         } else {
             setCompletions([]);
         }
@@ -49,23 +54,26 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
         const best = segment.pb;
         const target = compareAgainst == "average" ? average : best;
 
-        if (index < completions.length) {
+        const completion = completions.find((comp) => {
+            return comp.segmentID === segment.id;
+        });
+
+        if (completion) {
             let className = "";
-            if (gold && completions[index].raw < gold) {
+            if (gold && completion.raw < gold) {
                 className = "timer-gold";
             } else {
                 if (target) {
-                    if (completions[index].raw > target) {
+                    if (completion.raw > target) {
                         className = "timer-behind";
                     }
 
-                    if (completions[index].raw < target) {
+                    if (completion.raw < target) {
                         className = "timer-ahead";
                     }
                 }
             }
-
-            return <strong className={className}>{completions[index].time}</strong>;
+            return <strong className={className}>{completion.time}</strong>;
         } else {
             const diff = time - target;
             let className = "";
