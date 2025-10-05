@@ -25,7 +25,6 @@ static int select_raw(Display *dpy, Window root) {
     em.mask_len = mlen;
     em.mask = g_mask;
     XISetMask(g_mask, XI_RawKeyPress);
-    XISetMask(g_mask, XI_RawKeyRelease);
 
     if (XISelectEvents(dpy, root, &em, 1) != Success) return 3;
     XFlush(dpy);
