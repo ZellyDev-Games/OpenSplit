@@ -18,22 +18,31 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - name: linux-amd64
+                    - name: linux-amd64-x11-wk41
                       runner: ubuntu-24.04
                       goos: linux
                       goarch: amd64
-                    - name: linux-arm64
+                      tags: x11,webkit2_41
+                    - name: linux-arm64-x11-wk41
                       runner: ubuntu-24.04-arm
                       goos: linux
                       goarch: arm64
+                      tags: x11,webkit2_41
+                    - name: linux-amd64-x11-wk40
+                      runner: ubuntu-22.04
+                      goos: linux
+                      goarch: amd64
+                      tags: x11,webkit2_40
                     - name: windows-amd64
                       runner: windows-latest
                       goos: windows
                       goarch: amd64
+                      tags: ""
                     - name: macos-arm64
                       runner: macos-14
                       goos: darwin
                       goarch: arm64
+                      tags: ""
 
         runs-on: ${{ matrix.runner }}
 
@@ -94,9 +103,17 @@ jobs:
 
             - name: "Linux: install Wails build deps"
               if: ${{ startsWith(matrix.runner, 'ubuntu-') }}
+              shell: bash
               run: |
+                  set -euo pipefail
                   sudo apt-get update
-                  sudo apt-get install -y build-essential libgtk-3-dev libwebkit2gtk-4.1-dev
+                  sudo apt-get install -y build-essential libgtk-3-dev
+                  # Pick WebKit dev package based on matrix.tags
+                  case "${{ matrix.tags }}" in
+                    *webkit2_41*) sudo apt-get install -y libwebkit2gtk-4.1-dev ;;
+                    *webkit2_40*) sudo apt-get install -y libwebkit2gtk-4.0-dev ;;
+                    *) echo "No webkit tag requested; skipping libwebkit install" ;;
+                  esac
 
             - name: Setup Wails
               run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
@@ -117,13 +134,29 @@ jobs:
               env:
                   GOOS: ${{ matrix.goos }}
                   GOARCH: ${{ matrix.goarch }}
-              run: wails build -tags webkit2_41 -clean -s
+                  # CGO is required on Linux/macOS; leave unset on Windows
+                  CGO_ENABLED: ${{ startsWith(matrix.goos, 'linux') || startsWith(matrix.goos, 'darwin') && '1' || '' }}
+              run: |
+                  set -euo pipefail
+                  if [ -n "${{ matrix.tags }}" ]; then
+                    echo "Building with tags: ${{ matrix.tags }}"
+                    wails build -tags "${{ matrix.tags }}" -clean -s
+                  else
+                    wails build -clean -s
+                  fi
 
             - name: Package
               shell: bash
               run: |
+                  set -euo pipefail
                   mkdir -p out
-                  ARCHIVE="opensplit-${{ matrix.goos }}-${{ matrix.goarch }}.zip"
+                  # Create a suffix from tags (e.g., -x11-webkit2_41) if tags are non-empty
+                  TAGSUFFIX=""
+                  if [ -n "${{ matrix.tags }}" ]; then
+                    TAGSUFFIX="-${{ matrix.tags }}"    # keep commas if you like; or replace with dashes:
+                    TAGSUFFIX="${TAGSUFFIX//,/-}"
+                  fi
+                  ARCHIVE="opensplit-${{ matrix.goos }}-${{ matrix.goarch }}${TAGSUFFIX}.zip"
                   case "${{ matrix.goos }}" in
                     windows)
                       pwsh -NoProfile -Command "Compress-Archive -Path 'build/bin/*' -DestinationPath \"out/$ARCHIVE\" -Force"
@@ -171,6 +204,51 @@ jobs:
               run: |
                   gh release view nightly --repo "${{ github.repository }}" >/dev/null 2>&1 || \
                     gh release create nightly --repo "${{ github.repository }}" --title "Nightly" --prerelease --notes "Rolling nightly build" --latest=false
+
+            - name: Write Nightly release notes
+              run: |
+                  cat > notes.md << 'EOF'
+                  ## Which Linux build should I download?
+
+                  Pick the archive that matches your WebKitGTK **runtime**:
+
+                  - Distros with WebKitGTK 4.1: use the `*-x11-webkit2_41*` build
+                  - Distros with WebKitGTK 4.0: use the `*-x11-webkit2_40*` build
+
+                  Note: these only work with X11 at the moment, Wayland support coming soon.
+                
+                  You can check your system with one of these one-liners:
+
+                  **Debian/Ubuntu:**
+                  ```bash
+                  if dpkg -s libwebkit2gtk-4.1-0 >/dev/null 2>&1; then
+                    echo "Use: *-x11-webkit2_41*"
+                  elif dpkg -s libwebkit2gtk-4.0-37 >/dev/null 2>&1; then
+                    echo "Use: *-x11-webkit2_40*"
+                  else
+                    echo "No WebKitGTK 4.0/4.1 runtime found. On Ubuntu 24.04+: sudo apt install libwebkit2gtk-4.1-0"
+                    echo "On Ubuntu 22.04: sudo apt install libwebkit2gtk-4.0-37"
+                  fi
+                  ```
+
+                  **Generic (no dev packages required):**
+                  ```bash
+                  if ldconfig -p 2>/dev/null | grep -q 'libwebkit2gtk-4\.1\.so'; then
+                    echo "Use: *-x11-webkit2_41*"
+                  elif ldconfig -p 2>/dev/null | grep -q 'libwebkit2gtk-4\.0\.so'; then
+                    echo "Use: *-x11-webkit2_40*"
+                  else
+                    echo "Could not detect WebKitGTK 4.0/4.1 runtime on this system."
+                  fi
+                  ```
+
+                  > Note: Linux builds require running under **Xorg** (we ship `-tags x11`). Wayland global hotkeys aren’t supported.
+                  EOF
+
+            - name: Update Nightly release notes
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: gh release edit nightly --repo "${{ github.repository }}" --notes-file notes.md
 
             - name: Upload assets (overwrite if exist)
               env:

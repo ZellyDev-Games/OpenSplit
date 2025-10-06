@@ -63,8 +63,7 @@ func main() {
 	// Build dispatcher that can receive commands from frontend or backend and dispatch them to the state machine
 	commandDispatcher := dispatcher.NewService(machine)
 
-	var hotkeyProvider statemachine.HotkeyProvider = hotkeys.SetupHotkeys()
-	machine.AttachHotkeyProvider(hotkeyProvider)
+	var hotkeyProvider statemachine.HotkeyProvider
 
 	err := wails.Run(&options.App{
 		Title:     "OpenSplit",
@@ -83,6 +82,8 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
+			hotkeyProvider = hotkeys.SetupHotkeys()
+			machine.AttachHotkeyProvider(hotkeyProvider)
 			timerService.Startup(ctx)
 			runtimeProvider.Startup(ctx)
 			machine.Startup(ctx)
@@ -166,7 +167,9 @@ func startInterruptListener(ctx context.Context, hotkeyProvider statemachine.Hot
 		logger.Info(fmt.Sprintf("received exit signal %s", s))
 
 		// Do cleanup *now* so we don't depend on Wails calling OnShutdown
-		gracefulShutdown(hotkeyProvider)
+		if hotkeyProvider != nil {
+			gracefulShutdown(hotkeyProvider)
+		}
 
 		// Ask Wails to quit (this will still call OnShutdown in normal paths)
 		runtime.Quit(ctx)

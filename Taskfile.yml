@@ -43,14 +43,51 @@ tasks:
         desc: Start Wails dev server (installs deps on first run)
         deps: [ ensure-dist ]
         cmds:
+            # Step 1: install frontend dependencies
             - |
                 cd frontend
                 {{if eq OS "windows"}}
-                powershell -NoProfile -Command "if (-Not (Test-Path 'node_modules')) { npm ci } else { npm install }"
+                powershell -NoProfile -Command "if (Test-Path 'package-lock.json') { npm ci } else { npm install }"
                 {{else}}
-                bash -lc 'if [ -d "node_modules" ]; then npm ci; else npm install; fi'
+                bash -lc 'if [ -f package-lock.json ]; then npm ci; else npm install; fi'
                 {{end}}
-            - wails dev
+
+            # Step 2: run Wails with environment & tags depending on OS / Linux session
+            - |
+                {{- if eq OS "windows" -}}
+                wails dev
+                {{- else if eq OS "darwin" -}}
+                CGO_ENABLED=1 wails dev
+                {{- else if eq OS "linux" -}}
+                bash -lc '
+                  # detect session type
+                  SESS_TYPE=${XDG_SESSION_TYPE:-}
+                  TAGS=""
+
+                  if [ "$SESS_TYPE" = "x11" ]; then
+                    TAGS="x11"
+                  fi
+
+                  # detect WebKit GTK version
+                  if pkg-config --exists webkit2gtk-4.1; then
+                    TAGS="$TAGS,webkit2_41"
+                  elif pkg-config --exists webkit2gtk-4.0; then
+                    TAGS="$TAGS,webkit2_40"
+                  fi
+
+                  # remove leading comma
+                  TAGS=${TAGS#,}
+
+                  if [ -n "$TAGS" ]; then
+                    echo "Using build tags: $TAGS"
+                    CGO_ENABLED=1 wails dev -tags="$TAGS"
+                  else
+                    CGO_ENABLED=1 wails dev
+                  fi
+                '
+                {{- else -}}
+                echo "Unsupported OS: {{OS}}"
+                {{- end }}
 
     build:
         desc: Production build (clean bin)
