@@ -1,4 +1,4 @@
-//go:build !windows && !x11
+//go:build !windows && !x11 && !darwin
 
 package hotkeys
 
