@@ -75,6 +75,10 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
             }
             return <strong className={className}>{completion.time}</strong>;
         } else {
+            if (target === 0) {
+                return <>-</>;
+            }
+
             const diff = time - target;
             let className = "";
 
