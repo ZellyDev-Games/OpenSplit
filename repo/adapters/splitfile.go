@@ -51,6 +51,17 @@ func DomainToSplitFile(splitFile *session.SplitFile) *dto.SplitFile {
 	}
 
 	if splitFile.PB != nil {
+		phSegments := make([]dto.Segment, len(splitFile.PB.Segments))
+		for _, segment := range splitFile.PB.Segments {
+			segments = append(phSegments, dto.Segment{
+				ID:      segment.ID.String(),
+				Name:    segment.Name,
+				Gold:    segment.Gold.Milliseconds(),
+				Average: segment.Average.Milliseconds(),
+				PB:      segment.PB.Milliseconds(),
+			})
+		}
+
 		var splits = make([]*dto.Split, len(splitFile.PB.Segments))
 		for _, s := range splitFile.PB.Splits {
 			if s == nil {
@@ -71,6 +82,7 @@ func DomainToSplitFile(splitFile *session.SplitFile) *dto.SplitFile {
 			TotalTime:        splitFile.PB.TotalTime.Milliseconds(),
 			Splits:           splits,
 			Completed:        splitFile.PB.Completed,
+			Segments:         phSegments,
 		}
 	}
 
@@ -159,6 +171,15 @@ func SplitFileToDomain(payload *dto.SplitFile) (*session.SplitFile, error) {
 
 	if payload.PB != nil {
 		pbid, err := uuid.Parse(payload.PB.ID)
+		// Self heal older version file format
+		if payload.PB.Segments == nil {
+			for _, r := range payload.Runs {
+				if r.ID == payload.PB.ID {
+					payload.PB.Segments = r.Segments
+				}
+			}
+		}
+
 		if err == nil {
 			var splits = make([]*session.Split, len(payload.PB.Segments))
 			for _, s := range payload.PB.Splits {
