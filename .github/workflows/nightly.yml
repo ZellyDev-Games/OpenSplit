@@ -55,7 +55,7 @@ jobs:
                   go-version-file: go.mod
                   cache: true
 
-            - uses: actions/setup-node@v5
+            - uses: actions/setup-node@v6
               with:
                   node-version: 20
 
@@ -65,7 +65,7 @@ jobs:
             - name: Create lockfile for cache
               run: npm install --prefix frontend --package-lock-only --no-audit --no-fund
 
-            - uses: actions/setup-node@v5
+            - uses: actions/setup-node@v6
               with:
                   node-version: 20
                   cache: npm
