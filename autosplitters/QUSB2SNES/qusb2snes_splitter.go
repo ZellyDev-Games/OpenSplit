@@ -1262,9 +1262,9 @@ func (s *SNESState) update() {
 type SNESSummary struct {
 	LatencyAverage float64
 	LatencyStddev  float64
-	Start          interface{}
-	Reset          interface{}
-	Split          interface{}
+	Start          bool
+	Reset          bool
+	Split          bool
 }
 
 func (s *SNESState) FetchAll(client SyncClient, settings *Settings) (*SNESSummary, error) {
