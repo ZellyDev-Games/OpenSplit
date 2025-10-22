@@ -9,6 +9,25 @@ import (
 	"strings"
 )
 
+// File format
+//
+// Type
+// IP
+// Port
+//
+// #memory
+// MemName,address,size
+//
+// #start (some games might have multiple start conditions) (expectedValue is optional)
+// start:MemName,expectedValue,compareType MemName,expectedValue,compareType MemName,expectedValue,compareType MemName,expectedValue,compareType
+//
+// #reset (some games might have multiple reset conditions) (expectedValue is optional)
+// reset:MemName,expectedValue,compareType MemName,expectedValue,compareType MemName,expectedValue,compareType MemName,expectedValue,compareType
+//
+// #split (some games might have multiple start conditions) (expectedValue is optional)
+// level:MemName,expectedValue,compareType MemName,expectedValue,compareType MemName,expectedValue,compareType MemName,expectedValue,compareType
+// state:MemName,expectedValue,compareType MemName,expectedValue,compareType MemName,expectedValue,compareType MemName,expectedValue,compareType
+
 // public
 type NWASplitter struct {
 	ResetTimerOnGameReset bool
