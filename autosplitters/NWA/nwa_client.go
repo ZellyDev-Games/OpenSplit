@@ -12,47 +12,10 @@ import (
 	"time"
 )
 
-type ErrorKind int
-
-const (
-	InvalidError ErrorKind = iota
-	InvalidCommand
-	InvalidArgument
-	NotAllowed
-	ProtocolError
-)
-
+// public
 type NWAError struct {
-	Kind   ErrorKind
+	Kind   errorKind
 	Reason string
-}
-
-type AsciiReply interface{}
-
-type AsciiOk struct{}
-
-type AsciiHash map[string]string
-
-type AsciiListHash []map[string]string
-
-type Ok struct{}
-
-type Hash map[string]string
-
-type ListHash []map[string]string
-
-type EmulatorReply interface{}
-
-type Ascii struct {
-	Reply AsciiReply
-}
-
-type Error struct {
-	Err NWAError
-}
-
-type Binary struct {
-	Data []byte
 }
 
 type NWASyncClient struct {
@@ -80,7 +43,86 @@ func Connect(ip string, port uint32) (*NWASyncClient, error) {
 	}, nil
 }
 
-func (c *NWASyncClient) GetReply() (EmulatorReply, error) {
+func (c *NWASyncClient) ExecuteCommand(cmd string, argString *string) (emulatorReply, error) {
+	var command string
+	if argString == nil {
+		command = fmt.Sprintf("%s\n", cmd)
+	} else {
+		command = fmt.Sprintf("%s %s\n", cmd, *argString)
+	}
+
+	_, err := io.WriteString(c.Connection, command)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.getReply()
+}
+
+func (c *NWASyncClient) ExecuteRawCommand(cmd string, argString *string) {
+	var command string
+	if argString == nil {
+		command = fmt.Sprintf("%s\n", cmd)
+	} else {
+		command = fmt.Sprintf("%s %s\n", cmd, *argString)
+	}
+
+	// ignoring error as per TODO in Rust code
+	_, _ = io.WriteString(c.Connection, command)
+}
+
+func (c *NWASyncClient) IsConnected() bool {
+	// net.Conn in Go does not have a Peek method.
+	// We can try to set a read deadline and read with a zero-length buffer to check connection.
+	// But zero-length read returns immediately, so we try to read 1 byte with deadline.
+	buf := make([]byte, 1)
+	c.Connection.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+	n, err := c.Connection.Read(buf)
+	if err != nil {
+		// If timeout or no data, consider connected
+		netErr, ok := err.(net.Error)
+		if ok && netErr.Timeout() {
+			return true
+		}
+		return false
+	}
+	if n > 0 {
+		// Data was read, connection is alive
+		return true
+	}
+	return false
+}
+
+func (c *NWASyncClient) Close() {
+	// TODO: handle the error
+	c.Connection.Close()
+}
+
+func (c *NWASyncClient) Reconnected() (bool, error) {
+	conn, err := net.DialTimeout("tcp", c.Addr.String(), time.Second)
+	if err != nil {
+		return false, err
+	}
+	c.Connection = conn
+	return true, nil
+}
+
+// private
+type errorKind int
+
+const (
+	InvalidError errorKind = iota
+	InvalidCommand
+	InvalidArgument
+	NotAllowed
+	ProtocolError
+)
+
+type hash map[string]string
+
+type emulatorReply interface{}
+
+func (c *NWASyncClient) getReply() (emulatorReply, error) {
 	readStream := bufio.NewReader(c.Connection)
 	firstByte, err := readStream.ReadByte()
 	if err != nil {
@@ -90,6 +132,8 @@ func (c *NWASyncClient) GetReply() (EmulatorReply, error) {
 		return nil, err
 	}
 
+	// Ascii
+	// stops reading when the only result is a new line
 	if firstByte == '\n' {
 		mapResult := make(map[string]string)
 		for {
@@ -101,7 +145,7 @@ func (c *NWASyncClient) GetReply() (EmulatorReply, error) {
 				break
 			}
 			if line[0] == '\n' && len(mapResult) == 0 {
-				return AsciiOk{}, nil
+				return nil, nil
 			}
 			if line[0] == '\n' {
 				break
@@ -118,7 +162,7 @@ func (c *NWASyncClient) GetReply() (EmulatorReply, error) {
 			reason, hasReason := mapResult["reason"]
 			errorStr, hasError := mapResult["error"]
 			if hasReason && hasError {
-				var mkind ErrorKind
+				var mkind errorKind
 				switch errorStr {
 				case "protocol_error":
 					mkind = ProtocolError
@@ -142,11 +186,11 @@ func (c *NWASyncClient) GetReply() (EmulatorReply, error) {
 				}, nil
 			}
 		}
-		return Hash(mapResult), nil
+		return hash(mapResult), nil
 	}
 
+	// Binary
 	if firstByte == 0 {
-		// Binary reply
 		header := make([]byte, 4)
 		n, err := io.ReadFull(readStream, header)
 		if err != nil || n != 4 {
@@ -164,34 +208,7 @@ func (c *NWASyncClient) GetReply() (EmulatorReply, error) {
 	return nil, errors.New("invalid reply")
 }
 
-func (c *NWASyncClient) ExecuteCommand(cmd string, argString *string) (EmulatorReply, error) {
-	var command string
-	if argString == nil {
-		command = fmt.Sprintf("%s\n", cmd)
-	} else {
-		command = fmt.Sprintf("%s %s\n", cmd, *argString)
-	}
-
-	_, err := io.WriteString(c.Connection, command)
-	if err != nil {
-		return nil, err
-	}
-
-	return c.GetReply()
-}
-
-func (c *NWASyncClient) ExecuteRawCommand(cmd string, argString *string) {
-	var command string
-	if argString == nil {
-		command = fmt.Sprintf("%s\n", cmd)
-	} else {
-		command = fmt.Sprintf("%s %s\n", cmd, *argString)
-	}
-
-	// ignoring error as per TODO in Rust code
-	_, _ = io.WriteString(c.Connection, command)
-}
-
+// I think this would be used if I actually sent data
 func (c *NWASyncClient) sendData(data []byte) {
 	buf := make([]byte, 5)
 	size := len(data)
@@ -204,40 +221,4 @@ func (c *NWASyncClient) sendData(data []byte) {
 	c.Connection.Write(buf)
 	// TODO: handle the error
 	c.Connection.Write(data)
-}
-
-func (c *NWASyncClient) isConnected() bool {
-	// net.Conn in Go does not have a Peek method.
-	// We can try to set a read deadline and read with a zero-length buffer to check connection.
-	// But zero-length read returns immediately, so we try to read 1 byte with deadline.
-	buf := make([]byte, 1)
-	c.Connection.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
-	n, err := c.Connection.Read(buf)
-	if err != nil {
-		// If timeout or no data, consider connected
-		netErr, ok := err.(net.Error)
-		if ok && netErr.Timeout() {
-			return true
-		}
-		return false
-	}
-	if n > 0 {
-		// Data was read, connection is alive
-		return true
-	}
-	return false
-}
-
-func (c *NWASyncClient) close() {
-	// TODO: handle the error
-	c.Connection.Close()
-}
-
-func (c *NWASyncClient) reconnected() (bool, error) {
-	conn, err := net.DialTimeout("tcp", c.Addr.String(), time.Second)
-	if err != nil {
-		return false, err
-	}
-	c.Connection = conn
-	return true, nil
 }
