@@ -198,7 +198,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 
 func (b *NWASplitter) ClientID() {
 	cmd := "MY_NAME_IS"
-	args := "Annelid"
+	args := "OpenSplit"
 	summary, err := b.Client.ExecuteCommand(cmd, &args)
 	if err != nil {
 		panic(err)
