@@ -68,12 +68,12 @@ func main() {
 	// // time.Sleep(1 * time.Second)
 	// // }
 
-	autosplitterService.EmuInfo()
-	autosplitterService.EmuGameInfo()
-	autosplitterService.EmuStatus()
-	autosplitterService.ClientID()
-	autosplitterService.CoreInfo()
-	autosplitterService.CoreMemories()
+	autosplitterService.EmuInfo()      // Gets info about the emu; name, version, nwa_version, id, supported commands
+	autosplitterService.EmuGameInfo()  // Gets info about the loaded game
+	autosplitterService.EmuStatus()    // Gets the status of the emu
+	autosplitterService.ClientID()     // Provides the client name to the NWA interface
+	autosplitterService.CoreInfo()     // Might be useful to display the platform & core names
+	autosplitterService.CoreMemories() // Get info about the memory banks available
 
 	// //this is the core loop of autosplitting
 	// //queries the device (emu, hardware, application) at the rate specified in ms
