@@ -171,7 +171,7 @@ jobs:
                   echo "ARCHIVE=out/$ARCHIVE" >> "$GITHUB_ENV"
 
             - name: Upload artifact (per platform)
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v5
               with:
                   name: nightly-zips-${{ matrix.name }}
                   path: ${{ env.ARCHIVE }}
