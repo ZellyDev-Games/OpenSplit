@@ -32,10 +32,10 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
 
     // Segment stats
     const [splitFileLoaded] = useState<boolean>(false);
-    const [gameName, setGameName] = React.useState<string>("");
-    const [gameCategory, setGameCategory] = React.useState<string>("");
-    const [segments, setSegments] = React.useState<SegmentPayload[]>([]);
-    const [attempts, setAttempts] = React.useState<number>(0);
+    const [gameName, setGameName] = React.useState<string>(splitFilePayload?.game_name ?? "");
+    const [gameCategory, setGameCategory] = React.useState<string>(splitFilePayload?.game_category ?? "");
+    const [segments, setSegments] = React.useState<SegmentPayload[]>(splitFilePayload?.segments ?? []);
+    const [attempts, setAttempts] = React.useState<number>(splitFilePayload?.attempts ?? 0);
 
     // Speedrun search
     const [gameResults, setGameResults] = React.useState<Game[]>([]);
@@ -51,6 +51,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
     useEffect(() => {
         (async () => {
             if (!splitFilePayload) return;
+            console.log(splitFilePayload);
             setGameName(splitFilePayload.game_name);
             setGameCategory(splitFilePayload.game_category);
             setAttempts(splitFilePayload.attempts);

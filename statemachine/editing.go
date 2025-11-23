@@ -15,7 +15,7 @@ func NewEditingState() (*Editing, error) {
 
 // OnEnter sets the context from Wails, and signals the frontend to show the SplitEditor with the specified split file (or nil)
 func (e *Editing) OnEnter() error {
-	payload := machine.sessionService.SplitFile()
+	payload := adapters.DomainToSplitFile(machine.sessionService.SplitFile())
 	machine.sessionService.Pause()
 	machine.runtimeProvider.EventsEmit("state:enter", EDITING, payload)
 	return nil
