@@ -53,7 +53,7 @@ func DomainToSplitFile(splitFile *session.SplitFile) *dto.SplitFile {
 	if splitFile.PB != nil {
 		phSegments := make([]dto.Segment, len(splitFile.PB.Segments))
 		for _, segment := range splitFile.PB.Segments {
-			segments = append(phSegments, dto.Segment{
+			phSegments = append(phSegments, dto.Segment{
 				ID:      segment.ID.String(),
 				Name:    segment.Name,
 				Gold:    segment.Gold.Milliseconds(),
