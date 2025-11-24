@@ -1,5 +1,7 @@
 package qusb2snes
 
+// TODO: handle errors correctly
+
 import (
 	"encoding/json"
 	"errors"
@@ -97,7 +99,7 @@ type USB2SnesFileInfo struct {
 }
 
 type SyncClient struct {
-	client *websocket.Conn
+	Client *websocket.Conn
 	devel  bool
 }
 
@@ -116,7 +118,7 @@ func connect(devel bool) (*SyncClient, error) {
 		return nil, err
 	}
 	return &SyncClient{
-		client: conn,
+		Client: conn,
 		devel:  devel,
 	}, nil
 }
@@ -150,12 +152,12 @@ func (sc *SyncClient) sendCommandWithSpace(command Command, space Space, args []
 			fmt.Println(string(prettyJSON))
 		}
 	}
-	err = sc.client.WriteMessage(websocket.TextMessage, jsonData)
+	err = sc.Client.WriteMessage(websocket.TextMessage, jsonData)
 	return err
 }
 
 func (sc *SyncClient) getReply() (*USB2SnesResult, error) {
-	_, message, err := sc.client.ReadMessage()
+	_, message, err := sc.Client.ReadMessage()
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +284,7 @@ func (sc *SyncClient) SendFile(path string, data []byte) error {
 		if stop > len(data) {
 			stop = len(data)
 		}
-		err = sc.client.WriteMessage(websocket.BinaryMessage, data[start:stop])
+		err = sc.Client.WriteMessage(websocket.BinaryMessage, data[start:stop])
 		if err != nil {
 			return err
 		}
@@ -309,7 +311,7 @@ func (sc *SyncClient) getFile(path string) ([]byte, error) {
 	}
 	data := make([]byte, 0, size)
 	for {
-		_, msgData, err := sc.client.ReadMessage()
+		_, msgData, err := sc.Client.ReadMessage()
 		if err != nil {
 			return nil, err
 		}
@@ -337,7 +339,7 @@ func (sc *SyncClient) getAddress(address uint32, size int) ([]byte, error) {
 	}
 	data := make([]byte, 0, size)
 	for {
-		_, msgData, err := sc.client.ReadMessage()
+		_, msgData, err := sc.Client.ReadMessage()
 		if err != nil {
 			return nil, err
 		}
@@ -369,7 +371,7 @@ func (sc *SyncClient) getAddresses(pairs [][2]int) ([][]byte, error) {
 	ret := make([][]byte, 0, len(pairs))
 
 	for {
-		_, msgData, err := sc.client.ReadMessage()
+		_, msgData, err := sc.Client.ReadMessage()
 		if err != nil {
 			return nil, err
 		}
