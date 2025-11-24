@@ -16,6 +16,8 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/autosplitters"
+	nwa "github.com/zellydev-games/opensplit/autosplitters/NWA"
+	qusb2snes "github.com/zellydev-games/opensplit/autosplitters/QUSB2SNES"
 	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dispatcher"
@@ -61,95 +63,18 @@ func main() {
 	sessionUIBridge := bridge.NewSession(sessionUpdateChannel, runtimeProvider)
 	configUIBridge := bridge.NewConfig(configUpdateChannel, runtimeProvider)
 
-	// NWA example
-	// // This should try to re/connect if used
-	// // {
-	autosplitterService := autosplitters.NewService(true, true, 48879, "0.0.0.0", autosplitters.NWA)
-	// // time.Sleep(1 * time.Second)
-	// // }
-
-	autosplitterService.EmuInfo()      // Gets info about the emu; name, version, nwa_version, id, supported commands
-	autosplitterService.EmuGameInfo()  // Gets info about the loaded game
-	autosplitterService.EmuStatus()    // Gets the status of the emu
-	autosplitterService.ClientID()     // Provides the client name to the NWA interface
-	autosplitterService.CoreInfo()     // Might be useful to display the platform & core names
-	autosplitterService.CoreMemories() // Get info about the memory banks available
-
-	// //this is the core loop of autosplitting
-	// //queries the device (emu, hardware, application) at the rate specified in ms
-	// {
-	autoState, err2 := autosplitterService.Update()
-	if err2 != nil {
-		return
-	}
-	if autoState.Start {
-		//start run
-	}
-	if autoState.Reset {
-		//restart run
-	}
-	if autoState.Split {
-		//split run
-	}
-	// time.Sleep(time.Duration(1000.0/pollingRate) * time.Millisecond)
-	// }
-
-	// //QUSB2SNES example
-	// client, err := ConnectSyncClient()
-	// client.SetName("annelid")
-
-	// version, err := client.AppVersion()
-	// fmt.Printf("Server version is %v\n", version)
-
-	// devices, err := client.ListDevice()
-
-	// if len(devices) != 1 {
-	// 	if len(devices) == 0 {
-	// 		return errors.New("no devices present")
-	// 	}
-	// 	return errors.Errorf("unexpected devices: %#v", devices)
-	// }
-	// device := devices[0]
-	// fmt.Printf("Using device %v\n", device)
-
-	// client.Attach(device)
-	// fmt.Println("Connected.")
-
-	// info, err := client.Info()
-	// fmt.Printf("%#v\n", info)
-
-	// var autosplitter AutoSplitter = NewSuperMetroidAutoSplitter(settings)
-
-	// for {
-	// 	summary, err := autosplitter.Update(client)
-	// 	if summary.Start {
-	// 		timer.Start()
-	// 	}
-	// 	if summary.Reset {
-	// 		if resetTimerOnGameReset == true {
-	// 			timer.Reset(true)
-	// 		}
-	// 	}
-	// 	if summary.Split {
-	// 		// IGT
-	// 		timer.SetGameTime(*t)
-	// 		// RTA
-	// 		timer.Split()
-	// 	}
-
-	// 	if ev == TimerReset {
-	// 		// creates a new SNES state
-	// 		autosplitter.ResetGameTracking()
-	// 		if resetGameOnTimerReset == true {
-	// 			client.Reset()
-	// 		}
-	// 	}
-
-	// 	time.Sleep(time.Duration(float64(time.Second) / pollingRate))
-	// }
-
 	// Build dispatcher that can receive commands from frontend or backend and dispatch them to the state machine
 	commandDispatcher := dispatcher.NewService(machine)
+
+	// All the config should come from either the config file or the autosplitter service thread
+	AutoSplitterService := autosplitters.Splitters{
+		NWAAutoSplitter:       new(nwa.NWASplitter),
+		QUSB2SNESAutoSplitter: new(qusb2snes.SyncClient),
+		UseAutosplitter:       true,
+		ResetTimerOnGameReset: true,
+		Addr:                  "0.0.0.0",
+		Port:                  48879,
+		Type:                  autosplitters.NWA}
 
 	var hotkeyProvider statemachine.HotkeyProvider
 
@@ -180,6 +105,9 @@ func main() {
 			sessionUIBridge.StartUIPump()
 			timerUIBridge.StartUIPump()
 			configUIBridge.StartUIPump()
+
+			//Start autosplitter
+			AutoSplitterService.Run(commandDispatcher)
 
 			startInterruptListener(ctx, hotkeyProvider)
 			runtime.WindowSetAlwaysOnTop(ctx, true)
