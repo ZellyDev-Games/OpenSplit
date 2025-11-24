@@ -45,6 +45,7 @@ func Connect(ip string, port uint32) (*NWASyncClient, error) {
 
 func (c *NWASyncClient) ExecuteCommand(cmd string, argString *string) (emulatorReply, error) {
 	var command string
+	c.Connection.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 	if argString == nil {
 		command = fmt.Sprintf("%s\n", cmd)
 	} else {
@@ -61,6 +62,7 @@ func (c *NWASyncClient) ExecuteCommand(cmd string, argString *string) (emulatorR
 
 func (c *NWASyncClient) ExecuteRawCommand(cmd string, argString *string) {
 	var command string
+	c.Connection.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 	if argString == nil {
 		command = fmt.Sprintf("%s\n", cmd)
 	} else {
@@ -209,16 +211,16 @@ func (c *NWASyncClient) getReply() (emulatorReply, error) {
 }
 
 // I think this would be used if I actually sent data
-func (c *NWASyncClient) sendData(data []byte) {
-	buf := make([]byte, 5)
-	size := len(data)
-	buf[0] = 0
-	buf[1] = byte((size >> 24) & 0xFF)
-	buf[2] = byte((size >> 16) & 0xFF)
-	buf[3] = byte((size >> 8) & 0xFF)
-	buf[4] = byte(size & 0xFF)
-	// TODO: handle the error
-	c.Connection.Write(buf)
-	// TODO: handle the error
-	c.Connection.Write(data)
-}
+// func (c *NWASyncClient) sendData(data []byte) {
+// 	buf := make([]byte, 5)
+// 	size := len(data)
+// 	buf[0] = 0
+// 	buf[1] = byte((size >> 24) & 0xFF)
+// 	buf[2] = byte((size >> 16) & 0xFF)
+// 	buf[3] = byte((size >> 8) & 0xFF)
+// 	buf[4] = byte(size & 0xFF)
+// 	// TODO: handle the error
+// 	c.Connection.Write(buf)
+// 	// TODO: handle the error
+// 	c.Connection.Write(data)
+// }
