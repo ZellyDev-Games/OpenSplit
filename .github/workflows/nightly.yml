@@ -55,7 +55,7 @@ jobs:
                   go-version-file: go.mod
                   cache: true
 
-            - uses: actions/setup-node@v5
+            - uses: actions/setup-node@v6
               with:
                   node-version: 20
 
@@ -65,7 +65,7 @@ jobs:
             - name: Create lockfile for cache
               run: npm install --prefix frontend --package-lock-only --no-audit --no-fund
 
-            - uses: actions/setup-node@v5
+            - uses: actions/setup-node@v6
               with:
                   node-version: 20
                   cache: npm
@@ -171,7 +171,7 @@ jobs:
                   echo "ARCHIVE=out/$ARCHIVE" >> "$GITHUB_ENV"
 
             - name: Upload artifact (per platform)
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v5
               with:
                   name: nightly-zips-${{ matrix.name }}
                   path: ${{ env.ARCHIVE }}
@@ -192,7 +192,7 @@ jobs:
 
         steps:
             - name: Download all artifacts
-              uses: actions/download-artifact@v5
+              uses: actions/download-artifact@v6
               with:
                   pattern: nightly-zips-*
                   merge-multiple: true
