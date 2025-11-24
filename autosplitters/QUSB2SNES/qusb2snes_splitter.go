@@ -1,9 +1,10 @@
 package qusb2snes
 
+// TODO: handle errors correctly
+
 import (
 	"fmt"
 	"math"
-	"sync"
 	"time"
 )
 
@@ -228,7 +229,7 @@ type Settings struct {
 		parent *string
 	}
 	modifiedAfterCreation bool
-	mu                    sync.RWMutex
+	// mu                    sync.RWMutex
 }
 
 func NewSettings() *Settings {
@@ -593,8 +594,8 @@ func NewSettings() *Settings {
 }
 
 func (s *Settings) Insert(name string, value bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// s.mu.Lock()
+	// defer s.mu.Unlock()
 	s.modifiedAfterCreation = true
 	s.data[name] = struct {
 		value  bool
@@ -603,8 +604,8 @@ func (s *Settings) Insert(name string, value bool) {
 }
 
 func (s *Settings) InsertWithParent(name string, value bool, parent string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// s.mu.Lock()
+	// defer s.mu.Unlock()
 	s.modifiedAfterCreation = true
 	p := parent
 	s.data[name] = struct {
@@ -614,15 +615,15 @@ func (s *Settings) InsertWithParent(name string, value bool, parent string) {
 }
 
 func (s *Settings) Contains(varName string) bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	// s.mu.RLock()
+	// defer s.mu.RUnlock()
 	_, ok := s.data[varName]
 	return ok
 }
 
 func (s *Settings) Get(varName string) bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	// s.mu.RLock()
+	// defer s.mu.RUnlock()
 	return s.getRecursive(varName)
 }
 
@@ -638,8 +639,8 @@ func (s *Settings) getRecursive(varName string) bool {
 }
 
 func (s *Settings) Set(varName string, value bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// s.mu.Lock()
+	// defer s.mu.Unlock()
 	entry, ok := s.data[varName]
 	if !ok {
 		s.data[varName] = struct {
@@ -656,8 +657,8 @@ func (s *Settings) Set(varName string, value bool) {
 }
 
 func (s *Settings) Roots() []string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	// s.mu.RLock()
+	// defer s.mu.RUnlock()
 	var roots []string
 	for k, v := range s.data {
 		if v.parent == nil {
@@ -668,8 +669,8 @@ func (s *Settings) Roots() []string {
 }
 
 func (s *Settings) Children(key string) []string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	// s.mu.RLock()
+	// defer s.mu.RUnlock()
 	var children []string
 	for k, v := range s.data {
 		if v.parent != nil && *v.parent == key {
@@ -680,8 +681,8 @@ func (s *Settings) Children(key string) []string {
 }
 
 func (s *Settings) Lookup(varName string) bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	// s.mu.RLock()
+	// defer s.mu.RUnlock()
 	entry, ok := s.data[varName]
 	if !ok {
 		panic("variable not found")
@@ -690,8 +691,8 @@ func (s *Settings) Lookup(varName string) bool {
 }
 
 func (s *Settings) LookupMut(varName string) *bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// s.mu.Lock()
+	// defer s.mu.Unlock()
 	entry, ok := s.data[varName]
 	if !ok {
 		panic("variable not found")
@@ -712,8 +713,8 @@ func (s *Settings) LookupMut(varName string) *bool {
 }
 
 func (s *Settings) HasBeenModified() bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	// s.mu.RLock()
+	// defer s.mu.RUnlock()
 	return s.modifiedAfterCreation
 }
 
@@ -1153,7 +1154,7 @@ type SNESState struct {
 	latencySamples           []uint128
 	data                     []byte
 	doExtraUpdate            bool
-	mu                       sync.Mutex
+	// mu                       sync.Mutex
 }
 
 type uint128 struct {
@@ -1248,8 +1249,8 @@ func (mw MemoryWatcher) ptr() *MemoryWatcher {
 }
 
 func (s *SNESState) update() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// s.mu.Lock()
+	// defer s.mu.Unlock()
 	for _, watcher := range s.vars {
 		if s.doExtraUpdate {
 			watcher.UpdateValue(s.data)
@@ -1372,15 +1373,15 @@ func (s *SNESState) gametimeToSeconds() TimeSpan {
 }
 
 type SuperMetroidAutoSplitter struct {
-	snes         *SNESState
-	settings     *sync.RWMutex
+	snes *SNESState
+	// settings     *sync.RWMutex
 	settingsData *Settings
 }
 
-func NewSuperMetroidAutoSplitter(settings *sync.RWMutex, settingsData *Settings) *SuperMetroidAutoSplitter {
+func NewSuperMetroidAutoSplitter( /*settings *sync.RWMutex,*/ settingsData *Settings) *SuperMetroidAutoSplitter {
 	return &SuperMetroidAutoSplitter{
-		snes:         NewSNESState(),
-		settings:     settings,
+		snes: NewSNESState(),
+		// settings:     settings,
 		settingsData: settingsData,
 	}
 }
