@@ -78,7 +78,7 @@ func (s Splitters) Run(commandDispatcher *dispatcher.Service) {
 }
 
 func (s Splitters) newClient( /*UseAutosplitter bool, ResetTimerOnGameReset bool, Addr string, Port uint32, Type AutosplitterType*/ ) (*nwa.NWASplitter, *qusb2snes.SyncClient) {
-	fmt.Printf("Creating AutoSplitter Service\n")
+	// fmt.Printf("Creating AutoSplitter Service\n")
 
 	if s.UseAutosplitter {
 		if s.Type == NWA {
