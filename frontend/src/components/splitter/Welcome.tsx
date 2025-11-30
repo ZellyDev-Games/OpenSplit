@@ -2,6 +2,7 @@ import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
 import { WindowSetSize } from "../../../wailsjs/runtime";
 import { Command } from "../../App";
 import zdgLogo from "../../assets/images/ZG512.png";
+import { WebSocketManager, RaceData, RaceList, LoginWithOAuth } from "../racetime_gg";
 
 export default function Welcome() {
     WindowSetSize(320, 580);
@@ -17,6 +18,7 @@ export default function Welcome() {
             >
                 Create New Split File
             </button>
+
             <button
                 onClick={async () => {
                     await Dispatch(Command.LOAD, null);
@@ -24,12 +26,21 @@ export default function Welcome() {
             >
                 Load Split File
             </button>
+
             <button
                 onClick={async () => {
                     await Dispatch(Command.EDIT, null);
                 }}
             >
                 OpenSplit Settings
+            </button>
+
+            <button
+                onClick={async () => {
+                    await LoginWithOAuth();
+                }}
+            >
+                Racetime.gg
             </button>
 
             <button
