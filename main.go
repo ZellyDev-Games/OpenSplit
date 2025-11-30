@@ -64,6 +64,10 @@ func main() {
 	// Build dispatcher that can receive commands from frontend or backend and dispatch them to the state machine
 	commandDispatcher := dispatcher.NewService(machine)
 
+	// TODO:
+	// Convert client_id and client_secret to live site (AFTER getting approval from racetime.gg staff)
+	race := racetime.NewService("http", "localhost:8000", "localhost:9999")
+
 	var hotkeyProvider statemachine.HotkeyProvider
 
 	err := wails.Run(&options.App{
@@ -94,9 +98,6 @@ func main() {
 			timerUIBridge.StartUIPump()
 			configUIBridge.StartUIPump()
 
-			// Start racetime integration
-			racetime.Run()
-
 			startInterruptListener(ctx, hotkeyProvider)
 			runtime.WindowSetAlwaysOnTop(ctx, true)
 			logger.Info("application startup complete")
@@ -107,6 +108,7 @@ func main() {
 		},
 		Bind: []interface{}{
 			commandDispatcher,
+			race,
 		},
 	})
 
