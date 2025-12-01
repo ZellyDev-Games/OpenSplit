@@ -2,54 +2,73 @@ package session
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/zellydev-games/opensplit/logger"
 )
 
 func (s *SplitFile) BuildStats() {
-	golds, sumMap, countMap := s.perSegmentAggregates(s.Runs)
-	var SOB time.Duration
-	for sid, t := range golds {
-		for i, seg := range s.Segments {
-			if seg.ID == sid {
-				seg.Gold = golds[sid]
-				s.Segments[i] = seg
-			}
-		}
-		SOB += t
+	if s == nil {
+		return
 	}
 
-	for i, seg := range s.Segments {
-		if sum, ok := sumMap[seg.ID]; ok {
-			if cnt := countMap[seg.ID]; cnt > 0 {
-				seg.Average = sum / time.Duration(countMap[seg.ID])
-				s.Segments[i] = seg
+	leafSegs := flattenLeafSegmentsWithPointers(s.Segments)
+
+	// Edge case: no leaf segments
+	if len(leafSegs) == 0 {
+		s.SOB = 0
+		s.PB = nil
+		return
+	}
+
+	golds, sumMap, countMap := s.perSegmentAggregates(s.Runs)
+
+	// Reset SOB
+	var SOB time.Duration
+
+	for _, leaf := range leafSegs {
+		id := leaf.ID
+
+		// GOLD
+		if gold, ok := golds[id]; ok {
+			leaf.Gold = gold
+			SOB += gold
+		} else {
+			leaf.Gold = 0
+		}
+
+		// AVERAGE
+		if sum, ok := sumMap[id]; ok {
+			if cnt := countMap[id]; cnt > 0 {
+				leaf.Average = sum / time.Duration(cnt)
+			} else {
+				leaf.Average = 0
 			}
+		} else {
+			leaf.Average = 0
 		}
 	}
 
 	PB, _, err := getPB(s.Runs)
 	if err != nil {
-		logger.Debug(fmt.Sprintf("No PB found: %s", err))
+		s.PB = nil  // no PB available
+		s.SOB = SOB // SOB still valid
+		return
 	}
 
-	for _, pbSplit := range PB.Splits {
-		if pbSplit == nil {
-			continue
-		}
-		for i, seg := range s.Segments {
-			if pbSplit.SplitSegmentID == seg.ID {
-				seg.PB = pbSplit.CurrentDuration
-				s.Segments[i] = seg
+	s.PB = PB
+
+	if PB != nil && PB.Completed && len(PB.Splits) > 0 {
+		for i, leaf := range leafSegs {
+			if i < len(PB.Splits) {
+				split := PB.Splits[i]
+				if split != nil {
+					leaf.PB = split.CurrentDuration
+				}
 			}
 		}
 	}
-
 	s.SOB = SOB
-	s.PB = PB
 }
 
 func getPB(runs []Run) (*Run, time.Duration, error) {
@@ -93,4 +112,17 @@ func (s *SplitFile) perSegmentAggregates(runs []Run) (golds map[uuid.UUID]time.D
 	}
 
 	return golds, sums, counts
+}
+
+func flattenLeafSegmentsWithPointers(list []Segment) []*Segment {
+	var out []*Segment
+	for i := range list {
+		seg := &list[i]
+		if len(seg.Children) == 0 {
+			out = append(out, seg)
+			continue
+		}
+		out = append(out, flattenLeafSegmentsWithPointers(seg.Children)...)
+	}
+	return out
 }
