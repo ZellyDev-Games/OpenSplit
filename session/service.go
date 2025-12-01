@@ -477,19 +477,17 @@ func (s *Service) deepCopySplitFile() *SplitFile {
 func FlattenSegments(list []Segment) []Segment {
 	var out []Segment
 	for _, s := range list {
-
-		// Parent segment WITHOUT children
-		out = append(out, Segment{
-			ID:      s.ID,
-			Name:    s.Name,
-			Gold:    s.Gold,
-			Average: s.Average,
-			PB:      s.PB,
-			// no children
-		})
-
-		// Recursively append children
-		if len(s.Children) > 0 {
+		if len(s.Children) == 0 {
+			// Leaf segment – real split
+			out = append(out, Segment{
+				ID:      s.ID,
+				Name:    s.Name,
+				Gold:    s.Gold,
+				Average: s.Average,
+				PB:      s.PB,
+			})
+		} else {
+			// Parent segment – just recurse into children
 			out = append(out, FlattenSegments(s.Children)...)
 		}
 	}
