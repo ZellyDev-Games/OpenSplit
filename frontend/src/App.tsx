@@ -84,6 +84,7 @@ function App() {
                     });
                     break;
                 case State.RUNNING:
+                    console.log("[FSM:RUNNING]", params[1]);
                     setModel({ tag: State.RUNNING, sessionPayload: params[1] });
                     break;
                 case State.CONFIG:
@@ -94,7 +95,6 @@ function App() {
 
         const unsubSessionUpdates = EventsOn("session:update", (updatedSession: SessionPayload) => {
             setModel((prev) => {
-                console.log("[APP]", updatedSession);
                 if (prev.tag === State.RUNNING) {
                     return { tag: State.RUNNING, sessionPayload: updatedSession };
                 }

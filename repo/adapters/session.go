@@ -5,95 +5,96 @@ import (
 	"github.com/zellydev-games/opensplit/session"
 )
 
-func DomainToSession(session *session.Service) *dto.Session {
+func DomainToSession(svc *session.Service) *dto.Session {
 	var dtoSplitFile *dto.SplitFile
 	var dtoCurrentRun *dto.Run
 
-	sessionSplitFile := session.SplitFile()
-	if sessionSplitFile != nil {
-		var segments []dto.Segment
-		var runs []dto.Run
-
-		for _, s := range sessionSplitFile.Segments {
-			segments = append(segments, dto.Segment{
-				ID:      s.ID.String(),
-				Name:    s.Name,
-				Gold:    s.Gold.Milliseconds(),
-				Average: s.Average.Milliseconds(),
-				PB:      s.PB.Milliseconds(),
-			})
+	sf := svc.SplitFile()
+	if sf != nil {
+		var dtoHierSegments []dto.Segment
+		for _, seg := range sf.Segments {
+			dtoHierSegments = append(dtoHierSegments, domainSegmentToDTO(seg))
 		}
 
-		for _, r := range sessionSplitFile.Runs {
-			var splits = make([]*dto.Split, len(sessionSplitFile.Segments))
-			for _, s := range r.Splits {
-				if s == nil {
+		var dtoRuns []dto.Run
+		for _, r := range sf.Runs {
+			leafDTO := flattenDomainLeafSegmentsDomain(r.Segments)
+			splits := make([]*dto.Split, len(leafDTO))
+			for _, sp := range r.Splits {
+				if sp == nil {
 					continue
 				}
-				splits[s.SplitIndex] = &dto.Split{
-					SplitIndex:        s.SplitIndex,
-					SplitSegmentID:    s.SplitSegmentID.String(),
-					CurrentCumulative: s.CurrentCumulative.Milliseconds(),
-					CurrentDuration:   s.CurrentDuration.Milliseconds(),
+				splits[sp.SplitIndex] = &dto.Split{
+					SplitIndex:        sp.SplitIndex,
+					SplitSegmentID:    sp.SplitSegmentID.String(),
+					CurrentCumulative: sp.CurrentCumulative.Milliseconds(),
+					CurrentDuration:   sp.CurrentDuration.Milliseconds(),
 				}
 			}
 
-			runs = append(runs, dto.Run{
+			dtoRuns = append(dtoRuns, dto.Run{
 				ID:               r.ID.String(),
-				SplitFileID:      sessionSplitFile.ID.String(),
+				SplitFileID:      sf.ID.String(),
 				SplitFileVersion: r.SplitFileVersion,
 				TotalTime:        r.TotalTime.Milliseconds(),
 				Splits:           splits,
 				Completed:        r.Completed,
-				Segments:         segments,
+				Segments:         leafDTO,
 			})
 		}
 
 		dtoSplitFile = &dto.SplitFile{
-			ID:           sessionSplitFile.ID.String(),
-			Version:      sessionSplitFile.Version,
-			GameName:     sessionSplitFile.GameName,
-			GameCategory: sessionSplitFile.GameCategory,
-			WindowX:      sessionSplitFile.WindowX,
-			WindowY:      sessionSplitFile.WindowY,
-			WindowHeight: sessionSplitFile.WindowHeight,
-			WindowWidth:  sessionSplitFile.WindowWidth,
-			Runs:         runs,
-			Segments:     segments,
-			SOB:          sessionSplitFile.SOB.Milliseconds(),
+			ID:           sf.ID.String(),
+			Version:      sf.Version,
+			GameName:     sf.GameName,
+			GameCategory: sf.GameCategory,
+			WindowX:      sf.WindowX,
+			WindowY:      sf.WindowY,
+			WindowHeight: sf.WindowHeight,
+			WindowWidth:  sf.WindowWidth,
+			Runs:         dtoRuns,
+			Segments:     dtoHierSegments,
+			SOB:          sf.SOB.Milliseconds(),
 		}
 
-		currentRun, ok := session.Run()
+		currentRun, ok := svc.Run()
 		if ok {
-			var splits = make([]*dto.Split, len(currentRun.Segments))
-			for _, s := range currentRun.Splits {
-				if s == nil {
+			// Convert domain currentRun.Segments → leaf DTOs
+			leafDTO := make([]dto.Segment, len(currentRun.Segments))
+			for i, seg := range currentRun.Segments {
+				leafDTO[i] = leafSegmentToDTO(seg)
+			}
+
+			splits := make([]*dto.Split, len(currentRun.Segments))
+			for _, sp := range currentRun.Splits {
+				if sp == nil {
 					continue
 				}
-				splits[s.SplitIndex] = &dto.Split{
-					SplitIndex:        s.SplitIndex,
-					SplitSegmentID:    s.SplitSegmentID.String(),
-					CurrentCumulative: s.CurrentCumulative.Milliseconds(),
-					CurrentDuration:   s.CurrentDuration.Milliseconds(),
+				splits[sp.SplitIndex] = &dto.Split{
+					SplitIndex:        sp.SplitIndex,
+					SplitSegmentID:    sp.SplitSegmentID.String(),
+					CurrentCumulative: sp.CurrentCumulative.Milliseconds(),
+					CurrentDuration:   sp.CurrentDuration.Milliseconds(),
 				}
 			}
 
 			dtoCurrentRun = &dto.Run{
 				ID:               currentRun.ID.String(),
-				SplitFileID:      sessionSplitFile.ID.String(),
+				SplitFileID:      sf.ID.String(),
 				SplitFileVersion: currentRun.SplitFileVersion,
 				TotalTime:        currentRun.TotalTime.Milliseconds(),
 				Splits:           splits,
 				Completed:        currentRun.Completed,
-				Segments:         segments,
+				Segments:         leafDTO, // flat leaf-only
 			}
 		}
 	}
+
 	return &dto.Session{
 		LoadedSplitFile:     dtoSplitFile,
 		CurrentRun:          dtoCurrentRun,
-		CurrentSegmentIndex: session.Index(),
-		SessionState:        dto.SessionState(session.State()),
-		Dirty:               session.Dirty(),
+		CurrentSegmentIndex: svc.Index(),
+		SessionState:        dto.SessionState(svc.State()),
+		Dirty:               svc.Dirty(),
 	}
 }

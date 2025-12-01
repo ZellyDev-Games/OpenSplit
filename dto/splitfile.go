@@ -37,18 +37,7 @@ type SplitFile struct {
 	WindowHeight int       `json:"window_height"`
 	WindowWidth  int       `json:"window_width"`
 	Runs         []Run     `json:"runs"`
-	Segments     []Segment `json:"segments"` // hierarchical tree now
+	Segments     []Segment `json:"segments"`
 	SOB          int64     `json:"sob"`
 	PB           *Run      `json:"pb"`
-}
-
-func FlattenSegments(list []Segment) []Segment {
-	var out []Segment
-	for _, s := range list {
-		out = append(out, s)
-		if len(s.Children) > 0 {
-			out = append(out, FlattenSegments(s.Children)...)
-		}
-	}
-	return out
 }

@@ -45,19 +45,13 @@ func DomainToSplitFile(sf *session.SplitFile) *dto.SplitFile {
 			TotalTime:        run.TotalTime.Milliseconds(),
 			Splits:           splits,
 			Completed:        run.Completed,
-			Segments:         runSegs,
+			Segments:         flattenDomainLeafSegmentsDomain(run.Segments),
 		})
 	}
 
-	// 3. Personal Best run – also flat
+	// add personal best if exists
 	var PB *dto.Run
 	if sf.PB != nil {
-		// Flat segments
-		pbSegs := make([]dto.Segment, 0, len(sf.PB.Segments))
-		for _, seg := range sf.PB.Segments {
-			pbSegs = append(pbSegs, leafSegmentToDTO(seg))
-		}
-
 		// Splits
 		splits := make([]*dto.Split, len(sf.PB.Segments))
 		for _, sp := range sf.PB.Splits {
@@ -79,7 +73,7 @@ func DomainToSplitFile(sf *session.SplitFile) *dto.SplitFile {
 			TotalTime:        sf.PB.TotalTime.Milliseconds(),
 			Splits:           splits,
 			Completed:        sf.PB.Completed,
-			Segments:         pbSegs,
+			Segments:         flattenDomainLeafSegmentsDomain(sf.PB.Segments),
 		}
 	}
 
@@ -117,20 +111,7 @@ func SplitFileToDomain(payload *dto.SplitFile) (*session.SplitFile, error) {
 	var PB *session.Run
 
 	for _, segment := range payload.Segments {
-		sid, err := uuid.Parse(segment.ID)
-		if err != nil {
-			logger.Error("failed to parse segment ID from payload payload")
-			return nil, err
-		}
-
-		segments = append(segments, session.Segment{
-			ID:       sid,
-			Name:     segment.Name,
-			Gold:     time.Duration(segment.Gold) * time.Millisecond,
-			Average:  time.Duration(segment.Average) * time.Millisecond,
-			PB:       time.Duration(segment.PB) * time.Millisecond,
-			Children: dtoChildrenToDomain(segment.Children),
-		})
+		segments = append(segments, dtoSegmentToDomain(segment))
 	}
 
 	for _, run := range payload.Runs {
@@ -285,18 +266,49 @@ func leafSegmentToDTO(seg session.Segment) dto.Segment {
 	}
 }
 
-func dtoChildrenToDomain(children []dto.Segment) []session.Segment {
-	out := []session.Segment{}
-	for _, c := range children {
-		cid, _ := uuid.Parse(c.ID)
-		out = append(out, session.Segment{
-			ID:       cid,
-			Name:     c.Name,
-			Gold:     time.Duration(c.Gold) * time.Millisecond,
-			Average:  time.Duration(c.Average) * time.Millisecond,
-			PB:       time.Duration(c.PB) * time.Millisecond,
-			Children: dtoChildrenToDomain(c.Children),
-		})
+func dtoSegmentToDomain(dtoSeg dto.Segment) session.Segment {
+	seg := session.Segment{
+		ID:      uuid.MustParse(dtoSeg.ID),
+		Name:    dtoSeg.Name,
+		Gold:    time.Duration(dtoSeg.Gold) * time.Millisecond,
+		Average: time.Duration(dtoSeg.Average) * time.Millisecond,
+		PB:      time.Duration(dtoSeg.PB) * time.Millisecond,
 	}
+
+	// recursively convert children
+	for _, child := range dtoSeg.Children {
+		seg.Children = append(seg.Children, dtoSegmentToDomain(child))
+	}
+
+	return seg
+}
+
+func flattenDTOLeafSegments(list []dto.Segment) []session.Segment {
+	out := []session.Segment{}
+
+	for _, seg := range list {
+		if len(seg.Children) == 0 {
+			// leaf — convert directly
+			out = append(out, dtoSegmentToDomain(seg))
+		} else {
+			// recurse deeper
+			out = append(out, flattenDTOLeafSegments(seg.Children)...)
+		}
+	}
+
+	return out
+}
+
+func flattenDomainLeafSegmentsDomain(list []session.Segment) []dto.Segment {
+	out := []dto.Segment{}
+
+	for _, seg := range list {
+		if len(seg.Children) == 0 {
+			out = append(out, leafSegmentToDTO(seg))
+		} else {
+			out = append(out, flattenDomainLeafSegmentsDomain(seg.Children)...)
+		}
+	}
+
 	return out
 }
