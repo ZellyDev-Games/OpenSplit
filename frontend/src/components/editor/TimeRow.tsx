@@ -3,9 +3,9 @@ import { useEffect, useRef } from "react";
 import { numeric, TimeParts } from "../splitter/Timer";
 
 type timeRowParams = {
-    idx: number;
+    id: string;
     time: TimeParts | null;
-    onChangeCallback: (idx: number, time: TimeParts) => void;
+    onChangeCallback: (idx: string, time: TimeParts) => void;
 };
 
 type timeRowElements = {
@@ -15,7 +15,7 @@ type timeRowElements = {
     centis: HTMLInputElement | null;
 };
 
-export default function TimeRow({ idx, time, onChangeCallback }: timeRowParams) {
+export default function TimeRow({ id, time, onChangeCallback }: timeRowParams) {
     // Get refs to all the parts so we can update all at once
     const timeRef = useRef<timeRowElements>({
         hours: null,
@@ -83,7 +83,7 @@ export default function TimeRow({ idx, time, onChangeCallback }: timeRowParams) 
             el.value = centisNum.toString() ?? "";
         }
 
-        onChangeCallback(idx, {
+        onChangeCallback(id, {
             negative: false,
             hours: hoursNum,
             minutes: minutesNum,
