@@ -1,4 +1,4 @@
-import { faTrash, faFolder } from "@fortawesome/free-solid-svg-icons";
+import { faFolder,faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useEffect, useRef, useState } from "react";
 
@@ -24,20 +24,20 @@ type SplitEditorParams = {
 };
 
 function addChildRecursive(list: SegmentPayload[], parent: SegmentPayload): SegmentPayload[] {
-    return list.map(item => {
+    return list.map((item) => {
         if (item.id === parent.id) {
             const child = new SegmentPayload(); // NEW CHILD, not copy of parent
             child.parent = item.id;
 
             return {
                 ...item,
-                children: [...item.children, child]
+                children: [...item.children, child],
             };
         }
 
         return {
             ...item,
-            children: addChildRecursive(item.children ?? [], parent)
+            children: addChildRecursive(item.children ?? [], parent),
         };
     });
 }
@@ -54,9 +54,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
     const [gameName, setGameName] = React.useState<string>(splitFilePayload?.game_name ?? "");
     const [gameCategory, setGameCategory] = React.useState<string>(splitFilePayload?.game_category ?? "");
     const [attempts, setAttempts] = React.useState<number>(splitFilePayload?.attempts ?? 0);
-    const [segments, setSegments] = useState<SegmentPayload[]>(
-        splitFilePayload?.segments ?? []
-    );
+    const [segments, setSegments] = useState<SegmentPayload[]>(splitFilePayload?.segments ?? []);
 
     // Speedrun search
     const [gameResults, setGameResults] = React.useState<Game[]>([]);
@@ -105,16 +103,16 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
     const addSegment = (parent: SegmentPayload | null) => {
         if (parent === null) {
             // top-level segment
-            setSegments(prev => [...prev, new SegmentPayload()]);
+            setSegments((prev) => [...prev, new SegmentPayload()]);
         } else {
             // subsegment
-            setSegments(prev => addChildRecursive(prev, parent));
+            setSegments((prev) => addChildRecursive(prev, parent));
         }
     };
 
     function updateSegmentName(id: string, name: string) {
         function updateRecursive(list: SegmentPayload[]): SegmentPayload[] {
-            return list.map(item => {
+            return list.map((item) => {
                 if (item.id === id) {
                     return { ...item, name };
                 }
@@ -130,20 +128,20 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
             });
         }
 
-        setSegments(prev => updateRecursive(prev));
+        setSegments((prev) => updateRecursive(prev));
     }
 
     const deleteSegment = (id: string) => {
         function deleteRecursive(list: SegmentPayload[]): SegmentPayload[] {
             return list
-                .filter(seg => seg.id !== id) // remove the target
-                .map(seg => ({
+                .filter((seg) => seg.id !== id) // remove the target
+                .map((seg) => ({
                     ...seg,
                     children: deleteRecursive(seg.children ?? []), // recurse downward
                 }));
         }
 
-        setSegments(prev => deleteRecursive(prev));
+        setSegments((prev) => deleteRecursive(prev));
     };
 
     const saveSplitFile = async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -174,14 +172,14 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
         const ms = partsToMS(time);
 
         function updateRecursive(list: SegmentPayload[]): SegmentPayload[] {
-            return list.map(seg => {
+            return list.map((seg) => {
                 if (seg.id === id) {
                     // Create a new segment payload with updated time
                     return SegmentPayload.createFrom({
                         ...seg,
                         pb: isBest ? ms : seg.pb,
                         average: isBest ? seg.average : ms,
-                        children: seg.children   // keep children intact
+                        children: seg.children, // keep children intact
                     });
                 }
 
@@ -197,30 +195,23 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
             });
         }
 
-        setSegments(prev => updateRecursive(prev));
+        setSegments((prev) => updateRecursive(prev));
     };
 
     function renderRows(list: SegmentPayload[], depth: number) {
-        return list.map((segment, idx) => (
+        return list.map((segment) => (
             <React.Fragment key={segment.id}>
                 <tr>
                     <td></td>
                     <td style={{ paddingLeft: depth * 20 }}>
-                        <input
-                            value={segment.name}
-                            onChange={(e) =>
-                                updateSegmentName(segment.id, e.target.value)
-                            }
-                        />
+                        <input value={segment.name} onChange={(e) => updateSegmentName(segment.id, e.target.value)} />
                     </td>
 
                     <td>
                         <TimeRow
                             id={segment.id}
                             time={segment.average ? msToParts(segment.average) : null}
-                            onChangeCallback={(id, ts) =>
-                                handleTimeChange(id, ts, false)
-                            }
+                            onChangeCallback={(id, ts) => handleTimeChange(id, ts, false)}
                         />
                     </td>
 
@@ -228,9 +219,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                         <TimeRow
                             id={segment.id}
                             time={segment.pb ? msToParts(segment.pb) : null}
-                            onChangeCallback={(id, ts) =>
-                                handleTimeChange(id, ts, true)
-                            }
+                            onChangeCallback={(id, ts) => handleTimeChange(id, ts, true)}
                         />
                     </td>
 
@@ -243,8 +232,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                     </td>
                 </tr>
 
-                {segment.children.length > 0 &&
-                    renderRows(segment.children, depth + 1)}
+                {segment.children.length > 0 && renderRows(segment.children, depth + 1)}
             </React.Fragment>
         ));
     }
@@ -340,15 +328,11 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                                         <th>
                                             Personal Best <small>(HH:MM:SS.ccc)</small>
                                         </th>
-                                        <th style={{ width: "5%" }}>
-                                            Add Subsegment
-                                        </th>
+                                        <th style={{ width: "5%" }}>Add Subsegment</th>
                                         <th style={{ width: "5%" }}></th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                {renderRows(segments, 0)}
-                                </tbody>
+                                <tbody>{renderRows(segments, 0)}</tbody>
                             </table>
                         )}
                     </div>

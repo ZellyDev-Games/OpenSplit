@@ -32,12 +32,6 @@ func DomainToSplitFile(sf *session.SplitFile) *dto.SplitFile {
 			}
 		}
 
-		// Flat segments for this run (leaf-only)
-		runSegs := make([]dto.Segment, 0, len(run.Segments))
-		for _, seg := range run.Segments {
-			runSegs = append(runSegs, leafSegmentToDTO(seg))
-		}
-
 		runs = append(runs, dto.Run{
 			ID:               run.ID.String(),
 			SplitFileID:      sf.ID.String(),
@@ -281,22 +275,6 @@ func dtoSegmentToDomain(dtoSeg dto.Segment) session.Segment {
 	}
 
 	return seg
-}
-
-func flattenDTOLeafSegments(list []dto.Segment) []session.Segment {
-	out := []session.Segment{}
-
-	for _, seg := range list {
-		if len(seg.Children) == 0 {
-			// leaf — convert directly
-			out = append(out, dtoSegmentToDomain(seg))
-		} else {
-			// recurse deeper
-			out = append(out, flattenDTOLeafSegments(seg.Children)...)
-		}
-	}
-
-	return out
 }
 
 func flattenDomainLeafSegmentsDomain(list []session.Segment) []dto.Segment {

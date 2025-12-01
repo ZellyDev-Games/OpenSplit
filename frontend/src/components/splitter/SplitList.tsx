@@ -1,6 +1,6 @@
 import { JSX, useEffect, useState } from "react";
-import { EventsOn } from "../../../wailsjs/runtime";
 
+import { EventsOn } from "../../../wailsjs/runtime";
 import SegmentPayload from "../../models/segmentPayload";
 import SessionPayload from "../../models/sessionPayload";
 import { displayFormattedTimeParts, formatDuration, msToParts } from "./Timer";
@@ -61,9 +61,7 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
 
             sessionPayload.current_run.splits.forEach((c) => {
                 if (c != null) {
-                    const formatted = displayFormattedTimeParts(
-                        formatDuration(msToParts(c.current_cumulative))
-                    );
+                    const formatted = displayFormattedTimeParts(formatDuration(msToParts(c.current_cumulative)));
 
                     completed.push({
                         segmentID: c.split_segment_id,
@@ -80,9 +78,7 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
     }, [sessionPayload]);
 
     // get hierarchy and flatten it
-    const flatSegments: FlatSegment[] = flattenSegments(
-        sessionPayload.loaded_split_file?.segments ?? []
-    );
+    const flatSegments: FlatSegment[] = flattenSegments(sessionPayload.loaded_split_file?.segments ?? []);
 
     // Only leaves are real timed split points
     const leafSegments = flatSegments.filter((s) => s.isLeaf);
@@ -119,11 +115,12 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
         // Show live ahead/behind only for current active leaf
         if (leafIndex === sessionPayload.current_segment_index && diff > -30000) {
             const t = displayFormattedTimeParts(formatDuration(msToParts(diff), true));
-            let className = diff < 0 ? "timer-ahead" : "timer-behind";
+            const className = diff < 0 ? "timer-ahead" : "timer-behind";
 
             return (
                 <strong className={className}>
-                    {t[0]}<small>{t[1]}</small>
+                    {t[0]}
+                    <small>{t[1]}</small>
                 </strong>
             );
         }
@@ -132,7 +129,8 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
         const t = displayFormattedTimeParts(formatDuration(msToParts(target)));
         return (
             <strong>
-                {t[0]}<small>{t[1]}</small>
+                {t[0]}
+                <small>{t[1]}</small>
             </strong>
         );
     };
@@ -155,24 +153,18 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
         const isSelected = leafIndex === sessionPayload.current_segment_index;
 
         return (
-            <tr
-                key={seg.id}
-                className={isSelected ? "selected" : ""}
-            >
+            <tr key={seg.id} className={isSelected ? "selected" : ""}>
                 <td className="splitName" style={{ paddingLeft: seg.depth * 16 }}>
                     {seg.name}
                 </td>
 
-                <td className="splitComparison">
-                    {getSegmentDisplayTime(leafIndex, seg)}
-                </td>
+                <td className="splitComparison">{getSegmentDisplayTime(leafIndex, seg)}</td>
             </tr>
         );
     });
 
     // Final row separated
     const leafRows = rows.filter((r) => r.props.className !== "parentRow");
-    const displayRows = leafRows.slice(0, -1);
     const finalRow = leafRows.at(-1);
 
     return (
