@@ -28,7 +28,7 @@ func (t *MockTimer) IsRunning() bool {
 	return t.Running
 }
 
-func (t *MockTimer) Startup(ctx context.Context) {
+func (t *MockTimer) Startup(_ context.Context) {
 	t.StartupCalled = true
 }
 
@@ -90,13 +90,13 @@ func (r *MockRepository) Load() (*SplitFile, error) {
 	}, nil
 }
 
-func (m *MockRepository) Save(*SplitFile) error {
-	m.SaveCalled++
+func (r *MockRepository) Save(_ *SplitFile) error {
+	r.SaveCalled++
 	return nil
 }
 
-func (m *MockRepository) SaveAs(*SplitFile) error {
-	m.SaveAsCalled++
+func (r *MockRepository) SaveAs(_ *SplitFile) error {
+	r.SaveAsCalled++
 	return nil
 }
 

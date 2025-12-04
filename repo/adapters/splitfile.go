@@ -10,95 +10,80 @@ import (
 	"github.com/zellydev-games/opensplit/session"
 )
 
-func DomainToSplitFile(splitFile *session.SplitFile) *dto.SplitFile {
-	var segments []dto.Segment
-	var runs []dto.Run
-	var PB *dto.Run
-
-	for _, segment := range splitFile.Segments {
-		segments = append(segments, dto.Segment{
-			ID:      segment.ID.String(),
-			Name:    segment.Name,
-			Gold:    segment.Gold.Milliseconds(),
-			Average: segment.Average.Milliseconds(),
-			PB:      segment.PB.Milliseconds(),
-		})
+func DomainToSplitFile(sf *session.SplitFile) *dto.SplitFile {
+	var hierarchicalSegments []dto.Segment
+	for _, seg := range sf.Segments {
+		hierarchicalSegments = append(hierarchicalSegments, domainSegmentToDTO(seg))
 	}
 
-	for _, run := range splitFile.Runs {
-		var splits = make([]*dto.Split, len(run.Segments))
-		for _, split := range run.Splits {
-			if split == nil {
+	var runs []dto.Run
+	for _, run := range sf.Runs {
+		// Splits
+		splits := make([]*dto.Split, len(run.Segments))
+		for _, sp := range run.Splits {
+			if sp == nil {
 				continue
 			}
-			splits[split.SplitIndex] = &dto.Split{
-				SplitIndex:        split.SplitIndex,
-				SplitSegmentID:    split.SplitSegmentID.String(),
-				CurrentCumulative: split.CurrentCumulative.Milliseconds(),
-				CurrentDuration:   split.CurrentDuration.Milliseconds(),
+			splits[sp.SplitIndex] = &dto.Split{
+				SplitIndex:        sp.SplitIndex,
+				SplitSegmentID:    sp.SplitSegmentID.String(),
+				CurrentCumulative: sp.CurrentCumulative.Milliseconds(),
+				CurrentDuration:   sp.CurrentDuration.Milliseconds(),
 			}
 		}
 
 		runs = append(runs, dto.Run{
 			ID:               run.ID.String(),
-			SplitFileID:      splitFile.ID.String(),
-			SplitFileVersion: splitFile.Version,
+			SplitFileID:      sf.ID.String(),
+			SplitFileVersion: sf.Version,
 			TotalTime:        run.TotalTime.Milliseconds(),
 			Splits:           splits,
 			Completed:        run.Completed,
-			Segments:         segments,
+			Segments:         flattenDomainLeafSegmentsDomain(run.Segments),
 		})
 	}
 
-	if splitFile.PB != nil {
-		phSegments := make([]dto.Segment, len(splitFile.PB.Segments))
-		for _, segment := range splitFile.PB.Segments {
-			phSegments = append(phSegments, dto.Segment{
-				ID:      segment.ID.String(),
-				Name:    segment.Name,
-				Gold:    segment.Gold.Milliseconds(),
-				Average: segment.Average.Milliseconds(),
-				PB:      segment.PB.Milliseconds(),
-			})
-		}
-
-		var splits = make([]*dto.Split, len(splitFile.PB.Segments))
-		for _, s := range splitFile.PB.Splits {
-			if s == nil {
+	// add personal best if exists
+	var PB *dto.Run
+	if sf.PB != nil {
+		// Splits
+		splits := make([]*dto.Split, len(sf.PB.Segments))
+		for _, sp := range sf.PB.Splits {
+			if sp == nil {
 				continue
 			}
-			splits[s.SplitIndex] = &dto.Split{
-				SplitIndex:        s.SplitIndex,
-				SplitSegmentID:    s.SplitSegmentID.String(),
-				CurrentCumulative: s.CurrentCumulative.Milliseconds(),
-				CurrentDuration:   s.CurrentDuration.Milliseconds(),
+			splits[sp.SplitIndex] = &dto.Split{
+				SplitIndex:        sp.SplitIndex,
+				SplitSegmentID:    sp.SplitSegmentID.String(),
+				CurrentCumulative: sp.CurrentCumulative.Milliseconds(),
+				CurrentDuration:   sp.CurrentDuration.Milliseconds(),
 			}
 		}
 
 		PB = &dto.Run{
-			ID:               splitFile.PB.ID.String(),
-			SplitFileID:      splitFile.ID.String(),
-			SplitFileVersion: splitFile.Version,
-			TotalTime:        splitFile.PB.TotalTime.Milliseconds(),
+			ID:               sf.PB.ID.String(),
+			SplitFileID:      sf.ID.String(),
+			SplitFileVersion: sf.Version,
+			TotalTime:        sf.PB.TotalTime.Milliseconds(),
 			Splits:           splits,
-			Completed:        splitFile.PB.Completed,
-			Segments:         phSegments,
+			Completed:        sf.PB.Completed,
+			Segments:         flattenDomainLeafSegmentsDomain(sf.PB.Segments),
 		}
 	}
 
 	return &dto.SplitFile{
-		ID:           splitFile.ID.String(),
-		GameName:     splitFile.GameName,
-		GameCategory: splitFile.GameCategory,
+		ID:           sf.ID.String(),
+		GameName:     sf.GameName,
+		GameCategory: sf.GameCategory,
+		Version:      sf.Version,
+		Segments:     hierarchicalSegments,
 		Runs:         runs,
-		Segments:     segments,
-		SOB:          splitFile.SOB.Milliseconds(),
-		WindowWidth:  splitFile.WindowWidth,
-		WindowHeight: splitFile.WindowHeight,
-		WindowX:      splitFile.WindowX,
-		WindowY:      splitFile.WindowY,
-		Version:      splitFile.Version,
 		PB:           PB,
+		SOB:          sf.SOB.Milliseconds(),
+		WindowX:      sf.WindowX,
+		WindowY:      sf.WindowY,
+		WindowWidth:  sf.WindowWidth,
+		WindowHeight: sf.WindowHeight,
 	}
 }
 
@@ -120,19 +105,7 @@ func SplitFileToDomain(payload *dto.SplitFile) (*session.SplitFile, error) {
 	var PB *session.Run
 
 	for _, segment := range payload.Segments {
-		sid, err := uuid.Parse(segment.ID)
-		if err != nil {
-			logger.Error("failed to parse segment ID from payload payload")
-			return nil, err
-		}
-
-		segments = append(segments, session.Segment{
-			ID:      sid,
-			Name:    segment.Name,
-			Gold:    time.Duration(segment.Gold) * time.Millisecond,
-			Average: time.Duration(segment.Average) * time.Millisecond,
-			PB:      time.Duration(segment.PB) * time.Millisecond,
-		})
+		segments = append(segments, dtoSegmentToDomain(segment))
 	}
 
 	for _, run := range payload.Runs {
@@ -257,4 +230,63 @@ func FrontendToSplitFile(payload string) (*dto.SplitFile, error) {
 
 func SplitFileToFrontEnd(sf *dto.SplitFile) ([]byte, error) {
 	return json.Marshal(sf)
+}
+
+func domainSegmentToDTO(seg session.Segment) dto.Segment {
+	out := dto.Segment{
+		ID:       seg.ID.String(),
+		Name:     seg.Name,
+		Gold:     seg.Gold.Milliseconds(),
+		Average:  seg.Average.Milliseconds(),
+		PB:       seg.PB.Milliseconds(),
+		Children: []dto.Segment{},
+	}
+
+	for _, c := range seg.Children {
+		out.Children = append(out.Children, domainSegmentToDTO(c))
+	}
+
+	return out
+}
+
+func leafSegmentToDTO(seg session.Segment) dto.Segment {
+	return dto.Segment{
+		ID:       seg.ID.String(),
+		Name:     seg.Name,
+		Gold:     seg.Gold.Milliseconds(),
+		Average:  seg.Average.Milliseconds(),
+		PB:       seg.PB.Milliseconds(),
+		Children: []dto.Segment{},
+	}
+}
+
+func dtoSegmentToDomain(dtoSeg dto.Segment) session.Segment {
+	seg := session.Segment{
+		ID:      uuid.MustParse(dtoSeg.ID),
+		Name:    dtoSeg.Name,
+		Gold:    time.Duration(dtoSeg.Gold) * time.Millisecond,
+		Average: time.Duration(dtoSeg.Average) * time.Millisecond,
+		PB:      time.Duration(dtoSeg.PB) * time.Millisecond,
+	}
+
+	// recursively convert children
+	for _, child := range dtoSeg.Children {
+		seg.Children = append(seg.Children, dtoSegmentToDomain(child))
+	}
+
+	return seg
+}
+
+func flattenDomainLeafSegmentsDomain(list []session.Segment) []dto.Segment {
+	out := []dto.Segment{}
+
+	for _, seg := range list {
+		if len(seg.Children) == 0 {
+			out = append(out, leafSegmentToDTO(seg))
+		} else {
+			out = append(out, flattenDomainLeafSegmentsDomain(seg.Children)...)
+		}
+	}
+
+	return out
 }
