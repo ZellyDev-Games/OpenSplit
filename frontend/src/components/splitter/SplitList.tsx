@@ -17,109 +17,155 @@ type SplitListParameters = {
     sessionPayload: SessionPayload;
 };
 
+type FlatSegment = SegmentPayload & {
+    depth: number;
+    isLeaf: boolean;
+};
+
+function flattenSegments(list: SegmentPayload[], depth = 0): FlatSegment[] {
+    const out: FlatSegment[] = [];
+
+    for (const seg of list) {
+        const isLeaf = !seg.children || seg.children.length === 0;
+
+        out.push({
+            ...seg,
+            depth,
+            isLeaf,
+        });
+
+        if (!isLeaf) {
+            out.push(...flattenSegments(seg.children, depth + 1));
+        }
+    }
+
+    return out;
+}
+
 export default function SplitList({ sessionPayload }: SplitListParameters) {
     const [completions, setCompletions] = useState<Completion[]>([]);
     const [compareAgainst] = useState<CompareAgainst>("average");
     const [time, setTime] = useState(0);
 
+    // subscribe to timer updates
     useEffect(() => {
         return EventsOn("timer:update", (val: number) => {
             setTime(val);
         });
     }, []);
 
+    // completed splits from current run
     useEffect(() => {
         if (sessionPayload?.current_run) {
-            const completions: Completion[] = [];
+            const completed: Completion[] = [];
+
             sessionPayload.current_run.splits.forEach((c) => {
                 if (c != null) {
-                    const time = displayFormattedTimeParts(formatDuration(msToParts(c.current_cumulative)));
-                    completions.push({
+                    const formatted = displayFormattedTimeParts(formatDuration(msToParts(c.current_cumulative)));
+
+                    completed.push({
                         segmentID: c.split_segment_id,
-                        time: `${time[0]}${time[1]}`,
+                        time: `${formatted[0]}${formatted[1]}`,
                         raw: c.current_duration,
                     });
                 }
             });
 
-            setCompletions(completions);
+            setCompletions(completed);
         } else {
             setCompletions([]);
         }
     }, [sessionPayload]);
 
-    const getSegmentDisplayTime = (index: number, segment: SegmentPayload): JSX.Element => {
+    // get hierarchy and flatten it
+    const flatSegments: FlatSegment[] = flattenSegments(sessionPayload.loaded_split_file?.segments ?? []);
+
+    // Only leaves are real timed split points
+    const leafSegments = flatSegments.filter((s) => s.isLeaf);
+
+    // Segment time display
+    const getSegmentDisplayTime = (leafIndex: number, segment: SegmentPayload): JSX.Element => {
         const gold = segment.gold;
         const average = segment.average;
         const best = segment.pb;
-        const target = compareAgainst == "average" ? average : best;
 
-        const completion = completions.find((comp) => {
-            return comp.segmentID === segment.id;
-        });
+        const target = compareAgainst === "average" ? average : best;
 
+        const completion = completions.find((comp) => comp.segmentID === segment.id);
+
+        // Completed split
         if (completion) {
             let className = "";
+
             if (gold && completion.raw < gold) {
                 className = "timer-gold";
-            } else {
-                if (target) {
-                    if (completion.raw > target) {
-                        className = "timer-behind";
-                    }
-
-                    if (completion.raw < target) {
-                        className = "timer-ahead";
-                    }
-                }
+            } else if (target) {
+                if (completion.raw > target) className = "timer-behind";
+                if (completion.raw < target) className = "timer-ahead";
             }
+
             return <strong className={className}>{completion.time}</strong>;
-        } else {
-            if (target === 0) {
-                return <>-</>;
-            }
+        }
 
-            const diff = time - target;
-            let className = "";
+        // Not completed yet
+        if (!target) return <>-</>;
 
-            if (index === sessionPayload.current_segment_index && diff > -30000) {
-                if (time < target) {
-                    className = "timer-ahead";
-                }
-                if (time > target) {
-                    className = "timer-behind";
-                }
-                const t = displayFormattedTimeParts(formatDuration(msToParts(diff), true));
-                return (
-                    <strong className={className}>
-                        {`${t[0]}`}
-                        <small>{`${t[1]}`}</small>
-                    </strong>
-                );
-            }
+        const diff = time - target;
 
-            const t = displayFormattedTimeParts(formatDuration(msToParts(target)));
+        // Show live ahead/behind only for current active leaf
+        if (leafIndex === sessionPayload.current_segment_index && diff > -30000) {
+            const t = displayFormattedTimeParts(formatDuration(msToParts(diff), true));
+            const className = diff < 0 ? "timer-ahead" : "timer-behind";
+
             return (
                 <strong className={className}>
-                    {`${t[0]}`}
-                    <small>{`${t[1]}`}</small>
+                    {t[0]}
+                    <small>{t[1]}</small>
                 </strong>
             );
         }
+
+        // Default target display
+        const t = displayFormattedTimeParts(formatDuration(msToParts(target)));
+        return (
+            <strong>
+                {t[0]}
+                <small>{t[1]}</small>
+            </strong>
+        );
     };
 
-    const segmentRows =
-        sessionPayload.loaded_split_file &&
-        sessionPayload.loaded_split_file.segments.map((segment, index) => (
-            <tr key={segment.id ?? index} className={sessionPayload.current_segment_index === index ? "selected" : ""}>
-                <td className="splitName">{segment.name}</td>
-                <td className="splitComparison">{getSegmentDisplayTime(index, segment)}</td>
-            </tr>
-        ));
+    // row renderer
+    const rows = flatSegments.map((seg) => {
+        if (!seg.isLeaf) {
+            return (
+                <tr key={seg.id} className="parentRow">
+                    <td className="splitName" style={{ paddingLeft: seg.depth * 16 }}>
+                        <strong>{seg.name}</strong>
+                    </td>
+                    <td className="splitComparison"></td>
+                </tr>
+            );
+        }
 
-    const rows = Array.isArray(segmentRows) ? segmentRows : [];
-    const displayRows = rows.slice(0, -1);
-    const finalRow = rows.at(-1) ?? null;
+        // leaf/real segment
+        const leafIndex = leafSegments.findIndex((l) => l.id === seg.id);
+        const isSelected = leafIndex === sessionPayload.current_segment_index;
+
+        return (
+            <tr key={seg.id} className={isSelected ? "selected" : ""}>
+                <td className="splitName" style={{ paddingLeft: seg.depth * 16 }}>
+                    {seg.name}
+                </td>
+
+                <td className="splitComparison">{getSegmentDisplayTime(leafIndex, seg)}</td>
+            </tr>
+        );
+    });
+
+    // Final row separated
+    const leafRows = rows.filter((r) => r.props.className !== "parentRow");
+    const finalRow = leafRows.at(-1);
 
     return (
         <div className="splitList">
@@ -131,11 +177,13 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
                     <small>{sessionPayload.loaded_split_file?.game_category}</small>
                 </h2>
             </div>
+
             <div className="splitContainer">
                 <table cellSpacing="0">
-                    <tbody>{displayRows}</tbody>
+                    <tbody>{rows}</tbody>
                 </table>
             </div>
+
             <div className="finalSegment">
                 <table>
                     <tbody>{finalRow}</tbody>

@@ -1,11 +1,12 @@
 package dto
 
 type Segment struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Gold    int64  `json:"gold"`
-	Average int64  `json:"average"`
-	PB      int64  `json:"pb"`
+	ID       string    `json:"id"`
+	Name     string    `json:"name"`
+	Gold     int64     `json:"gold"`
+	Average  int64     `json:"average"`
+	PB       int64     `json:"pb"`
+	Children []Segment `json:"children"`
 }
 
 type Split struct {

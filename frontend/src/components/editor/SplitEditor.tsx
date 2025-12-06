@@ -1,4 +1,4 @@
-import { faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faFolder,faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useEffect, useRef, useState } from "react";
 
@@ -23,6 +23,25 @@ type SplitEditorParams = {
     speedRunAPIBase: string;
 };
 
+function addChildRecursive(list: SegmentPayload[], parent: SegmentPayload): SegmentPayload[] {
+    return list.map((item) => {
+        if (item.id === parent.id) {
+            const child = new SegmentPayload(); // NEW CHILD, not copy of parent
+            child.parent = item.id;
+
+            return {
+                ...item,
+                children: [...item.children, child],
+            };
+        }
+
+        return {
+            ...item,
+            children: addChildRecursive(item.children ?? [], parent),
+        };
+    });
+}
+
 export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: SplitEditorParams) {
     // Clear modal results which will close the modal when we click outside the modal
     const clickOutsideRef = useRef<HTMLDivElement | null>(null);
@@ -34,8 +53,8 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
     const [splitFileLoaded] = useState<boolean>(false);
     const [gameName, setGameName] = React.useState<string>(splitFilePayload?.game_name ?? "");
     const [gameCategory, setGameCategory] = React.useState<string>(splitFilePayload?.game_category ?? "");
-    const [segments, setSegments] = React.useState<SegmentPayload[]>(splitFilePayload?.segments ?? []);
     const [attempts, setAttempts] = React.useState<number>(splitFilePayload?.attempts ?? 0);
+    const [segments, setSegments] = useState<SegmentPayload[]>(splitFilePayload?.segments ?? []);
 
     // Speedrun search
     const [gameResults, setGameResults] = React.useState<Game[]>([]);
@@ -81,29 +100,48 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
         }, 500);
     };
 
-    const addSegment = () => {
-        setSegments((prev) => [...prev, new SegmentPayload()]);
+    const addSegment = (parent: SegmentPayload | null) => {
+        if (parent === null) {
+            // top-level segment
+            setSegments((prev) => [...prev, new SegmentPayload()]);
+        } else {
+            // subsegment
+            setSegments((prev) => addChildRecursive(prev, parent));
+        }
     };
 
-    const updateSegmentName = (idx: number, name: string) => {
-        setSegments((prev) =>
-            prev.map((s, i) => {
-                if (idx === i) {
-                    const newSegment = new SegmentPayload();
-                    newSegment.id = s.id;
-                    newSegment.average = s.average;
-                    newSegment.pb = s.pb;
-                    newSegment.gold = s.gold;
-                    newSegment.name = name;
-                    return newSegment;
+    function updateSegmentName(id: string, name: string) {
+        function updateRecursive(list: SegmentPayload[]): SegmentPayload[] {
+            return list.map((item) => {
+                if (item.id === id) {
+                    return { ...item, name };
                 }
-                return s;
-            }),
-        );
-    };
 
-    const deleteSegment = (idx: number) => {
-        setSegments((prev) => prev.filter((_, i) => i !== idx));
+                if (item.children.length > 0) {
+                    return {
+                        ...item,
+                        children: updateRecursive(item.children),
+                    };
+                }
+
+                return item;
+            });
+        }
+
+        setSegments((prev) => updateRecursive(prev));
+    }
+
+    const deleteSegment = (id: string) => {
+        function deleteRecursive(list: SegmentPayload[]): SegmentPayload[] {
+            return list
+                .filter((seg) => seg.id !== id) // remove the target
+                .map((seg) => ({
+                    ...seg,
+                    children: deleteRecursive(seg.children ?? []), // recurse downward
+                }));
+        }
+
+        setSegments((prev) => deleteRecursive(prev));
     };
 
     const saveSplitFile = async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -130,30 +168,74 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
         await Dispatch(Command.SUBMIT, payload);
     };
 
-    const handleTimeChange = (idx: number, time: TimeParts, isBest: boolean) => {
+    const handleTimeChange = (id: string, time: TimeParts, isBest: boolean) => {
         const ms = partsToMS(time);
-        const newSegments = [];
-        for (let i = 0; i < segments.length; i++) {
-            if (idx != i) {
-                newSegments.push({ ...segments[i] });
-            } else {
-                const s = { ...segments[i] };
-                const pb = isBest ? ms : s.pb;
-                const avg = isBest ? s.average : ms;
-                newSegments.push(
-                    SegmentPayload.createFrom({
-                        id: s.id,
-                        name: s.name,
-                        gold: s.gold,
-                        pb: pb,
-                        average: avg,
-                    }),
-                );
-            }
+
+        function updateRecursive(list: SegmentPayload[]): SegmentPayload[] {
+            return list.map((seg) => {
+                if (seg.id === id) {
+                    // Create a new segment payload with updated time
+                    return SegmentPayload.createFrom({
+                        ...seg,
+                        pb: isBest ? ms : seg.pb,
+                        average: isBest ? seg.average : ms,
+                        children: seg.children, // keep children intact
+                    });
+                }
+
+                // recurse deeper
+                if (seg.children && seg.children.length > 0) {
+                    return {
+                        ...seg,
+                        children: updateRecursive(seg.children),
+                    };
+                }
+
+                return seg;
+            });
         }
 
-        setSegments(newSegments);
+        setSegments((prev) => updateRecursive(prev));
     };
+
+    function renderRows(list: SegmentPayload[], depth: number) {
+        return list.map((segment) => (
+            <React.Fragment key={segment.id}>
+                <tr>
+                    <td></td>
+                    <td style={{ paddingLeft: depth * 20 }}>
+                        <input value={segment.name} onChange={(e) => updateSegmentName(segment.id, e.target.value)} />
+                    </td>
+
+                    <td>
+                        <TimeRow
+                            id={segment.id}
+                            time={segment.average ? msToParts(segment.average) : null}
+                            onChangeCallback={(id, ts) => handleTimeChange(id, ts, false)}
+                        />
+                    </td>
+
+                    <td>
+                        <TimeRow
+                            id={segment.id}
+                            time={segment.pb ? msToParts(segment.pb) : null}
+                            onChangeCallback={(id, ts) => handleTimeChange(id, ts, true)}
+                        />
+                    </td>
+
+                    <td onClick={() => addSegment(segment)}>
+                        <FontAwesomeIcon icon={faFolder} />
+                    </td>
+
+                    <td onClick={() => deleteSegment(segment.id)}>
+                        <FontAwesomeIcon icon={faTrash} />
+                    </td>
+                </tr>
+
+                {segment.children.length > 0 && renderRows(segment.children, depth + 1)}
+            </React.Fragment>
+        ));
+    }
 
     return (
         <div className="container form-container">
@@ -227,7 +309,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
 
                 <div style={{ marginTop: 20, marginBottom: 20 }} className="row">
                     <div>
-                        <button onClick={addSegment} type="button">
+                        <button onClick={() => addSegment(null)} type="button">
                             Add Segment
                         </button>
                     </div>
@@ -246,41 +328,11 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                                         <th>
                                             Personal Best <small>(HH:MM:SS.ccc)</small>
                                         </th>
+                                        <th style={{ width: "5%" }}>Add Subsegment</th>
                                         <th style={{ width: "5%" }}></th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    {segments.map((segment, idx) => (
-                                        <tr key={idx}>
-                                            <td style={{ textAlign: "center" }}>{idx + 1}</td>
-                                            <td>
-                                                <input
-                                                    onChange={(e) => updateSegmentName(idx, e.target.value)}
-                                                    value={segment.name}
-                                                />
-                                            </td>
-                                            <td>
-                                                <TimeRow
-                                                    idx={idx}
-                                                    time={segment.average ? msToParts(segment.average) : null}
-                                                    onChangeCallback={(idx, ts) => handleTimeChange(idx, ts, false)}
-                                                />
-                                            </td>
-                                            <td>
-                                                <TimeRow
-                                                    idx={idx}
-                                                    time={segment.pb ? msToParts(segment.pb) : null}
-                                                    onChangeCallback={(idx, ts) => handleTimeChange(idx, ts, true)}
-                                                />
-                                            </td>
-                                            <td style={{ textAlign: "center" }}>
-                                                <div onClick={() => deleteSegment(idx)}>
-                                                    <FontAwesomeIcon icon={faTrash} />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
+                                <tbody>{renderRows(segments, 0)}</tbody>
                             </table>
                         )}
                     </div>
