@@ -5,7 +5,7 @@ export function Authorize():Promise<string>;
 
 export function CheckTokens():Promise<boolean>;
 
-export function GenTokens(arg1:string):Promise<void>;
+export function GenTokens(arg1:string):Promise<string|string>;
 
 export function GetAccessToken():Promise<string>;
 
