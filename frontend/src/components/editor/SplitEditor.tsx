@@ -157,7 +157,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
             window_width: splitFilePayload?.window_width ?? 350,
             game_name: gameName,
             game_category: gameCategory,
-            segments: segments, // this is fine now (SegmentPayload[])
+            segments: segments,
             attempts: Number(attempts),
             pb: splitFilePayload?.pb ?? null,
             sob: splitFilePayload?.sob ?? 0,
