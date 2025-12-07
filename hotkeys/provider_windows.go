@@ -161,7 +161,7 @@ func (w *WindowsManager) Unhook() error {
 // defined by the Win32 API: https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelkeyboardproc
 func (w *WindowsManager) handleKeyDown(nCode uintptr, identifier uintptr, kbHookStruct uintptr) uintptr {
 	// If nCode is less than zero we're obligated to pass the message along
-	if nCode < 0 {
+	if int32(nCode) < 0 {
 		ret, _, _ := callNextHook.Call(0, nCode, identifier, kbHookStruct)
 		return ret
 	}

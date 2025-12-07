@@ -14,8 +14,6 @@ export default class SegmentPayload {
         this.average = init?.average ?? 0;
         this.pb = init?.pb ?? 0;
         this.parent = init?.parent ?? null;
-        this.children = (init?.children ?? []).map(
-            (c) => new SegmentPayload(c)
-        );
+        this.children = (init?.children ?? []).map((c) => new SegmentPayload(c));
     }
 }

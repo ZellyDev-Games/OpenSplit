@@ -1,14 +1,14 @@
-import {faFolder, faTrash} from "@fortawesome/free-solid-svg-icons";
-import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import React, {useEffect, useRef, useState} from "react";
+import { faFolder, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import React, { useEffect, useRef, useState } from "react";
 
-import {Dispatch} from "../../../wailsjs/go/dispatcher/Service";
-import {WindowCenter, WindowSetSize} from "../../../wailsjs/runtime";
-import {Command} from "../../App";
-import {useClickOutside} from "../../hooks/useClickOutside";
+import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
+import { WindowCenter, WindowSetSize } from "../../../wailsjs/runtime";
+import { Command } from "../../App";
+import { useClickOutside } from "../../hooks/useClickOutside";
 import SegmentPayload from "../../models/segmentPayload";
 import SplitFilePayload from "../../models/splitFilePayload";
-import {msToParts, partsToMS, TimeParts} from "../splitter/Timer";
+import { msToParts, partsToMS, TimeParts } from "../splitter/Timer";
 import TimeRow from "./TimeRow";
 
 type Game = {
