@@ -22,14 +22,42 @@ func (r *Running) OnEnter() error {
 	if machine.hotkeyProvider != nil {
 		err := machine.hotkeyProvider.StartHook(func(data keyinfo.KeyData) {
 			for command, keyData := range machine.configService.KeyConfig {
-				if keyData.KeyCode == data.KeyCode {
+				if keyData.KeyCode != data.KeyCode {
+					continue
+				}
+
+				if len(keyData.Modifiers) > 0 {
+					if len(keyData.Modifiers) != len(data.Modifiers) {
+						continue
+					}
+
+					// Build lookup of pressed modifiers
+					sent := make(map[int]struct{}, len(data.Modifiers))
+					for _, m := range data.Modifiers {
+						sent[m] = struct{}{}
+					}
+
+					// Ensure every required modifier exists
+					match := true
+					for _, required := range keyData.Modifiers {
+						if _, ok := sent[required]; !ok {
+							match = false
+							break
+						}
+					}
+
+					if !match {
+						continue
+					}
 					_, _ = machine.ReceiveDispatch(command, nil)
+					return
+				} else {
+					_, _ = machine.ReceiveDispatch(command, nil)
+					return
 				}
 			}
 		})
-		if err != nil {
-			return err
-		}
+		return err
 	}
 
 	machine.runtimeProvider.EventsEmit("state:enter", RUNNING, sessionDto)

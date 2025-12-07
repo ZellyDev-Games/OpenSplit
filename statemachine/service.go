@@ -43,6 +43,7 @@ type RuntimeProvider interface {
 type HotkeyProvider interface {
 	StartHook(func(data keyinfo.KeyData)) error
 	Unhook() error
+	ModCodeToString(int) string
 }
 
 // state implementations can be operated by the Service and do meaningful work, and communicate state to the frontend
@@ -106,7 +107,7 @@ func (s *Service) ReceiveDispatch(command dispatcher.Command, payload *string) (
 }
 
 // changeState provides a structured way to change the current state, calling appropriate lifecycle methods along the way
-func (s *Service) changeState(newState StateID, context ...interface{}) {
+func (s *Service) changeState(newState StateID, _ ...interface{}) {
 	if s.currentState != nil {
 		logger.Debug(fmt.Sprintf("exiting state %s", s.currentState.String()))
 		if err := s.currentState.OnExit(); err != nil {

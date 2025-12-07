@@ -23,7 +23,7 @@ func NewService() (*Service, chan *Service) {
 	updateChannel := make(chan *Service)
 	return &Service{
 		SpeedRunAPIBase:      "",
-		KeyConfig:            nil,
+		KeyConfig:            map[dispatcher.Command]keyinfo.KeyData{},
 		configUpdatedChannel: updateChannel,
 	}, updateChannel
 }
