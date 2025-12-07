@@ -26,11 +26,11 @@ func (r *Running) OnEnter() error {
 					continue
 				}
 
-				if len(keyData.Modifiers) > 0 {
-					if len(keyData.Modifiers) != len(data.Modifiers) {
-						continue
-					}
+				if len(keyData.Modifiers) != len(data.Modifiers) {
+					continue
+				}
 
+				if len(keyData.Modifiers) > 0 {
 					// Build lookup of pressed modifiers
 					sent := make(map[int]struct{}, len(data.Modifiers))
 					for _, m := range data.Modifiers {
@@ -57,7 +57,11 @@ func (r *Running) OnEnter() error {
 				}
 			}
 		})
-		return err
+
+		if err != nil {
+			logger.Error(err.Error())
+			return err
+		}
 	}
 
 	machine.runtimeProvider.EventsEmit("state:enter", RUNNING, sessionDto)

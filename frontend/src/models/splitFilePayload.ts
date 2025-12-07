@@ -16,7 +16,13 @@ export default class SplitFilePayload {
     pb: RunPayload | null = null;
     attempts: number = 0;
 
-    static createFrom = (source: SplitFilePayload): SplitFilePayload => {
-        return { ...source };
+    constructor(init?: Partial<SplitFilePayload>) {
+        if (init) {
+            Object.assign(this, init);
+        }
+    }
+
+    static createFrom = (source: Partial<SplitFilePayload>): SplitFilePayload => {
+        return new SplitFilePayload(source);
     };
 }

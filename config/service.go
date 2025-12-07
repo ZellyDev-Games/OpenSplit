@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 	"sync"
@@ -76,20 +75,6 @@ func (s *Service) CreateDefaultConfig() {
 	}
 
 	s.sendUIBridgeUpdate()
-}
-
-// MapHotkey ranges through the loaded keyMap to find out if a button you just pressed is in it
-func (s *Service) MapHotkey(info keyinfo.KeyData) *dispatcher.Command {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	for command, keyInfo := range s.KeyConfig {
-		if keyInfo.KeyCode == info.KeyCode {
-			return &command
-		}
-	}
-	logger.Debug(fmt.Sprintf("hotkey not found: %s (%d)", info.LocaleName, info.KeyCode))
-	return nil
 }
 
 func (s *Service) sendUIBridgeUpdate() {

@@ -69,6 +69,7 @@ function App() {
     // Subscribe to state updates from the backend
     useEffect(() => {
         const unsubStateUpdates = EventsOn("state:enter", (...params: stateEnterParams) => {
+            console.log("[STATE CHANGE]", params)
             switch (params[0]) {
                 case State.WELCOME:
                     setModel({ tag: State.WELCOME });

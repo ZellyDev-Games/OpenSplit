@@ -1,14 +1,14 @@
-import { faFolder,faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import React, { useEffect, useRef, useState } from "react";
+import {faFolder, faTrash} from "@fortawesome/free-solid-svg-icons";
+import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
+import React, {useEffect, useRef, useState} from "react";
 
-import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
-import { WindowCenter, WindowSetSize } from "../../../wailsjs/runtime";
-import { Command } from "../../App";
-import { useClickOutside } from "../../hooks/useClickOutside";
+import {Dispatch} from "../../../wailsjs/go/dispatcher/Service";
+import {WindowCenter, WindowSetSize} from "../../../wailsjs/runtime";
+import {Command} from "../../App";
+import {useClickOutside} from "../../hooks/useClickOutside";
 import SegmentPayload from "../../models/segmentPayload";
 import SplitFilePayload from "../../models/splitFilePayload";
-import { msToParts, partsToMS, TimeParts } from "../splitter/Timer";
+import {msToParts, partsToMS, TimeParts} from "../splitter/Timer";
 import TimeRow from "./TimeRow";
 
 type Game = {
@@ -146,8 +146,8 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
 
     const saveSplitFile = async (e: React.MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
-        const segmentPayloads = segments.map((s) => SegmentPayload.createFrom(s));
-        const newSpiltFilePayload = SplitFilePayload.createFrom({
+
+        const newSplitFilePayload = SplitFilePayload.createFrom({
             id: splitFilePayload?.id ?? "",
             version: splitFilePayload?.version ?? 0,
             runs: splitFilePayload?.runs ?? [],
@@ -157,14 +157,13 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
             window_width: splitFilePayload?.window_width ?? 350,
             game_name: gameName,
             game_category: gameCategory,
-            segments: segmentPayloads,
+            segments: segments, // this is fine now (SegmentPayload[])
             attempts: Number(attempts),
             pb: splitFilePayload?.pb ?? null,
             sob: splitFilePayload?.sob ?? 0,
         });
 
-        const payload = JSON.stringify(newSpiltFilePayload);
-        console.log(payload);
+        const payload = JSON.stringify(newSplitFilePayload);
         await Dispatch(Command.SUBMIT, payload);
     };
 
@@ -174,21 +173,18 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
         function updateRecursive(list: SegmentPayload[]): SegmentPayload[] {
             return list.map((seg) => {
                 if (seg.id === id) {
-                    // Create a new segment payload with updated time
-                    return SegmentPayload.createFrom({
+                    return new SegmentPayload({
                         ...seg,
                         pb: isBest ? ms : seg.pb,
                         average: isBest ? seg.average : ms,
-                        children: seg.children, // keep children intact
                     });
                 }
 
-                // recurse deeper
-                if (seg.children && seg.children.length > 0) {
-                    return {
+                if (seg.children.length > 0) {
+                    return new SegmentPayload({
                         ...seg,
                         children: updateRecursive(seg.children),
-                    };
+                    });
                 }
 
                 return seg;
