@@ -43,7 +43,6 @@ type RuntimeProvider interface {
 type HotkeyProvider interface {
 	StartHook(func(data keyinfo.KeyData)) error
 	Unhook() error
-	ModCodeToString(int) string
 }
 
 // state implementations can be operated by the Service and do meaningful work, and communicate state to the frontend

@@ -216,7 +216,7 @@ func (w *WindowsManager) handleKeyDown(nCode uintptr, identifier uintptr, kbHook
 				}
 				modifierLocaleNames := make([]string, 0, len(modifiers))
 				for _, vkInt := range modifiers {
-					if name := w.ModCodeToString(vkInt); name != "" {
+					if name := w.modCodeToString(vkInt); name != "" {
 						modifierLocaleNames = append(modifierLocaleNames, name)
 					}
 				}
@@ -244,7 +244,7 @@ func (w *WindowsManager) handleKeyDown(nCode uintptr, identifier uintptr, kbHook
 	return ret
 }
 
-func (w *WindowsManager) ModCodeToString(code int) string {
+func (w *WindowsManager) modCodeToString(code int) string {
 	switch code {
 	case vkLShift:
 		return "Left Shift"
