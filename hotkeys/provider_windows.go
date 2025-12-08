@@ -25,8 +25,20 @@ var (
 )
 
 const (
+	vkLShift   = 0xA0
+	vkRShift   = 0xA1
+	vkLControl = 0xA2
+	vkRControl = 0xA3
+	vkLMenu    = 0xA4
+	vkRMenu    = 0xA5
+)
+
+const (
 	whKeyboardLL = 13
 	wmKeyDown    = 0x0100
+	wmKeyUp      = 0x0101
+	wmSysKeyDown = 0x0104
+	wmSysKeyUp   = 0x0105
 )
 
 type kbDLLHook struct {
@@ -149,47 +161,149 @@ func (w *WindowsManager) Unhook() error {
 // defined by the Win32 API: https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelkeyboardproc
 func (w *WindowsManager) handleKeyDown(nCode uintptr, identifier uintptr, kbHookStruct uintptr) uintptr {
 	// If nCode is less than zero we're obligated to pass the message along
-	if int(nCode) < 0 {
-		ret, _, _ := callNextHook.Call(uintptr(0), nCode, identifier, kbHookStruct)
+	if int32(nCode) < 0 {
+		ret, _, _ := callNextHook.Call(0, nCode, identifier, kbHookStruct)
 		return ret
 	}
 
-	// If nCode is 0, this message's parameters contains keyboard information, so it's the one we're looking for
-	if nCode == 0 {
-		if identifier == wmKeyDown {
-			// This is a keydown event, the one we care about
-			hookInfo := *(*kbDLLHook)(unsafe.Pointer(kbHookStruct)) //nolint:all
-			extended := hookInfo.flags&0x1 == 1
-			var lparam uintptr
-			var buf = make([]uint16, 64)
-			p := unsafe.SliceData(buf)
-			lparam |= uintptr(hookInfo.scanCode) << 16
-			if extended {
-				lparam |= 1 << 24
-			}
+	if isKeyEvent(identifier) {
+		// Process modifiers first
+		hookInfo := *(*kbDLLHook)(unsafe.Pointer(kbHookStruct)) //nolint:all
+		vk := hookInfo.vkCode
 
-			nameLen, _, err := getKeyName.Call(lparam, uintptr(unsafe.Pointer(p)), uintptr(len(buf)))
-			if nameLen == 0 {
-				logger.Error(err.Error())
-			}
+		extended := hookInfo.flags&0x1 == 1
+		var lparam uintptr
+		buf := make([]uint16, 64)
+		p := unsafe.SliceData(buf)
 
-			localeString := windows.UTF16ToString(buf)
-			if w.keyPressedCallback != nil {
-				w.keyPressedCallback(keyinfo.KeyData{
-					KeyCode:    int(hookInfo.vkCode),
-					LocaleName: localeString,
-				})
-			}
+		lparam |= uintptr(hookInfo.scanCode) << 16
+		if extended {
+			lparam |= 1 << 24
 		}
 
-		ret, _, _ := callNextHook.Call(uintptr(0), nCode, identifier, kbHookStruct)
-		return ret
+		modifierState.mu.Lock()
+		switch identifier {
+		case wmKeyDown, wmSysKeyDown:
+			if isModifierKey(vk) {
+				modifierState.m[vk] = true
+			}
+		case wmKeyUp, wmSysKeyUp:
+			if isModifierKey(vk) {
+				modifierState.m[vk] = false
+			}
+		}
+		modifierState.mu.Unlock()
+
+		if identifier == wmKeyDown || identifier == wmSysKeyDown {
+			if !isModifierKey(hookInfo.vkCode) {
+				nameLen, _, err := getKeyName.Call(
+					lparam,
+					uintptr(unsafe.Pointer(p)),
+					uintptr(len(buf)),
+				)
+				if nameLen == 0 {
+					logger.Error(err.Error())
+				}
+
+				localeString := windows.UTF16ToString(buf)
+
+				modifierState.mu.Lock()
+				modifiers := make([]int, 0, len(modifierState.m))
+				for code, state := range modifierState.m {
+					if state {
+						modifiers = append(modifiers, int(code))
+					}
+				}
+				modifierLocaleNames := make([]string, 0, len(modifiers))
+				for _, vkInt := range modifiers {
+					if name := w.modCodeToString(vkInt); name != "" {
+						modifierLocaleNames = append(modifierLocaleNames, name)
+					}
+				}
+				modifierState.mu.Unlock()
+
+				fmt.Println(localeString)
+				fmt.Println(modifierState.m)
+
+				if w.keyPressedCallback != nil {
+					w.keyPressedCallback(
+						keyinfo.NewKeyData(
+							int(hookInfo.vkCode),
+							localeString,
+							modifiers,
+							modifierLocaleNames,
+						),
+					)
+				}
+				resetModifiers()
+			}
+		}
 	}
 
-	// Calling nextHook is optional when nCode isn't negative, but encouraged, so let's do it.
-	ret, _, err := callNextHook.Call(uintptr(0), uintptr(nCode), identifier, kbHookStruct)
-	if err != nil {
-		logger.Error(err.Error())
-	}
+	ret, _, _ := callNextHook.Call(0, nCode, identifier, kbHookStruct)
 	return ret
+}
+
+func (w *WindowsManager) modCodeToString(code int) string {
+	switch code {
+	case vkLShift:
+		return "Left Shift"
+	case vkRShift:
+		return "Right Shift"
+	case vkLControl:
+		return "Left Control"
+	case vkRControl:
+		return "Right Control"
+	case vkLMenu:
+		return "Left Alt"
+	case vkRMenu:
+		return "Right Alt"
+	default:
+		return ""
+	}
+}
+
+func isModifierKey(vk uint32) bool {
+	switch vk {
+	case vkLShift, vkRShift,
+		vkLControl, vkRControl,
+		vkLMenu, vkRMenu:
+		return true
+	default:
+		return false
+	}
+}
+
+var modifierState = struct {
+	mu sync.Mutex
+	m  map[uint32]bool
+}{
+	m: map[uint32]bool{
+		vkLControl: false,
+		vkRControl: false,
+		vkLShift:   false,
+		vkRShift:   false,
+		vkLMenu:    false,
+		vkRMenu:    false,
+	},
+}
+
+func isKeyEvent(identifier uintptr) bool {
+	return identifier == wmKeyDown ||
+		identifier == wmKeyUp ||
+		identifier == wmSysKeyUp ||
+		identifier == wmSysKeyDown
+}
+
+func resetModifiers() {
+	modifierState.mu.Lock()
+	defer modifierState.mu.Unlock()
+	modifierState.m = map[uint32]bool{
+		vkLControl: false,
+		vkRControl: false,
+		vkLShift:   false,
+		vkRShift:   false,
+		vkLMenu:    false,
+		vkRMenu:    false,
+	}
 }
