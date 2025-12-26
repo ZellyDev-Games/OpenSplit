@@ -210,7 +210,7 @@ func (c *NWASyncClient) getReply() (emulatorReply, error) {
 	return nil, errors.New("invalid reply")
 }
 
-// I think this would be used if I actually sent data
+// This would be used if I actually sent data
 // func (c *NWASyncClient) sendData(data []byte) {
 // 	buf := make([]byte, 5)
 // 	size := len(data)
