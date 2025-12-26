@@ -4,10 +4,8 @@ package qusb2snes
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
-	"strconv"
 
 	"github.com/gorilla/websocket"
 )
@@ -57,14 +55,12 @@ type Space int
 const (
 	None Space = iota
 	SNES
-	CMD
 )
 
 func (s Space) String() string {
 	return [...]string{
 		"None",
 		"SNES",
-		"CMD",
 	}[s]
 }
 
@@ -136,11 +132,21 @@ func (sc *SyncClient) sendCommandWithSpace(command Command, space Space, args []
 	// s := space.String()
 	// nspace = &s
 	// }
-	query := USB2SnesQuery{
-		Opcode:   command.String(),
-		Space:    space.String(),
-		Flags:    []string{},
-		Operands: args,
+	var query USB2SnesQuery
+	if space == SNES {
+		query = USB2SnesQuery{
+			Opcode:   command.String(),
+			Space:    space.String(),
+			Flags:    []string{},
+			Operands: args,
+		}
+	} else {
+		query = USB2SnesQuery{
+			Opcode: command.String(),
+			// Space:    space.String(),
+			Flags:    []string{},
+			Operands: args,
+		}
 	}
 	jsonData, err := json.Marshal(query)
 	if err != nil {
@@ -237,119 +243,119 @@ func (sc *SyncClient) Reset() error {
 	return sc.sendCommand(Reset, []string{})
 }
 
-func (sc *SyncClient) Menu() error {
-	return sc.sendCommand(Menu, []string{})
-}
+// func (sc *SyncClient) Menu() error {
+// 	return sc.sendCommand(Menu, []string{})
+// }
 
-func (sc *SyncClient) Boot(toboot string) error {
-	return sc.sendCommand(Boot, []string{toboot})
-}
+// func (sc *SyncClient) Boot(toboot string) error {
+// 	return sc.sendCommand(Boot, []string{toboot})
+// }
 
-func (sc *SyncClient) Ls(path string) ([]USB2SnesFileInfo, error) {
-	err := sc.sendCommand(List, []string{path})
-	if err != nil {
-		return nil, err
-	}
-	usbreply, err := sc.getReply()
-	if err != nil {
-		return nil, err
-	}
-	vecInfo := usbreply.Results
-	var toret []USB2SnesFileInfo
-	for i := 0; i < len(vecInfo); i += 2 {
-		if i+1 >= len(vecInfo) {
-			break
-		}
-		fileType := Dir
-		if vecInfo[i] == "1" {
-			fileType = File
-		}
-		info := USB2SnesFileInfo{
-			FileType: fileType,
-			Name:     vecInfo[i+1],
-		}
-		toret = append(toret, info)
-	}
-	return toret, nil
-}
+// func (sc *SyncClient) Ls(path string) ([]USB2SnesFileInfo, error) {
+// 	err := sc.sendCommand(List, []string{path})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	usbreply, err := sc.getReply()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	vecInfo := usbreply.Results
+// 	var toret []USB2SnesFileInfo
+// 	for i := 0; i < len(vecInfo); i += 2 {
+// 		if i+1 >= len(vecInfo) {
+// 			break
+// 		}
+// 		fileType := Dir
+// 		if vecInfo[i] == "1" {
+// 			fileType = File
+// 		}
+// 		info := USB2SnesFileInfo{
+// 			FileType: fileType,
+// 			Name:     vecInfo[i+1],
+// 		}
+// 		toret = append(toret, info)
+// 	}
+// 	return toret, nil
+// }
 
-func (sc *SyncClient) SendFile(path string, data []byte) error {
-	err := sc.sendCommand(PutFile, []string{path, fmt.Sprintf("%x", len(data))})
-	if err != nil {
-		return err
-	}
-	chunkSize := 1024
-	for start := 0; start < len(data); start += chunkSize {
-		stop := start + chunkSize
-		if stop > len(data) {
-			stop = len(data)
-		}
-		err = sc.Client.WriteMessage(websocket.BinaryMessage, data[start:stop])
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
+// func (sc *SyncClient) SendFile(path string, data []byte) error {
+// 	err := sc.sendCommand(PutFile, []string{path, fmt.Sprintf("%x", len(data))})
+// 	if err != nil {
+// 		return err
+// 	}
+// 	chunkSize := 1024
+// 	for start := 0; start < len(data); start += chunkSize {
+// 		stop := start + chunkSize
+// 		if stop > len(data) {
+// 			stop = len(data)
+// 		}
+// 		err = sc.Client.WriteMessage(websocket.BinaryMessage, data[start:stop])
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+// 	return nil
+// }
 
-func (sc *SyncClient) getFile(path string) ([]byte, error) {
-	err := sc.sendCommand(GetFile, []string{path})
-	if err != nil {
-		return nil, err
-	}
-	reply, err := sc.getReply()
-	if err != nil {
-		return nil, err
-	}
-	if len(reply.Results) == 0 {
-		return nil, errors.New("no results in reply")
-	}
-	stringHex := reply.Results[0]
-	size, err := strconv.ParseUint(stringHex, 16, 0)
-	if err != nil {
-		return nil, err
-	}
-	data := make([]byte, 0, size)
-	for {
-		_, msgData, err := sc.Client.ReadMessage()
-		if err != nil {
-			return nil, err
-		}
-		// In Rust code, it expects binary message
-		// Here, msgData is []byte already
-		data = append(data, msgData...)
-		if len(data) == int(size) {
-			break
-		}
-	}
-	return data, nil
-}
+// func (sc *SyncClient) getFile(path string) ([]byte, error) {
+// 	err := sc.sendCommand(GetFile, []string{path})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	reply, err := sc.getReply()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	if len(reply.Results) == 0 {
+// 		return nil, errors.New("no results in reply")
+// 	}
+// 	stringHex := reply.Results[0]
+// 	size, err := strconv.ParseUint(stringHex, 16, 0)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	data := make([]byte, 0, size)
+// 	for {
+// 		_, msgData, err := sc.Client.ReadMessage()
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		// In Rust code, it expects binary message
+// 		// Here, msgData is []byte already
+// 		data = append(data, msgData...)
+// 		if len(data) == int(size) {
+// 			break
+// 		}
+// 	}
+// 	return data, nil
+// }
 
-func (sc *SyncClient) removePath(path string) error {
-	return sc.sendCommand(Remove, []string{path})
-}
+// func (sc *SyncClient) removePath(path string) error {
+// 	return sc.sendCommand(Remove, []string{path})
+// }
 
-func (sc *SyncClient) getAddress(address uint32, size int) ([]byte, error) {
-	err := sc.sendCommandWithSpace(GetAddress, SNES, []string{
-		fmt.Sprintf("%x", address),
-		fmt.Sprintf("%x", size),
-	})
-	if err != nil {
-		return nil, err
-	}
-	data := make([]byte, 0, size)
-	for {
-		_, msgData, err := sc.Client.ReadMessage()
-		if err != nil {
-			return nil, err
-		}
-		data = append(data, msgData...)
-		if len(data) == size {
-			break
-		}
-	}
-	return data, nil
-}
+// func (sc *SyncClient) getAddress(address uint32, size int) ([]byte, error) {
+// 	err := sc.sendCommandWithSpace(GetAddress, SNES, []string{
+// 		fmt.Sprintf("%x", address),
+// 		fmt.Sprintf("%x", size),
+// 	})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	data := make([]byte, 0, size)
+// 	for {
+// 		_, msgData, err := sc.Client.ReadMessage()
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		data = append(data, msgData...)
+// 		if len(data) == size {
+// 			break
+// 		}
+// 	}
+// 	return data, nil
+// }
 
 func (sc *SyncClient) getAddresses(pairs [][2]int) ([][]byte, error) {
 	args := make([]string, 0, len(pairs)*2)
