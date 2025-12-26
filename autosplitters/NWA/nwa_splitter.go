@@ -3,7 +3,6 @@ package nwa
 // TODO: handle errors correctly
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -13,107 +12,240 @@ import (
 
 // public
 type NWASplitter struct {
-	ResetTimerOnGameReset bool
-	Client                NWASyncClient
-	nwaMemory             []MemoryEntry
-	resetConditions       [][]Element
-	splitConditions       [][]Element
+	Client          NWASyncClient
+	vars            map[string]*memoryWatcher
+	data            []byte
+	nwaMemory       []memoryWatcher
+	startConditions []conditionList
+	resetConditions []conditionList
+	splitConditions []conditionList
 }
 
-// type compare_type int
-
-// const (
-// 	ceqp compare_type = iota // current value equal to prior value
-// 	ceqe                     // current value equal to expected value
-// 	cnep                     // current value not equal to prior value
-// 	cnee                     // current value not equal to expected value
-// 	cgtp                     // current value greater than prior value
-// 	cgte                     // current value greater than expected value
-// 	cltp                     // current value less than than prior value
-// 	clte                     // current value less than than expected value
-// 	eeqc                     // expected value equal to current value
-// 	eeqp                     // expected value equal to prior value
-// 	enec                     // expected value not equal to current value
-// 	enep                     // expected value not equal to prior value
-// 	egtc                     // expected value greater than current value
-// 	egtp                     // expected value greater than prior value
-// 	eltc                     // expected value less than than current value
-// 	eltp                     // expected value less than than prior value
-// 	peqc                     // prior value equal to current value
-// 	peqe                     // prior value equal to expected value
-// 	pnec                     // prior value not equal to current value
-// 	pnee                     // prior value not equal to expected value
-// 	pgtc                     // prior value greater than current value
-// 	pgte                     // prior value greater than expected value
-// 	pltc                     // prior value less than than current value
-// 	plte                     // prior value less than than expected value
-// )
-
-type Element struct {
+type element struct {
 	memoryEntryName string
 	expectedValue   *int
 	compareType     string
+	result          compareFunc
 }
 
-type MemoryEntry struct {
-	Name         string
-	MemoryBank   string
-	Address      string
-	Size         string
+type compareFunc func(input string, prior *int, current *int, expected *int) bool
+
+type memoryWatcher struct {
+	name         string
+	memoryBank   string
+	address      string
+	size         string
 	currentValue *int
 	priorValue   *int
 }
 
-// Setup the memory map being read by the NWA splitter and the maps for the reset and split conditions
-func (b *NWASplitter) MemAndConditionsSetup(memData []string, resetConditionImport []string, splitConditionImport []string) {
-	// Populate Start Condition List
-	for _, p := range memData {
-		// create memory entry
-		memName := strings.Split(p, ",")
+type conditionList struct {
+	Name   string
+	memory []element
+}
 
-		entry := MemoryEntry{
-			Name:       memName[0],
-			MemoryBank: memName[1],
-			Address:    memName[2],
-			Size:       memName[3]}
-		// add memory map entries to nwaMemory list
+// Setup the memory map being read by the NWA splitter and the maps for the reset and split conditions
+func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImport []string, resetConditionImport []string, splitConditionImport []string) {
+	delimiter1 := "="
+	delimiter2 := "≠"
+	delimiter3 := "<"
+	delimiter4 := ">"
+	compareStringCurrent := "current"
+	compareStringPrior := "prior"
+	hexPrefix := "0x"
+	b.data = make([]byte, 0x10000)
+	b.vars = map[string]*memoryWatcher{}
+
+	for _, p := range memData {
+		mem := strings.Split(p, ",")
+
+		entry := memoryWatcher{
+			name:         mem[0],
+			memoryBank:   mem[1],
+			address:      mem[2],
+			size:         mem[3],
+			currentValue: new(int),
+			priorValue:   new(int),
+		}
+		b.vars[mem[0]] = &entry
 		b.nwaMemory = append(b.nwaMemory, entry)
+	}
+
+	// Populate Start Condition List
+	for _, p := range startConditionImport {
+		var condition conditionList
+		// create elements
+		// add elements to reset condition list
+		startName := strings.Split(p, ":")[0]
+		startCon := strings.Split(strings.Split(p, ":")[1], " ")
+
+		condition.Name = startName
+
+		for _, q := range startCon {
+			if strings.Contains(q, "&&") {
+				continue
+			}
+
+			var tempElement element
+
+			components := strings.Split(q, ",")
+
+			tempElement.memoryEntryName = components[0]
+
+			if strings.Contains(components[1], "=") {
+				compStrings := strings.Split(components[1], delimiter1)
+				if strings.HasPrefix(compStrings[1], hexPrefix) {
+					tempElement.expectedValue = hexToInt(compStrings[1][2:])
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "ceqe"
+					case compareStringPrior:
+						tempElement.compareType = "peqe"
+					}
+				} else {
+					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
+						tempElement.compareType = "ceqp"
+					}
+				}
+			} else if strings.Contains(components[1], "≠") {
+				compStrings := strings.Split(components[1], delimiter2)
+				if strings.HasPrefix(compStrings[1], hexPrefix) {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "cnee"
+					case compareStringPrior:
+						tempElement.compareType = "pnee"
+					}
+				} else {
+					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
+						tempElement.compareType = "cnep"
+					}
+				}
+			} else if strings.Contains(components[1], "<") {
+				compStrings := strings.Split(components[1], delimiter3)
+				if strings.HasPrefix(compStrings[1], hexPrefix) {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "clte"
+					case compareStringPrior:
+						tempElement.compareType = "plte"
+					}
+				} else {
+					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
+						tempElement.compareType = "cltp"
+					} else {
+						tempElement.compareType = "pltc"
+					}
+				}
+			} else if strings.Contains(components[1], ">") {
+				compStrings := strings.Split(components[1], delimiter4)
+				if strings.HasPrefix(compStrings[1], hexPrefix) {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "cgte"
+					case compareStringPrior:
+						tempElement.compareType = "pgte"
+					}
+				} else {
+					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
+						tempElement.compareType = "cgtp"
+					} else {
+						tempElement.compareType = "pgtc"
+					}
+				}
+			}
+
+			tempElement.result = compare
+
+			condition.memory = append(condition.memory, tempElement)
+		}
+		// add condition lists to Start Conditions list
+		b.startConditions = append(b.startConditions, condition)
 	}
 
 	// Populate Reset Condition List
 	for _, p := range resetConditionImport {
-		var condition []Element
+		var condition conditionList
 		// create elements
-		// add elements to condition list
+		// add elements to reset condition list
+		resetName := strings.Split(p, ":")[0]
 		resetCon := strings.Split(strings.Split(p, ":")[1], " ")
+
+		condition.Name = resetName
+
 		for _, q := range resetCon {
-			elements := strings.Split(q, ",")
-
-			if len(elements) == 3 {
-				cT := elements[2]
-
-				// convert hex string to int
-				num, err := strconv.ParseUint(elements[1], 16, 64)
-				integer := int(num)
-				if err != nil {
-					log.Fatalf("Failed to convert string to integer: %v", err)
-				}
-				intPtr := new(int)
-				*intPtr = integer
-
-				condition = append(condition, Element{
-					memoryEntryName: elements[0],
-					expectedValue:   intPtr,
-					compareType:     cT})
-			} else if len(elements) == 2 {
-				cT := elements[1]
-
-				condition = append(condition, Element{
-					memoryEntryName: elements[0],
-					compareType:     cT})
-			} else {
-				fmt.Printf("Too many or too few conditions given: %#v\n", q)
+			if strings.Contains(q, "&&") {
+				continue
 			}
+
+			var tempElement element
+
+			components := strings.Split(q, ",")
+
+			tempElement.memoryEntryName = components[0]
+
+			if strings.Contains(components[1], "=") {
+				compStrings := strings.Split(components[1], delimiter1)
+				if strings.HasPrefix(compStrings[1], hexPrefix) {
+					tempElement.expectedValue = hexToInt(compStrings[1][2:])
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "ceqe"
+					case compareStringPrior:
+						tempElement.compareType = "peqe"
+					}
+				} else {
+					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
+						tempElement.compareType = "ceqp"
+					}
+				}
+			} else if strings.Contains(components[1], "≠") {
+				compStrings := strings.Split(components[1], delimiter2)
+				if strings.HasPrefix(compStrings[1], hexPrefix) {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "cnee"
+					case compareStringPrior:
+						tempElement.compareType = "pnee"
+					}
+				} else {
+					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
+						tempElement.compareType = "cnep"
+					}
+				}
+			} else if strings.Contains(components[1], "<") {
+				compStrings := strings.Split(components[1], delimiter3)
+				if strings.HasPrefix(compStrings[1], hexPrefix) {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "clte"
+					case compareStringPrior:
+						tempElement.compareType = "plte"
+					}
+				} else {
+					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
+						tempElement.compareType = "cltp"
+					}
+				}
+			} else if strings.Contains(components[1], ">") {
+				compStrings := strings.Split(components[1], delimiter4)
+				if strings.HasPrefix(compStrings[1], hexPrefix) {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "cgte"
+					case compareStringPrior:
+						tempElement.compareType = "pgte"
+					}
+				} else {
+					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
+						tempElement.compareType = "cgtp"
+					}
+				}
+			}
+
+			tempElement.result = compare
+
+			condition.memory = append(condition.memory, tempElement)
 		}
 		// add condition lists to Reset Conditions list
 		b.resetConditions = append(b.resetConditions, condition)
@@ -121,37 +253,87 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, resetConditionImpo
 
 	// Populate Split Condition List
 	for _, p := range splitConditionImport {
-		var condition []Element
+		var condition conditionList
 		// create elements
-		// add elements to condition list
+		// add elements to split condition list
+		splitName := strings.Split(p, ":")[0]
 		splitCon := strings.Split(strings.Split(p, ":")[1], " ")
+
+		condition.Name = splitName
+
 		for _, q := range splitCon {
-			elements := strings.Split(q, ",")
-
-			if len(elements) == 3 {
-				cT := elements[2]
-
-				num, err := strconv.ParseUint(elements[1], 16, 64)
-				integer := int(num)
-				if err != nil {
-					log.Fatalf("Failed to convert string to integer: %v", err)
-				}
-				intPtr := new(int)
-				*intPtr = integer
-
-				condition = append(condition, Element{
-					memoryEntryName: elements[0],
-					expectedValue:   intPtr,
-					compareType:     cT})
-			} else if len(elements) == 2 {
-				cT := elements[1]
-
-				condition = append(condition, Element{
-					memoryEntryName: elements[0],
-					compareType:     cT})
-			} else {
-				fmt.Printf("Too many or too few conditions given: %#v\n", q)
+			if strings.Contains(q, "&&") {
+				continue
 			}
+
+			var tempElement element
+
+			components := strings.Split(q, ",")
+
+			tempElement.memoryEntryName = components[0]
+
+			if strings.Contains(components[1], "=") {
+				compStrings := strings.Split(components[1], delimiter1)
+				if strings.HasPrefix(compStrings[1], hexPrefix) {
+					tempElement.expectedValue = hexToInt(compStrings[1][2:])
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "ceqe"
+					case compareStringPrior:
+						tempElement.compareType = "peqe"
+					}
+				} else {
+					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
+						tempElement.compareType = "ceqp"
+					}
+				}
+			} else if strings.Contains(components[1], "≠") {
+				compStrings := strings.Split(components[1], delimiter2)
+				if strings.HasPrefix(compStrings[1], hexPrefix) {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "cnee"
+					case compareStringPrior:
+						tempElement.compareType = "pnee"
+					}
+				} else {
+					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
+						tempElement.compareType = "cnep"
+					}
+				}
+			} else if strings.Contains(components[1], "<") {
+				compStrings := strings.Split(components[1], delimiter3)
+				if strings.HasPrefix(compStrings[1], hexPrefix) {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "clte"
+					case compareStringPrior:
+						tempElement.compareType = "plte"
+					}
+				} else {
+					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
+						tempElement.compareType = "cltp"
+					}
+				}
+			} else if strings.Contains(components[1], ">") {
+				compStrings := strings.Split(components[1], delimiter4)
+				if strings.HasPrefix(compStrings[1], hexPrefix) {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "cgte"
+					case compareStringPrior:
+						tempElement.compareType = "pgte"
+					}
+				} else {
+					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
+						tempElement.compareType = "cgtp"
+					}
+				}
+			}
+
+			tempElement.result = compare
+
+			condition.memory = append(condition.memory, tempElement)
 		}
 		// add condition lists to Split Conditions list
 		b.splitConditions = append(b.splitConditions, condition)
@@ -214,123 +396,178 @@ func (b *NWASplitter) CoreMemories() {
 	fmt.Printf("%#v\n", summary)
 }
 
-// currently only supports 1 byte reads
-func (b *NWASplitter) Update() (nwaSummary, error) {
+func (b *NWASplitter) SoftResetConsole() {
+	cmd := "EMULATION_RESET"
+	summary, err := b.Client.ExecuteCommand(cmd, nil)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%#v\n", summary)
+}
+
+func (b *NWASplitter) HardResetConsole() {
+	// cmd := "EMULATION_STOP"
+	cmd := "EMULATION_RELOAD"
+	summary, err := b.Client.ExecuteCommand(cmd, nil)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%#v\n", summary)
+}
+
+// currently only suppports 1 memory source at a time
+// likely WRAM for SNES and RAM for NES
+func (b *NWASplitter) Update(splitIndex int) (nwaSummary, error) {
+
 	cmd := "CORE_READ"
-	for i, p := range b.nwaMemory {
-		args := p.MemoryBank + ";" + p.Address + ";" + p.Size
-		summary, err := b.Client.ExecuteCommand(cmd, &args)
-		if err != nil {
-			return nwaSummary{}, err
-		}
-		fmt.Printf("%#v\n", summary)
+	domain := b.nwaMemory[0].memoryBank
+	var requestString string
 
-		b.nwaMemory[i].priorValue = b.nwaMemory[i].currentValue
-		switch v := summary.(type) {
-		case []byte:
-
-			// need to handle more than 1 byte at a time
-			// if len(v) == 1 {
-			// 	val := int(v[0])
-			// 	b.nwaMemory[i].currentValue = &val
-			// } else if len(v) > 1 {
-			// length 1
-			var temp_int uint8
-			//length 2
-			// var temp_int uint16
-			// length 4
-			// var temp_int uint32
-			// length 8
-			// var temp_int uint64
-			err := binary.Read(bytes.NewReader(v), binary.LittleEndian, &temp_int)
-			if err != nil {
-				fmt.Println("Error reading binary data:", err)
-			}
-			integer := int(temp_int)
-			b.nwaMemory[i].currentValue = &integer
-			// }
-		case NWAError:
-			fmt.Printf("%#v\n", v)
-		default:
-			fmt.Printf("%#v\n", v)
-		}
+	for _, watcher := range b.nwaMemory {
+		requestString += ";" + watcher.address + ";" + watcher.size
+		*watcher.priorValue = *watcher.currentValue
 	}
 
+	args := domain + requestString
+	summary, err := b.Client.ExecuteCommand(cmd, &args)
+	if err != nil {
+		return nwaSummary{}, err
+	}
+	fmt.Printf("%#v\n", summary)
+
+	switch v := summary.(type) {
+	case []byte:
+		// update memoryWatcher with data
+		runningTotal := 0
+		for _, watcher := range b.nwaMemory {
+			size, _ := strconv.Atoi(watcher.size)
+			switch size {
+			case 1:
+				*watcher.currentValue = int(v[runningTotal])
+				runningTotal += size
+			case 2:
+				*watcher.currentValue = int(binary.LittleEndian.Uint16(v[runningTotal : runningTotal+size]))
+				runningTotal += size
+			case 3:
+				fallthrough
+			case 4:
+				*watcher.currentValue = int(binary.LittleEndian.Uint32(v[runningTotal : runningTotal+size]))
+				runningTotal += size
+			case 5:
+				fallthrough
+			case 6:
+				fallthrough
+			case 7:
+				fallthrough
+			case 8:
+				*watcher.currentValue = int(binary.LittleEndian.Uint64(v[runningTotal : runningTotal+size]))
+				runningTotal += size
+			}
+		}
+
+	case NWAError:
+		fmt.Printf("%#v\n", v)
+	default:
+		fmt.Printf("%#v\n", v)
+	}
+
+	start := b.start()
 	reset := b.reset()
-	split := b.split()
+	split := b.split(splitIndex)
 
 	return nwaSummary{
+		Start: start,
 		Reset: reset,
 		Split: split,
 	}, nil
 }
 
-// private
 type nwaSummary struct {
+	Start bool
 	Reset bool
 	Split bool
 }
 
-// Checks conditions and returns reset state
-func (b *NWASplitter) reset() bool {
+// Checks conditions and returns start state
+func (b *NWASplitter) start() bool {
 	fmt.Printf("Checking reset state\n")
-	if b.ResetTimerOnGameReset {
-		for _, p := range b.resetConditions {
-			resetState := true
-			var tempstate bool
-			for _, q := range p {
-				index, found := b.findInSlice(b.nwaMemory, q.memoryEntryName)
-				if found {
-					tempstate = compare(q.compareType, b.nwaMemory[index].currentValue, b.nwaMemory[index].priorValue, q.expectedValue)
-				} else {
-					fmt.Printf("How did you get here?\n")
-				}
-				resetState = resetState && tempstate
-			}
-			if resetState {
-				fmt.Printf("Time to reset\n")
-				return true
-			}
-		}
-		return false
-	} else {
-		return false
-	}
-}
+	startState := true
+	var tempstate bool
 
-// Checks conditions and returns split state
-func (b *NWASplitter) split() bool {
-	for _, p := range b.splitConditions {
-		fmt.Printf("Checking split state\n")
-		splitState := true
-		var tempstate bool
-		for _, q := range p {
-			index, found := b.findInSlice(b.nwaMemory, q.memoryEntryName)
-			if found {
-				tempstate = compare(q.compareType, b.nwaMemory[index].currentValue, b.nwaMemory[index].priorValue, q.expectedValue)
-			} else {
-				fmt.Printf("How did you get here?\n")
-			}
-			splitState = splitState && tempstate
+	for _, p := range b.startConditions {
+		for _, q := range p.memory {
+			watcher := findMemoryWatcher(b.nwaMemory, q.memoryEntryName)
+			tempstate = q.result(q.compareType, watcher.priorValue, watcher.currentValue, q.expectedValue)
+			startState = startState && tempstate
 		}
-		if splitState {
-			fmt.Printf("Time to split\n")
+		if startState {
+			fmt.Printf("Start: %#v\n", p.Name)
 			return true
 		}
 	}
 	return false
 }
 
-func (b *NWASplitter) findInSlice(slice []MemoryEntry, target string) (int, bool) {
-	for i, v := range slice {
-		if v.Name == target {
-			return i, true // Return index and true if found
+// Checks conditions and returns reset state
+func (b *NWASplitter) reset() bool {
+	fmt.Printf("Checking reset state\n")
+	resetState := true
+	var tempstate bool
+
+	for _, p := range b.resetConditions {
+		for _, q := range p.memory {
+			watcher := findMemoryWatcher(b.nwaMemory, q.memoryEntryName)
+			tempstate = q.result(q.compareType, watcher.priorValue, watcher.currentValue, q.expectedValue)
+			resetState = resetState && tempstate
+		}
+		if resetState {
+			fmt.Printf("Reset: %#v\n", p.Name)
+			return true
 		}
 	}
-	return -1, false // Return -1 and false if not found
+	return false
 }
 
-func compare(input string, current *int, prior *int, expected *int) bool {
+// Checks conditions and returns split state
+func (b *NWASplitter) split(split int) bool {
+	fmt.Printf("Checking split state\n")
+	splitState := true
+	var tempstate bool
+
+	for _, q := range b.splitConditions[split].memory {
+		watcher := findMemoryWatcher(b.nwaMemory, q.memoryEntryName)
+		tempstate = q.result(q.compareType, watcher.priorValue, watcher.currentValue, q.expectedValue)
+		splitState = splitState && tempstate
+	}
+	if splitState {
+		fmt.Printf("Split: %#v\n", b.splitConditions[split].Name)
+		return true
+	}
+	return false
+}
+
+// private
+func findMemoryWatcher(memInfo []memoryWatcher, targetWatcher string) *memoryWatcher {
+	for _, watcher := range memInfo {
+		if watcher.name == targetWatcher {
+			return &watcher
+		}
+	}
+	return nil
+}
+
+// convert hex string to int
+func hexToInt(hex string) *int {
+	num, err := strconv.ParseUint(hex, 0, 64)
+	if err != nil {
+		log.Fatalf("Failed to convert string to integer: %v", err)
+		return nil
+	}
+	integer := int(num)
+	return &integer
+}
+
+func compare(input string, prior *int, current *int, expected *int) bool {
 	switch input {
 	case "ceqp":
 		fallthrough
