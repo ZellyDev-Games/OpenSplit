@@ -72,12 +72,14 @@ func main() {
 	// Build dispatcher that can receive commands from frontend or backend and dispatch them to the state machine
 	commandDispatcher := dispatcher.NewService(machine)
 
-	// All the config should come from either the config file or the autosplitter service thread
+	// UseAutoSplitter and Type should come from the splits config file
+	// ResetTimerOnGameReset, ResetGameOnTimerReset, Addr, Port should come from the autosplitter config file
 	AutoSplitterService := autosplitters.Splitters{
 		NWAAutoSplitter:       new(nwa.NWASplitter),
 		QUSB2SNESAutoSplitter: new(qusb2snes.SyncClient),
 		UseAutosplitter:       true,
 		ResetTimerOnGameReset: true,
+		ResetGameOnTimerReset: false,
 		Addr:                  "0.0.0.0",
 		Port:                  48879,
 		Type:                  autosplitters.NWA}
