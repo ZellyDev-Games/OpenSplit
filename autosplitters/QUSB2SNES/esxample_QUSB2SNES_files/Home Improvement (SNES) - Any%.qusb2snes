@@ -1,26 +1,24 @@
 ResetTimerOnGameReset = true
 ResetGameOnTimerReset = false
-IP = 0.0.0.0
-Port = 48879
 
 #memory (Do not combine memory or it will treated as 1 combined value)
-stage,WRAM,$000AE1,1            #0-3
-substage,WRAM,$000AE3,1         #0-4
-crates,WRAM,$001A8A,1           #5,6,7,8
-invul,WRAM,$001C05,1            #02
-play_state,WRAM,$0003B1,1       #00 - dead/complete, 01 - alive/playable
-scene2,WRAM,$000886,1           #03 - tool scene, 04 - win screen
-scene,WRAM,$00161F,1            
-gameplay,WRAM,$00AE5,1          #11 - menus/loading, 13 - gameplay
-state,WRAM,$001400,1            #d8 - bonus countdown active, d0 - between act cutscene
-BossHP,WRAM,$001491,1           #63
-W2P1HP,WRAM,$001493,1           #14
-W2P2HP,WRAM,$001499,1           #
-FBossHP,WRAM,$00149D,1          #Starts at 64, Dies at 1, switches to FF after explosion
-power_up,WRAM,$0003AF,1
-weapon,WRAM,$0003CD,1
+stage,$000AE1,1            #0-3
+substage,$000AE3,1         #0-4
+crates,$001A8A,1           #5,6,7,8
+invul,$001C05,1            #02
+play_state,$0003B1,1       #00 - dead/complete, 01 - alive/playable
+scene2,$000886,1           #03 - tool scene, 04 - win screen
+scene,$00161F,1            
+gameplay,$00AE5,1          #11 - menus/loading, 13 - gameplay
+state,$001400,1            #d8 - bonus countdown active, d0 - between act cutscene
+BossHP,$001491,1           #63
+W2P1HP,$001493,1           #14
+W2P2HP,$001499,1           #
+FBossHP,$00149D,1          #Starts at 64, Dies at 1, switches to FF after explosion
+power_up,$0003AF,1
+weapon,$0003CD,1
 
-#start (some games might have multiple start conditions) (expectedValue is optional)
+#start
 start:state,prior=0xC0 && state,current=0x0 && stage,current=0x0 && substage,current=0x0 && gameplay,current=0x11 && play_state,current=0x0
 start:state,prior=0xD0 && state,current=0x0 && stage,current=0x0 && substage,current=0x0 && gameplay,current=0x11 && play_state,current=0x0
 
