@@ -3,8 +3,7 @@ package autosplitters
 // TODO:
 // check status of splits file
 // update object variables
-// qusb2snes usage
-// load mem and condition data
+// add way to cancel autosplitting
 
 import (
 	"fmt"
@@ -20,6 +19,7 @@ type Splitters struct {
 	QUSB2SNESAutoSplitter *qusb2snes.SyncClient
 	UseAutosplitter       bool
 	ResetTimerOnGameReset bool
+	ResetGameOnTimerReset bool
 	Addr                  string
 	Port                  uint32
 	Type                  AutosplitterType
@@ -32,25 +32,11 @@ const (
 	QUSB2SNES
 )
 
-// I don't think this should be here not sure why it's not updating the object
-// func (s Splitters) Load() {
-// useAuto := make(chan bool)
-// resetTimer := make(chan bool)
-// addr := make(chan string)
-// port := make(chan uint32)
-// aType := make(chan AutosplitterType)
-// s.UseAutosplitter = <-useAuto
-// s.ResetTimerOnGameReset = <-resetTimer
-// s.Addr = <-addr
-// s.Port = <-port
-// s.Type = <-aType
-// }
-
 func (s Splitters) Run(commandDispatcher *dispatcher.Service) {
 	go func() {
 		// loop trying to connect
 		for {
-			mil := 2 * time.Millisecond
+			mil := 1 * time.Millisecond
 
 			//check for split file loaded
 			// if !splitsFile.loaded {
@@ -59,16 +45,16 @@ func (s Splitters) Run(commandDispatcher *dispatcher.Service) {
 
 			connectStart := time.Now()
 
-			s.NWAAutoSplitter, s.QUSB2SNESAutoSplitter = s.newClient( /*s.UseAutosplitter, s.ResetTimerOnGameReset, s.Addr, s.Port, s.Type*/ )
+			s.NWAAutoSplitter, s.QUSB2SNESAutoSplitter = s.newClient()
 
 			if s.NWAAutoSplitter != nil || s.QUSB2SNESAutoSplitter != nil {
 
-				if s.NWAAutoSplitter.Client.IsConnected() {
+				if s.NWAAutoSplitter != nil {
 					s.processNWA(commandDispatcher)
 				}
-				// if s.QUSB2SNESAutoSplitter != nil {
-				// s.processQUSB2SNES(commandDispatcher)
-				// }
+				if s.QUSB2SNESAutoSplitter != nil {
+					s.processQUSB2SNES(commandDispatcher)
+				}
 			}
 			connectElapsed := time.Since(connectStart)
 			// fmt.Println(mil - connectElapsed)
@@ -77,7 +63,7 @@ func (s Splitters) Run(commandDispatcher *dispatcher.Service) {
 	}()
 }
 
-func (s Splitters) newClient( /*UseAutosplitter bool, ResetTimerOnGameReset bool, Addr string, Port uint32, Type AutosplitterType*/ ) (*nwa.NWASplitter, *qusb2snes.SyncClient) {
+func (s Splitters) newClient() (*nwa.NWASplitter, *qusb2snes.SyncClient) {
 	// fmt.Printf("Creating AutoSplitter Service\n")
 
 	if s.UseAutosplitter {
@@ -86,15 +72,14 @@ func (s Splitters) newClient( /*UseAutosplitter bool, ResetTimerOnGameReset bool
 			client, connectError := nwa.Connect(s.Addr, s.Port)
 			if connectError == nil {
 				return &nwa.NWASplitter{
-					ResetTimerOnGameReset: s.ResetTimerOnGameReset,
-					Client:                *client,
+					Client: *client,
 				}, nil
 			} else {
 				return nil, nil
 			}
 		}
 		if s.Type == QUSB2SNES {
-			fmt.Printf("Creating QUSB2SNES AutoSplitter\n")
+			// fmt.Printf("Creating QUSB2SNES AutoSplitter\n")
 			client, connectError := qusb2snes.Connect()
 			if connectError == nil {
 				return nil, client
@@ -108,28 +93,29 @@ func (s Splitters) newClient( /*UseAutosplitter bool, ResetTimerOnGameReset bool
 
 // Memory should be moved out of here and received from the config file and sent to the splitter
 func (s Splitters) processNWA(commandDispatcher *dispatcher.Service) {
-	mil := 2 * time.Millisecond
+	mil := 1 * time.Millisecond
 
 	// // Battletoads test data
 	// memData := []string{
-	//  ("level,RAM,$0010,1")}
-	// // startConditionImport := []string{}
+	// 	("level,RAM,$0010,1")}
+	// startConditionImport := []string{
+	// 	("start:level,prior=0x0 && level,current=0x1")}
 	// resetConditionImport := []string{
-	//  ("reset:level,0,eeqc level,0,pnee")}
+	// 	("reset:level,current=0x0 && level,prior≠0")}
 	// splitConditionImport := []string{
-	//  ("start:level,0,peqe level,1,ceqe"),
-	// 	("level:level,255,peqe level,2,ceqe"),
-	// 	("level:level,255,peqe level,3,ceqe"),
-	// 	("level:level,255,peqe level,4,ceqe"),
-	// 	("level:level,255,peqe level,5,ceqe"),
-	// 	("level:level,255,peqe level,6,ceqe"),
-	// 	("level:level,255,peqe level,7,ceqe"),
-	// 	("level:level,255,peqe level,8,ceqe"),
-	// 	("level:level,255,peqe level,9,ceqe"),
-	// 	("level:level,255,peqe level,10,ceqe"),
-	// 	("level:level,255,peqe level,11,ceqe"),
-	// 	("level:level,255,peqe level,12,ceqe"),
-	// 	("level:level,255,peqe level,13,ceqe")}
+	// 	("level2:level,prior=0x255 && level,current=0x2"),
+	// 	("level3:level,prior=0x255 && level,current=0x3"),
+	// 	("level4:level,prior=0x255 && level,current=0x4"),
+	// 	("level5:level,prior=0x255 && level,current=0x5"),
+	// 	("level6:level,prior=0x255 && level,current=0x6"),
+	// 	("level7:level,prior=0x255 && level,current=0x7"),
+	// 	("level8:level,prior=0x255 && level,current=0x8"),
+	// 	("level9:level,prior=0x255 && level,current=0x9"),
+	// 	("level10:level,prior=0x255 && level,current=0xA"),
+	// 	("level11:level,prior=0x255 && level,current=0xB"),
+	// 	("level12:level,prior=0x255 && level,current=0xC"),
+	// 	("level13:level,prior=0x255 && level,current=0xD"),
+	// }
 
 	// Home Improvment test data
 	memData := []string{
@@ -150,40 +136,43 @@ func (s Splitters) processNWA(commandDispatcher *dispatcher.Service) {
 		("FBossHP,WRAM,$00149D,1"),
 	}
 
+	startConditionImport := []string{
+		("start:state,prior=0xC0 && state,current=0x0 && stage,current=0x0 && substage,current=0x0 && gameplay,current=0x11 && play_state,current=0x0"),
+		("start:state,prior=0xD0 && state,current=0x0 && stage,current=0x0 && substage,current=0x0 && gameplay,current=0x11 && play_state,current=0x0"),
+	}
+
 	resetConditionImport := []string{
-		("cutscene_reset:state,0,eeqc state,D0,peqe gameplay,11,peqe gameplay,0,eeqc"),
-		("tool_reset:gameplay,11,peqe gameplay,0,eeqc scene,4,peqe scene,0,eeqc, scene2,3,peqe scene2,0,eeqc"),
-		("level_reset:gameplay,13,peqe gameplay,0,eeqc crates,0,ceqe substage,0,ceqe stage,0,ceqe scene2,0,ceqe"),
+		("cutscene_reset:state,current=0x0 && state,prior=0xD0 && gameplay,prior=0x11 && gameplay,current=0x0"),
+		("tool_reset:gameplay,prior=0x11 && gameplay,current=0x0 && scene,prior=0x4 && scene,current=0x0 && scene2,prior=0x3 && scene2,current=0x0"),
+		("level_reset:gameplay,prior=0x13 && gameplay,current=0x0 && crates,current=0x0 && substage,current=0x0 && stage,current=0x0 && scene2,current=0x0"),
 	}
 
 	splitConditionImport := []string{
-		("start:state,C0,peqe state,0,ceqe stage,0,ceqe substage,0,ceqe gameplay,11,ceqe play_state,0,ceqe"),
-		("start2:state,D0,peqe state,0,ceqe stage,0,ceqe substage,0,ceqe gameplay,11,ceqe play_state,0,ceqe"),
-		("1-1:state,C8,peqe state,0,ceqe stage,0,ceqe substage,1,ceqe gameplay,13,ceqe"),
-		("1-2:state,C8,peqe state,0,ceqe stage,0,ceqe substage,2,ceqe gameplay,13,ceqe"),
-		("1-3:state,C8,peqe state,0,ceqe stage,0,ceqe substage,3,ceqe gameplay,13,ceqe"),
-		("1-4:state,C8,peqe state,0,ceqe stage,0,ceqe substage,4,ceqe gameplay,13,ceqe"),
-		("1-5:state,C8,peqe state,0,ceqe stage,0,ceqe substage,4,ceqe gameplay,13,ceqe BossHP,0,ceqe"),
-		("2-1:state,C8,peqe state,0,ceqe stage,1,ceqe substage,1,ceqe gameplay,13,ceqe"),
-		("2-2:state,C8,peqe state,0,ceqe stage,1,ceqe substage,2,ceqe gameplay,13,ceqe"),
-		("2-3:state,C8,peqe state,0,ceqe stage,1,ceqe substage,3,ceqe gameplay,13,ceqe"),
-		("2-4:state,C8,peqe state,0,ceqe stage,1,ceqe substage,4,ceqe gameplay,13,ceqe"),
-		("2-5:state,C8,peqe state,0,ceqe stage,1,ceqe substage,4,ceqe gameplay,13,ceqe W2P2HP,1,ceqe W2P1HP,0,ceqe BossHP,0,ceqe"),
-		("3-1:state,C8,peqe state,0,ceqe stage,2,ceqe substage,1,ceqe gameplay,13,ceqe"),
-		("3-2:state,C8,peqe state,0,ceqe stage,2,ceqe substage,2,ceqe gameplay,13,ceqe"),
-		("3-3:state,C8,peqe state,0,ceqe stage,2,ceqe substage,3,ceqe gameplay,13,ceqe"),
-		("3-4:state,C8,peqe state,0,ceqe stage,2,ceqe substage,4,ceqe gameplay,13,ceqe"),
-		("3-5:state,C8,peqe state,0,ceqe stage,2,ceqe substage,4,ceqe gameplay,13,ceqe BossHP,0,ceqe"),
-		("4-1:state,C8,peqe state,0,ceqe stage,3,ceqe substage,1,ceqe gameplay,13,ceqe"),
-		("4-2:state,C8,peqe state,0,ceqe stage,3,ceqe substage,2,ceqe gameplay,13,ceqe"),
-		("4-3:state,C8,peqe state,0,ceqe stage,3,ceqe substage,3,ceqe gameplay,13,ceqe"),
-		("4-4:state,C8,peqe state,0,ceqe stage,3,ceqe substage,4,ceqe gameplay,13,ceqe"),
-		("4-5:state,C8,peqe state,0,ceqe stage,3,ceqe substage,4,ceqe gameplay,13,ceqe FBossHP,FF,ceqe"),
+		("1-1:state,prior=0xC8 && state,current=0x0 && stage,current=0x0 && substage,current=0x1 && gameplay,current=0x13"),
+		("1-2:state,prior=0xC8 && state,current=0x0 && stage,current=0x0 && substage,current=0x2 && gameplay,current=0x13"),
+		("1-3:state,prior=0xC8 && state,current=0x0 && stage,current=0x0 && substage,current=0x3 && gameplay,current=0x13"),
+		("1-4:state,prior=0xC8 && state,current=0x0 && stage,current=0x0 && substage,current=0x4 && gameplay,current=0x13"),
+		("1-5:state,prior=0xC8 && state,current=0x0 && stage,current=0x0 && substage,current=0x4 && gameplay,current=0x13 && BossHP,current=0x0"),
+		("2-1:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x1 && gameplay,current=0x13"),
+		("2-2:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x2 && gameplay,current=0x13"),
+		("2-3:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x3 && gameplay,current=0x13"),
+		("2-4:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x4 && gameplay,current=0x13"),
+		("2-5:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x4 && gameplay,current=0x13 && W2P2HP,current=0x1 && W2P1HP,current=0x0 && BossHP,current=0x0"),
+		("3-1:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x1 && gameplay,current=0x13"),
+		("3-2:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x2 && gameplay,current=0x13"),
+		("3-3:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x3 && gameplay,current=0x13"),
+		("3-4:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x4 && gameplay,current=0x13"),
+		("3-5:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x4 && gameplay,current=0x13 && BossHP,current=0x0"),
+		("4-1:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x1 && gameplay,current=0x13"),
+		("4-2:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x2 && gameplay,current=0x13"),
+		("4-3:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x3 && gameplay,current=0x13"),
+		("4-4:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x4 && gameplay,current=0x13"),
+		("4-5:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x4 && gameplay,current=0x13 && FBossHP,current=0xFF"),
 	}
 
 	// receive setup data...probably through a channel
 	//Setup Memory
-	s.NWAAutoSplitter.MemAndConditionsSetup(memData /*startConditionImport,*/, resetConditionImport, splitConditionImport)
+	s.NWAAutoSplitter.MemAndConditionsSetup(memData, startConditionImport, resetConditionImport, splitConditionImport)
 
 	s.NWAAutoSplitter.EmuInfo()      // Gets info about the emu; name, version, nwa_version, id, supported commands
 	s.NWAAutoSplitter.EmuGameInfo()  // Gets info about the loaded game
@@ -192,86 +181,168 @@ func (s Splitters) processNWA(commandDispatcher *dispatcher.Service) {
 	s.NWAAutoSplitter.CoreInfo()     // Might be useful to display the platform & core names
 	s.NWAAutoSplitter.CoreMemories() // Get info about the memory banks available
 
+	splitCount := 0
+	runStarted := false
 	// this is the core loop of autosplitting
 	// queries the device (emu, hardware, application) at the rate specified in ms
 	for {
 		processStart := time.Now()
 
 		fmt.Printf("Checking for autosplitting updates.\n")
-		autoState, err2 := s.NWAAutoSplitter.Update()
+		autoState, err2 := s.NWAAutoSplitter.Update( /*TODO: Request Current Split*/ splitCount)
 		if err2 != nil {
 			return
 		}
-		if autoState.Reset {
-			//restart run
-			commandDispatcher.Dispatch(dispatcher.RESET, nil)
-		}
-		if autoState.Split {
+		if autoState.Start && !runStarted {
 			//split run
 			commandDispatcher.Dispatch(dispatcher.SPLIT, nil)
+			runStarted = !runStarted
+		}
+		if autoState.Split && runStarted {
+			//split run
+			commandDispatcher.Dispatch(dispatcher.SPLIT, nil)
+			splitCount++
+		}
+		if autoState.Reset && runStarted {
+			if s.ResetTimerOnGameReset {
+				commandDispatcher.Dispatch(dispatcher.RESET, nil)
+			}
+			if s.ResetGameOnTimerReset {
+				s.QUSB2SNESAutoSplitter.Reset()
+			}
+			splitCount = 0
+			runStarted = !runStarted
 		}
 		// TODO: Close the connection after closing the splits file or receiving a disconnect signal
 		// s.NWAAutoSplitter.Client.Close()
+
 		processElapsed := time.Since(processStart)
 		// fmt.Println(processStart)
 		// fmt.Println(processElapsed)
+		// fmt.Println(mil - processElapsed)
 		time.Sleep(min(mil, max(0, mil-processElapsed)))
 	}
 }
 
 func (s Splitters) processQUSB2SNES(commandDispatcher *dispatcher.Service) {
-	// 	// //QUSB2SNES example
-	// if QUSB2SNESAutoSplitterService != nil {
-	// 	// client.SetName("annelid")
+	mil := 1 * time.Millisecond
 
-	// 	// version, err := client.AppVersion()
-	// 	// fmt.Printf("Server version is %v\n", version)
+	// Home Improvment test data
+	memData := []string{
+		("crates,0x1A8A,1"),
+		("scene,0x161F,1"),
+		("W2P2HP,0x1499,1"),
+		("W2P1HP,0x1493,1"),
+		("BossHP,0x1491,1"),
+		("state,0x1400,1"),
+		("gameplay,0x0AE5,1"),
+		("substage,0x0AE3,1"),
+		("stage,0x0AE1,1"),
+		("scene2,0x0886,1"),
+		("play_state,0x03B1,1"),
+		("power_up,0x03AF,1"),
+		("weapon,0x03CD,1"),
+		("invul,0x1C05,1"),
+		("FBossHP,0x149D,1"),
+	}
 
-	// 	// devices, err := client.ListDevice()
+	startConditionImport := []string{
+		("start:state,prior=0xC0 && state,current=0x0 && stage,current=0x0 && substage,current=0x0 && gameplay,current=0x11 && play_state,current=0x0"),
+		("start:state,prior=0xD0 && state,current=0x0 && stage,current=0x0 && substage,current=0x0 && gameplay,current=0x11 && play_state,current=0x0"),
+	}
 
-	// 	// if len(devices) != 1 {
-	// 	// 	if len(devices) == 0 {
-	// 	// 		return errors.New("no devices present")
-	// 	// 	}
-	// 	// 	return errors.Errorf("unexpected devices: %#v", devices)
-	// 	// }
-	// 	// device := devices[0]
-	// 	// fmt.Printf("Using device %v\n", device)
+	resetConditionImport := []string{
+		("cutscene_reset:state,current=0x0 && state,prior=0xD0 && gameplay,prior=0x11 && gameplay,current=0x0"),
+		("tool_reset:gameplay,prior=0x11 && gameplay,current=0x0 && scene,prior=0x4 && scene,current=0x0 && scene2,prior=0x3 && scene2,current=0x0"),
+		("level_reset:gameplay,prior=0x13 && gameplay,current=0x0 && crates,current=0x0 && substage,current=0x0 && stage,current=0x0 && scene2,current=0x0"),
+	}
 
-	// 	// client.Attach(device)
-	// 	// fmt.Println("Connected.")
+	splitConditionImport := []string{
+		("1-1:state,prior=0xC8 && state,current=0x0 && stage,current=0x0 && substage,current=0x1 && gameplay,current=0x13"),
+		("1-2:state,prior=0xC8 && state,current=0x0 && stage,current=0x0 && substage,current=0x2 && gameplay,current=0x13"),
+		("1-3:state,prior=0xC8 && state,current=0x0 && stage,current=0x0 && substage,current=0x3 && gameplay,current=0x13"),
+		("1-4:state,prior=0xC8 && state,current=0x0 && stage,current=0x0 && substage,current=0x4 && gameplay,current=0x13"),
+		("1-5:state,prior=0xC8 && state,current=0x0 && stage,current=0x0 && substage,current=0x4 && gameplay,current=0x13 && BossHP,current=0x0"),
+		("2-1:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x1 && gameplay,current=0x13"),
+		("2-2:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x2 && gameplay,current=0x13"),
+		("2-3:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x3 && gameplay,current=0x13"),
+		("2-4:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x4 && gameplay,current=0x13"),
+		("2-5:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x4 && gameplay,current=0x13 && W2P2HP,current=0x1 && W2P1HP,current=0x0 && BossHP,current=0x0"),
+		("3-1:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x1 && gameplay,current=0x13"),
+		("3-2:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x2 && gameplay,current=0x13"),
+		("3-3:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x3 && gameplay,current=0x13"),
+		("3-4:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x4 && gameplay,current=0x13"),
+		("3-5:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x4 && gameplay,current=0x13 && BossHP,current=0x0"),
+		("4-1:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x1 && gameplay,current=0x13"),
+		("4-2:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x2 && gameplay,current=0x13"),
+		("4-3:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x3 && gameplay,current=0x13"),
+		("4-4:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x4 && gameplay,current=0x13"),
+		("4-5:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x4 && gameplay,current=0x13 && FBossHP,current=0xFF"),
+	}
 
-	// 	// info, err := client.Info()
-	// 	// fmt.Printf("%#v\n", info)
+	s.QUSB2SNESAutoSplitter.SetName("OpenSplit")
 
-	// 	// var autosplitter AutoSplitter = NewSuperMetroidAutoSplitter(settings)
+	version, _ := s.QUSB2SNESAutoSplitter.AppVersion()
+	fmt.Printf("Server version is %v\n", version)
 
-	// 	// for {
-	// 	// 	summary, err := autosplitter.Update(client)
-	// 	// 	if summary.Start {
-	// 	// 		timer.Start()
-	// 	// 	}
-	// 	// 	if summary.Reset {
-	// 	// 		if resetTimerOnGameReset == true {
-	// 	// 			timer.Reset(true)
-	// 	// 		}
-	// 	// 	}
-	// 	// 	if summary.Split {
-	// 	// 		// IGT
-	// 	// 		timer.SetGameTime(*t)
-	// 	// 		// RTA
-	// 	// 		timer.Split()
-	// 	// 	}
+	devices, _ := s.QUSB2SNESAutoSplitter.ListDevice()
 
-	// 	// 	if ev == TimerReset {
-	// 	// 		// creates a new SNES state
-	// 	// 		autosplitter.ResetGameTracking()
-	// 	// 		if resetGameOnTimerReset == true {
-	// 	// 			client.Reset()
-	// 	// 		}
-	// 	// 	}
+	if len(devices) != 1 {
+		if len(devices) == 0 {
+			fmt.Printf("no devices present\n")
+			return
+		}
+		fmt.Printf("unexpected devices: %#v\n", devices)
+		return
+	}
+	device := devices[0]
+	fmt.Printf("Using device %v\n", device)
 
-	// 	// 	time.Sleep(time.Duration(float64(time.Second) / pollingRate))
-	// 	// }
-	// }
+	s.QUSB2SNESAutoSplitter.Attach(device)
+	fmt.Println("Connected.")
+
+	info, _ := s.QUSB2SNESAutoSplitter.Info()
+	fmt.Printf("%#v\n", info)
+
+	var autosplitter = qusb2snes.NewQUSB2SNESAutoSplitter(memData, startConditionImport, resetConditionImport, splitConditionImport)
+
+	splitCount := 0
+	runStarted := false
+	for {
+		processStart := time.Now()
+
+		summary, _ := autosplitter.Update(*s.QUSB2SNESAutoSplitter, splitCount)
+
+		if summary.Start && !runStarted {
+			commandDispatcher.Dispatch(dispatcher.SPLIT, nil)
+			runStarted = !runStarted
+		}
+		if summary.Split && runStarted {
+			// IGT
+			// timer.SetGameTime(*t)
+			// RTA
+			commandDispatcher.Dispatch(dispatcher.SPLIT, nil)
+			splitCount++
+		}
+		// need to get timer reset state
+		if summary.Reset && runStarted /*|| timer is reset*/ {
+			if s.ResetTimerOnGameReset {
+				commandDispatcher.Dispatch(dispatcher.RESET, nil)
+			}
+			if s.ResetGameOnTimerReset {
+				s.QUSB2SNESAutoSplitter.Reset()
+			}
+			autosplitter.ResetGameTracking()
+			splitCount = 0
+			runStarted = !runStarted
+		}
+		// TODO: Close the connection after closing the splits file or receiving a disconnect signal
+		// s.QUSB2SNESAutoSplitter.Client.Close()
+
+		processElapsed := time.Since(processStart)
+		fmt.Println(processStart)
+		fmt.Println(processElapsed)
+		fmt.Println(mil - processElapsed)
+		time.Sleep(min(mil, max(0, mil-processElapsed)))
+	}
 }
