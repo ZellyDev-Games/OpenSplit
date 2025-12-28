@@ -80,7 +80,7 @@ func (s Splitters) newClient() (*nwa.NWASplitter, *qusb2snes.SyncClient) {
 		}
 		if s.Type == QUSB2SNES {
 			// fmt.Printf("Creating QUSB2SNES AutoSplitter\n")
-			client, connectError := qusb2snes.Connect()
+			client, connectError := qusb2snes.Connect(s.Addr, s.Port)
 			if connectError == nil {
 				return nil, client
 			} else {
@@ -217,9 +217,9 @@ func (s Splitters) processNWA(commandDispatcher *dispatcher.Service) {
 		// s.NWAAutoSplitter.Client.Close()
 
 		processElapsed := time.Since(processStart)
-		// fmt.Println(processStart)
-		// fmt.Println(processElapsed)
-		// fmt.Println(mil - processElapsed)
+		fmt.Println(processStart)
+		fmt.Println(processElapsed)
+		fmt.Println(mil - processElapsed)
 		time.Sleep(min(mil, max(0, mil-processElapsed)))
 	}
 }

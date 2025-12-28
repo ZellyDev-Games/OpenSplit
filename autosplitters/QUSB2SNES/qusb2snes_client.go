@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strconv"
 
 	"github.com/gorilla/websocket"
 )
@@ -99,16 +100,17 @@ type SyncClient struct {
 	devel  bool
 }
 
-func Connect() (*SyncClient, error) {
-	return connect(false)
+func Connect(host string, port uint32) (*SyncClient, error) {
+	return connect(host, port, false)
 }
 
-func ConnectWithDevel() (*SyncClient, error) {
-	return connect(true)
+func ConnectWithDevel(host string, port uint32) (*SyncClient, error) {
+	return connect(host, port, true)
 }
 
-func connect(devel bool) (*SyncClient, error) {
-	u := url.URL{Scheme: "ws", Host: "localhost:23074", Path: "/"}
+func connect(host string, port uint32, devel bool) (*SyncClient, error) {
+	numStr := strconv.FormatUint(uint64(port), 10)
+	u := url.URL{Scheme: "ws", Host: host + ":" + numStr, Path: "/"}
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		return nil, err
