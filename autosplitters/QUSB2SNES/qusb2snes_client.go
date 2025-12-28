@@ -1,7 +1,5 @@
 package qusb2snes
 
-// TODO: handle errors correctly
-
 import (
 	"encoding/json"
 	"fmt"
