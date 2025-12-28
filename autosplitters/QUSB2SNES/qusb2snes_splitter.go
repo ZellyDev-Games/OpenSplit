@@ -213,7 +213,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 
 			if strings.Contains(components[1], "=") {
 				compStrings := strings.Split(components[1], delimiter1)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -230,7 +230,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], "≠") {
 				compStrings := strings.Split(components[1], delimiter2)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -247,7 +247,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], "<") {
 				compStrings := strings.Split(components[1], delimiter3)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -264,7 +264,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], ">") {
 				compStrings := strings.Split(components[1], delimiter4)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -281,7 +281,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], "&") {
 				compStrings := strings.Split(components[1], delimiter5)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -292,7 +292,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], "|") {
 				compStrings := strings.Split(components[1], delimiter6)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -303,7 +303,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], "^") {
 				compStrings := strings.Split(components[1], delimiter7)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -344,7 +344,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 
 			if strings.Contains(components[1], "=") {
 				compStrings := strings.Split(components[1], delimiter1)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -361,7 +361,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], "≠") {
 				compStrings := strings.Split(components[1], delimiter2)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -378,7 +378,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], "<") {
 				compStrings := strings.Split(components[1], delimiter3)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -395,7 +395,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], ">") {
 				compStrings := strings.Split(components[1], delimiter4)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -412,7 +412,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], "&") {
 				compStrings := strings.Split(components[1], delimiter5)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -423,7 +423,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], "|") {
 				compStrings := strings.Split(components[1], delimiter6)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -434,7 +434,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], "^") {
 				compStrings := strings.Split(components[1], delimiter7)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -475,7 +475,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 
 			if strings.Contains(components[1], "=") {
 				compStrings := strings.Split(components[1], delimiter1)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -492,7 +492,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], "≠") {
 				compStrings := strings.Split(components[1], delimiter2)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -509,7 +509,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], "<") {
 				compStrings := strings.Split(components[1], delimiter3)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -526,7 +526,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], ">") {
 				compStrings := strings.Split(components[1], delimiter4)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -543,7 +543,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], "&") {
 				compStrings := strings.Split(components[1], delimiter5)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -554,7 +554,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], "|") {
 				compStrings := strings.Split(components[1], delimiter6)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -565,7 +565,7 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], "^") {
 				compStrings := strings.Split(components[1], delimiter7)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
