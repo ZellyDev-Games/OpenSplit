@@ -45,7 +45,7 @@ func Connect(ip string, port uint32) (*NWASyncClient, error) {
 
 func (c *NWASyncClient) ExecuteCommand(cmd string, argString *string) (emulatorReply, error) {
 	var command string
-	c.Connection.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	_ = c.Connection.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 	if argString == nil {
 		command = fmt.Sprintf("%s\n", cmd)
 	} else {
@@ -62,7 +62,7 @@ func (c *NWASyncClient) ExecuteCommand(cmd string, argString *string) (emulatorR
 
 func (c *NWASyncClient) ExecuteRawCommand(cmd string, argString *string) {
 	var command string
-	c.Connection.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	_ = c.Connection.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 	if argString == nil {
 		command = fmt.Sprintf("%s\n", cmd)
 	} else {
@@ -73,31 +73,31 @@ func (c *NWASyncClient) ExecuteRawCommand(cmd string, argString *string) {
 	_, _ = io.WriteString(c.Connection, command)
 }
 
-func (c *NWASyncClient) IsConnected() bool {
-	// net.Conn in Go does not have a Peek method.
-	// We can try to set a read deadline and read with a zero-length buffer to check connection.
-	// But zero-length read returns immediately, so we try to read 1 byte with deadline.
-	buf := make([]byte, 1)
-	c.Connection.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
-	n, err := c.Connection.Read(buf)
-	if err != nil {
-		// If timeout or no data, consider connected
-		netErr, ok := err.(net.Error)
-		if ok && netErr.Timeout() {
-			return true
-		}
-		return false
-	}
-	if n > 0 {
-		// Data was read, connection is alive
-		return true
-	}
-	return false
-}
+// func (c *NWASyncClient) IsConnected() bool {
+// 	// net.Conn in Go does not have a Peek method.
+// 	// We can try to set a read deadline and read with a zero-length buffer to check connection.
+// 	// But zero-length read returns immediately, so we try to read 1 byte with deadline.
+// 	buf := make([]byte, 1)
+// 	_ = c.Connection.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+// 	n, err := c.Connection.Read(buf)
+// 	if err != nil {
+// 		// If timeout or no data, consider connected
+// 		netErr, ok := err.(net.Error)
+// 		if ok && netErr.Timeout() {
+// 			return true
+// 		}
+// 		return false
+// 	}
+// 	if n > 0 {
+// 		// Data was read, connection is alive
+// 		return true
+// 	}
+// 	return false
+// }
 
 func (c *NWASyncClient) Close() {
 	// TODO: handle the error
-	c.Connection.Close()
+	_ = c.Connection.Close()
 }
 
 func (c *NWASyncClient) Reconnected() (bool, error) {
