@@ -74,6 +74,7 @@ func main() {
 
 	// UseAutoSplitter and Type should come from the splits config file
 	// ResetTimerOnGameReset, ResetGameOnTimerReset, Addr, Port should come from the autosplitter config file
+	// // NWA
 	AutoSplitterService := autosplitters.Splitters{
 		NWAAutoSplitter:       new(nwa.NWASplitter),
 		QUSB2SNESAutoSplitter: new(qusb2snes.SyncClient),
@@ -83,6 +84,17 @@ func main() {
 		Addr:                  "0.0.0.0",
 		Port:                  48879,
 		Type:                  autosplitters.NWA}
+
+	// // QUSB2SNES
+	// AutoSplitterService := autosplitters.Splitters{
+	// 	NWAAutoSplitter:       new(nwa.NWASplitter),
+	// 	QUSB2SNESAutoSplitter: new(qusb2snes.SyncClient),
+	// 	UseAutosplitter:       true,
+	// 	ResetTimerOnGameReset: true,
+	// 	ResetGameOnTimerReset: false,
+	// 	Addr:                  "0.0.0.0",
+	// 	Port:                  23074,
+	// 	Type:                  autosplitters.QUSB2SNES}
 
 	var hotkeyProvider statemachine.HotkeyProvider
 
