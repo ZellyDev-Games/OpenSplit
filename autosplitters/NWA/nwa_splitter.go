@@ -97,7 +97,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 
 			if strings.Contains(components[1], "=") {
 				compStrings := strings.Split(components[1], delimiter1)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -114,7 +114,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], "≠") {
 				compStrings := strings.Split(components[1], delimiter2)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -131,7 +131,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], "<") {
 				compStrings := strings.Split(components[1], delimiter3)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -148,7 +148,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], ">") {
 				compStrings := strings.Split(components[1], delimiter4)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -165,7 +165,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], "&") {
 				compStrings := strings.Split(components[1], delimiter5)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -176,7 +176,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], "|") {
 				compStrings := strings.Split(components[1], delimiter6)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -187,7 +187,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], "^") {
 				compStrings := strings.Split(components[1], delimiter7)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -228,7 +228,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 
 			if strings.Contains(components[1], "=") {
 				compStrings := strings.Split(components[1], delimiter1)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -245,7 +245,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], "≠") {
 				compStrings := strings.Split(components[1], delimiter2)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -262,7 +262,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], "<") {
 				compStrings := strings.Split(components[1], delimiter3)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -279,7 +279,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], ">") {
 				compStrings := strings.Split(components[1], delimiter4)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -296,7 +296,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], "&") {
 				compStrings := strings.Split(components[1], delimiter5)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -307,7 +307,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], "|") {
 				compStrings := strings.Split(components[1], delimiter6)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -318,7 +318,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], "^") {
 				compStrings := strings.Split(components[1], delimiter7)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -359,7 +359,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 
 			if strings.Contains(components[1], "=") {
 				compStrings := strings.Split(components[1], delimiter1)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -376,7 +376,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], "≠") {
 				compStrings := strings.Split(components[1], delimiter2)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -393,7 +393,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], "<") {
 				compStrings := strings.Split(components[1], delimiter3)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -410,7 +410,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], ">") {
 				compStrings := strings.Split(components[1], delimiter4)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -427,7 +427,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], "&") {
 				compStrings := strings.Split(components[1], delimiter5)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -438,7 +438,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], "|") {
 				compStrings := strings.Split(components[1], delimiter6)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -449,7 +449,7 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 				}
 			} else if strings.Contains(components[1], "^") {
 				compStrings := strings.Split(components[1], delimiter7)
-				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				tempElement.expectedValue = hexToInt(compStrings[1])
 				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
@@ -617,11 +617,11 @@ type nwaSummary struct {
 
 // Checks conditions and returns start state
 func (b *NWASplitter) start() bool {
-	fmt.Printf("Checking reset state\n")
-	startState := true
-	var tempstate bool
-
+	fmt.Printf("Checking start state\n")
 	for _, p := range b.startConditions {
+		startState := true
+		var tempstate bool
+
 		for _, q := range p.memory {
 			watcher := findMemoryWatcher(b.nwaMemory, q.memoryEntryName)
 			tempstate = q.result(q.compareType, watcher.priorValue, watcher.currentValue, q.expectedValue)
@@ -638,10 +638,10 @@ func (b *NWASplitter) start() bool {
 // Checks conditions and returns reset state
 func (b *NWASplitter) reset() bool {
 	fmt.Printf("Checking reset state\n")
-	resetState := true
-	var tempstate bool
-
 	for _, p := range b.resetConditions {
+		resetState := true
+		var tempstate bool
+
 		for _, q := range p.memory {
 			watcher := findMemoryWatcher(b.nwaMemory, q.memoryEntryName)
 			tempstate = q.result(q.compareType, watcher.priorValue, watcher.currentValue, q.expectedValue)
