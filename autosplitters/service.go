@@ -195,20 +195,20 @@ func (s Splitters) processNWA(commandDispatcher *dispatcher.Service) {
 		}
 		if autoState.Start && !runStarted {
 			//split run
-			commandDispatcher.Dispatch(dispatcher.SPLIT, nil)
+			_, _ = commandDispatcher.Dispatch(dispatcher.SPLIT, nil)
 			runStarted = !runStarted
 		}
 		if autoState.Split && runStarted {
 			//split run
-			commandDispatcher.Dispatch(dispatcher.SPLIT, nil)
+			_, _ = commandDispatcher.Dispatch(dispatcher.SPLIT, nil)
 			splitCount++
 		}
 		if autoState.Reset && runStarted {
 			if s.ResetTimerOnGameReset {
-				commandDispatcher.Dispatch(dispatcher.RESET, nil)
+				_, _ = commandDispatcher.Dispatch(dispatcher.RESET, nil)
 			}
 			if s.ResetGameOnTimerReset {
-				s.QUSB2SNESAutoSplitter.Reset()
+				_ = s.QUSB2SNESAutoSplitter.Reset()
 			}
 			splitCount = 0
 			runStarted = !runStarted
@@ -280,7 +280,7 @@ func (s Splitters) processQUSB2SNES(commandDispatcher *dispatcher.Service) {
 		("4-5:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x4 && gameplay,current=0x13 && FBossHP,current=0xFF"),
 	}
 
-	s.QUSB2SNESAutoSplitter.SetName("OpenSplit")
+	_ = s.QUSB2SNESAutoSplitter.SetName("OpenSplit")
 
 	version, _ := s.QUSB2SNESAutoSplitter.AppVersion()
 	fmt.Printf("Server version is %v\n", version)
@@ -298,7 +298,7 @@ func (s Splitters) processQUSB2SNES(commandDispatcher *dispatcher.Service) {
 	device := devices[0]
 	fmt.Printf("Using device %v\n", device)
 
-	s.QUSB2SNESAutoSplitter.Attach(device)
+	_ = s.QUSB2SNESAutoSplitter.Attach(device)
 	fmt.Println("Connected.")
 
 	info, _ := s.QUSB2SNESAutoSplitter.Info()
@@ -314,23 +314,23 @@ func (s Splitters) processQUSB2SNES(commandDispatcher *dispatcher.Service) {
 		summary, _ := autosplitter.Update(*s.QUSB2SNESAutoSplitter, splitCount)
 
 		if summary.Start && !runStarted {
-			commandDispatcher.Dispatch(dispatcher.SPLIT, nil)
+			_, _ = commandDispatcher.Dispatch(dispatcher.SPLIT, nil)
 			runStarted = !runStarted
 		}
 		if summary.Split && runStarted {
 			// IGT
 			// timer.SetGameTime(*t)
 			// RTA
-			commandDispatcher.Dispatch(dispatcher.SPLIT, nil)
+			_, _ = commandDispatcher.Dispatch(dispatcher.SPLIT, nil)
 			splitCount++
 		}
 		// need to get timer reset state
 		if summary.Reset && runStarted /*|| timer is reset*/ {
 			if s.ResetTimerOnGameReset {
-				commandDispatcher.Dispatch(dispatcher.RESET, nil)
+				_, _ = commandDispatcher.Dispatch(dispatcher.RESET, nil)
 			}
 			if s.ResetGameOnTimerReset {
-				s.QUSB2SNESAutoSplitter.Reset()
+				_ = s.QUSB2SNESAutoSplitter.Reset()
 			}
 			autosplitter.ResetGameTracking()
 			splitCount = 0
