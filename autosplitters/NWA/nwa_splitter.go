@@ -1,7 +1,5 @@
 package nwa
 
-// TODO: handle errors correctly
-
 import (
 	"encoding/binary"
 	"fmt"

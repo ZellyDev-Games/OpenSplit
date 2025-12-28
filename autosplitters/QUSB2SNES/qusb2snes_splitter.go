@@ -7,8 +7,6 @@ import (
 	"strings"
 )
 
-// TODO: handle errors correctly
-
 type conditionList struct {
 	Name   string
 	memory []element
