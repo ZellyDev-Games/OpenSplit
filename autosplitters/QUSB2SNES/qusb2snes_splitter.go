@@ -171,9 +171,11 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 	delimiter2 := "≠"
 	delimiter3 := "<"
 	delimiter4 := ">"
+	delimiter5 := "&"
+	delimiter6 := "|"
+	delimiter7 := "^"
 	compareStringCurrent := "current"
 	compareStringPrior := "prior"
-	hexPrefix := "0x"
 	var startConditions []conditionList
 	var resetConditions []conditionList
 	var splitConditions []conditionList
@@ -207,11 +209,12 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 			components := strings.Split(q, ",")
 
 			tempElement.memoryEntryName = components[0]
+			tempElement.result = compare
 
 			if strings.Contains(components[1], "=") {
 				compStrings := strings.Split(components[1], delimiter1)
-				if strings.HasPrefix(compStrings[1], hexPrefix) {
-					tempElement.expectedValue = hexToInt(compStrings[1])
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
 						tempElement.compareType = "ceqe"
@@ -221,12 +224,14 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				} else {
 					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
 						tempElement.compareType = "ceqp"
+					} else {
+						tempElement.compareType = "peqc"
 					}
 				}
 			} else if strings.Contains(components[1], "≠") {
 				compStrings := strings.Split(components[1], delimiter2)
-				if strings.HasPrefix(compStrings[1], hexPrefix) {
-					tempElement.expectedValue = hexToInt(compStrings[1])
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
 						tempElement.compareType = "cnee"
@@ -236,12 +241,14 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				} else {
 					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
 						tempElement.compareType = "cnep"
+					} else {
+						tempElement.compareType = "pnec"
 					}
 				}
 			} else if strings.Contains(components[1], "<") {
 				compStrings := strings.Split(components[1], delimiter3)
-				if strings.HasPrefix(compStrings[1], hexPrefix) {
-					tempElement.expectedValue = hexToInt(compStrings[1])
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
 						tempElement.compareType = "clte"
@@ -257,8 +264,8 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				}
 			} else if strings.Contains(components[1], ">") {
 				compStrings := strings.Split(components[1], delimiter4)
-				if strings.HasPrefix(compStrings[1], hexPrefix) {
-					tempElement.expectedValue = hexToInt(compStrings[1])
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
 						tempElement.compareType = "cgte"
@@ -272,9 +279,40 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 						tempElement.compareType = "pgtc"
 					}
 				}
+			} else if strings.Contains(components[1], "&") {
+				compStrings := strings.Split(components[1], delimiter5)
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "cbae"
+					case compareStringPrior:
+						tempElement.compareType = "pbae"
+					}
+				}
+			} else if strings.Contains(components[1], "|") {
+				compStrings := strings.Split(components[1], delimiter6)
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "cboe"
+					case compareStringPrior:
+						tempElement.compareType = "pboe"
+					}
+				}
+			} else if strings.Contains(components[1], "^") {
+				compStrings := strings.Split(components[1], delimiter7)
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "cbne"
+					case compareStringPrior:
+						tempElement.compareType = "pbne"
+					}
+				}
 			}
-
-			tempElement.result = compare
 
 			condition.memory = append(condition.memory, tempElement)
 		}
@@ -302,11 +340,12 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 			components := strings.Split(q, ",")
 
 			tempElement.memoryEntryName = components[0]
+			tempElement.result = compare
 
 			if strings.Contains(components[1], "=") {
 				compStrings := strings.Split(components[1], delimiter1)
-				if strings.HasPrefix(compStrings[1], hexPrefix) {
-					tempElement.expectedValue = hexToInt(compStrings[1])
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
 						tempElement.compareType = "ceqe"
@@ -316,12 +355,14 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				} else {
 					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
 						tempElement.compareType = "ceqp"
+					} else {
+						tempElement.compareType = "peqc"
 					}
 				}
 			} else if strings.Contains(components[1], "≠") {
 				compStrings := strings.Split(components[1], delimiter2)
-				if strings.HasPrefix(compStrings[1], hexPrefix) {
-					tempElement.expectedValue = hexToInt(compStrings[1])
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
 						tempElement.compareType = "cnee"
@@ -331,12 +372,14 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				} else {
 					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
 						tempElement.compareType = "cnep"
+					} else {
+						tempElement.compareType = "pnec"
 					}
 				}
 			} else if strings.Contains(components[1], "<") {
 				compStrings := strings.Split(components[1], delimiter3)
-				if strings.HasPrefix(compStrings[1], hexPrefix) {
-					tempElement.expectedValue = hexToInt(compStrings[1])
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
 						tempElement.compareType = "clte"
@@ -346,12 +389,14 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				} else {
 					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
 						tempElement.compareType = "cltp"
+					} else {
+						tempElement.compareType = "pltc"
 					}
 				}
 			} else if strings.Contains(components[1], ">") {
 				compStrings := strings.Split(components[1], delimiter4)
-				if strings.HasPrefix(compStrings[1], hexPrefix) {
-					tempElement.expectedValue = hexToInt(compStrings[1])
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
 						tempElement.compareType = "cgte"
@@ -361,11 +406,44 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				} else {
 					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
 						tempElement.compareType = "cgtp"
+					} else {
+						tempElement.compareType = "pgtc"
+					}
+				}
+			} else if strings.Contains(components[1], "&") {
+				compStrings := strings.Split(components[1], delimiter5)
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "cbae"
+					case compareStringPrior:
+						tempElement.compareType = "pbae"
+					}
+				}
+			} else if strings.Contains(components[1], "|") {
+				compStrings := strings.Split(components[1], delimiter6)
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "cboe"
+					case compareStringPrior:
+						tempElement.compareType = "pboe"
+					}
+				}
+			} else if strings.Contains(components[1], "^") {
+				compStrings := strings.Split(components[1], delimiter7)
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "cbne"
+					case compareStringPrior:
+						tempElement.compareType = "pbne"
 					}
 				}
 			}
-
-			tempElement.result = compare
 
 			condition.memory = append(condition.memory, tempElement)
 		}
@@ -393,11 +471,12 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 			components := strings.Split(q, ",")
 
 			tempElement.memoryEntryName = components[0]
+			tempElement.result = compare
 
 			if strings.Contains(components[1], "=") {
 				compStrings := strings.Split(components[1], delimiter1)
-				if strings.HasPrefix(compStrings[1], hexPrefix) {
-					tempElement.expectedValue = hexToInt(compStrings[1])
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
 						tempElement.compareType = "ceqe"
@@ -407,12 +486,14 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				} else {
 					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
 						tempElement.compareType = "ceqp"
+					} else {
+						tempElement.compareType = "peqc"
 					}
 				}
 			} else if strings.Contains(components[1], "≠") {
 				compStrings := strings.Split(components[1], delimiter2)
-				if strings.HasPrefix(compStrings[1], hexPrefix) {
-					tempElement.expectedValue = hexToInt(compStrings[1])
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
 						tempElement.compareType = "cnee"
@@ -422,12 +503,14 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				} else {
 					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
 						tempElement.compareType = "cnep"
+					} else {
+						tempElement.compareType = "pnec"
 					}
 				}
 			} else if strings.Contains(components[1], "<") {
 				compStrings := strings.Split(components[1], delimiter3)
-				if strings.HasPrefix(compStrings[1], hexPrefix) {
-					tempElement.expectedValue = hexToInt(compStrings[1])
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
 						tempElement.compareType = "clte"
@@ -437,12 +520,14 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				} else {
 					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
 						tempElement.compareType = "cltp"
+					} else {
+						tempElement.compareType = "pltc"
 					}
 				}
 			} else if strings.Contains(components[1], ">") {
 				compStrings := strings.Split(components[1], delimiter4)
-				if strings.HasPrefix(compStrings[1], hexPrefix) {
-					tempElement.expectedValue = hexToInt(compStrings[1])
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
 					switch compStrings[0] {
 					case compareStringCurrent:
 						tempElement.compareType = "cgte"
@@ -452,11 +537,44 @@ func newSNESState(memData []string, startConditionImport []string, resetConditio
 				} else {
 					if compStrings[0] == compareStringCurrent && compStrings[1] == compareStringPrior {
 						tempElement.compareType = "cgtp"
+					} else {
+						tempElement.compareType = "pgtc"
+					}
+				}
+			} else if strings.Contains(components[1], "&") {
+				compStrings := strings.Split(components[1], delimiter5)
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "cbae"
+					case compareStringPrior:
+						tempElement.compareType = "pbae"
+					}
+				}
+			} else if strings.Contains(components[1], "|") {
+				compStrings := strings.Split(components[1], delimiter6)
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "cboe"
+					case compareStringPrior:
+						tempElement.compareType = "pboe"
+					}
+				}
+			} else if strings.Contains(components[1], "^") {
+				compStrings := strings.Split(components[1], delimiter7)
+				tempElement.expectedValue = hexToInt(compStrings[1][2:])
+				if tempElement.expectedValue != nil {
+					switch compStrings[0] {
+					case compareStringCurrent:
+						tempElement.compareType = "cbne"
+					case compareStringPrior:
+						tempElement.compareType = "pbne"
 					}
 				}
 			}
-
-			tempElement.result = compare
 
 			condition.memory = append(condition.memory, tempElement)
 		}
@@ -594,7 +712,7 @@ func (a *QUSB2SNESAutoSplitter) ResetGameTracking() {
 func hexToInt(hex string) *uint16 {
 	num, err := strconv.ParseUint(hex, 0, 64)
 	if err != nil {
-		log.Fatalf("Failed to convert string to integer: %v", err)
+		log.Printf("Failed to convert string to integer: %v", err)
 		return nil
 	}
 	integer := uint16(num)
@@ -698,6 +816,42 @@ func compare(input string, prior *uint16, current *uint16, expected *uint16) boo
 			return false
 		} else {
 			return *prior > *expected
+		}
+	case "pbae":
+		if (expected == nil) || (prior == nil) {
+			return false
+		} else {
+			return (*prior & *expected) != 0
+		}
+	case "cbae":
+		if (expected == nil) || (current == nil) {
+			return false
+		} else {
+			return (*current & *expected) != 0
+		}
+	case "pboe":
+		if (expected == nil) || (prior == nil) {
+			return false
+		} else {
+			return (*prior | *expected) != 0
+		}
+	case "cboe":
+		if (expected == nil) || (current == nil) {
+			return false
+		} else {
+			return (*current | *expected) != 0
+		}
+	case "pbne":
+		if (expected == nil) || (prior == nil) {
+			return false
+		} else {
+			return (*prior ^ *expected) != 0
+		}
+	case "cbne":
+		if (expected == nil) || (current == nil) {
+			return false
+		} else {
+			return (*current ^ *expected) != 0
 		}
 	default:
 		return false

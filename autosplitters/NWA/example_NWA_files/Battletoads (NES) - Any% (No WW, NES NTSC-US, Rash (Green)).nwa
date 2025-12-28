@@ -13,7 +13,7 @@ start:level,prior=0x0 && level,current=0x1
 reset:level,current=0x0 && level,prior≠0x0
 
 #split (some games might have multiple split conditions) (expectedValue is optional) (values MUST always be last)
-#= ≠ < >
+#= ≠ < > & | ^
 level2:level,prior=0xFF && level,current=0x2
 level3:level,prior=0xFF && level,current=0x3
 level4:level,prior=0xFF && level,current=0x4
