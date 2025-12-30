@@ -27,7 +27,7 @@ start:state,prior=0xD0 && state,current=0x0 && stage,current=0x0 && substage,cur
 #reset (some games might have multiple reset conditions) (expectedValue is optional)
 cutscene_reset:state,current=0x0 && state,prior=0xD0 && gameplay,prior=0x11 && gameplay,current=0x0
 tool_reset:gameplay,prior=0x11 && gameplay,current=0x0 && scene,prior=0x4 && scene,current=0x0 && scene2,prior=0x3 && scene2,current=0x0
-level_reset:gameplay,prior=0x13 && gameplay,current=0x0 && crates,current=0x0 && substage,current=0x0 && stage,current=0x0 && scene2,current=0x0
+level_reset:gameplay,prior=0x13 && gameplay,current=0x0 && crates,current=0x0 && substage,current=0x0 && stage,current=0x0
 
 #split (some games might have multiple split conditions) (expectedValue is optional)
 #= ≠ < > & | ^
