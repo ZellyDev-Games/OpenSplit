@@ -26,7 +26,7 @@ type SplitEditorParams = {
 function addChildRecursive(list: SegmentPayload[], parent: SegmentPayload): SegmentPayload[] {
     return list.map((item) => {
         if (item.id === parent.id) {
-            const child = new SegmentPayload(); // NEW CHILD, not copy of parent
+            const child = new SegmentPayload();
             return {
                 ...item,
                 children: [...item.children, child],

@@ -3,7 +3,6 @@ package bridge
 import (
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dto"
-	"github.com/zellydev-games/opensplit/repo/adapters"
 	"github.com/zellydev-games/opensplit/session"
 )
 
@@ -20,15 +19,15 @@ func NewSession(sessionUpdatedChannel chan *session.Service, runtimeProvider Run
 }
 
 func (s *Session) StartUIPump() {
-	go func() {
-		for {
-			updatedSession, ok := <-s.sessionUpdatedChannel
-			if !ok {
-				return
-			}
-			s.runtimeProvider.EventsEmit("session:update", adapters.DomainToDTO(updatedSession))
-		}
-	}()
+	//go func() {
+	//	for {
+	//		updatedSession, ok := <-s.sessionUpdatedChannel
+	//		if !ok {
+	//			return
+	//		}
+	//		s.runtimeProvider.EventsEmit("session:update", adapters.DomainToDTO(updatedSession))
+	//	}
+	//}()
 }
 
 type View string

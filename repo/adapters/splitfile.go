@@ -114,12 +114,12 @@ func checkSegmentIDs(segments []dto.Segment) {
 func domainSegmentsToDTO(segs []session.Segment) []dto.Segment {
 	out := make([]dto.Segment, len(segs))
 	for _, s := range segs {
-		out = append(out, domainSegmentToDTO(s, true))
+		out = append(out, domainSegmentToDTO(s))
 	}
 	return out
 }
 
-func domainSegmentToDTO(s session.Segment, includeChildren bool) dto.Segment {
+func domainSegmentToDTO(s session.Segment) dto.Segment {
 	dtoSeg := dto.Segment{
 		ID:       s.ID.String(),
 		Name:     s.Name,
@@ -129,10 +129,8 @@ func domainSegmentToDTO(s session.Segment, includeChildren bool) dto.Segment {
 		Children: nil,
 	}
 
-	if includeChildren {
-		for _, c := range s.Children {
-			dtoSeg.Children = append(dtoSeg.Children, domainSegmentToDTO(c, true))
-		}
+	for _, c := range s.Children {
+		dtoSeg.Children = append(dtoSeg.Children, domainSegmentToDTO(c))
 	}
 
 	return dtoSeg
@@ -140,8 +138,8 @@ func domainSegmentToDTO(s session.Segment, includeChildren bool) dto.Segment {
 
 func dtoSegmentsToDomain(segs []dto.Segment) []session.Segment {
 	out := make([]session.Segment, len(segs))
-	for _, s := range segs {
-		out = append(out, dtoSegmentToDomain(s))
+	for i, s := range segs {
+		out[i] = dtoSegmentToDomain(s)
 	}
 	return out
 }
