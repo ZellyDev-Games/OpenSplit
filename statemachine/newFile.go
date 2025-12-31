@@ -39,7 +39,7 @@ func (n *NewFile) Receive(command dispatcher.Command, payload *string) (dispatch
 				Message: "nil payload received",
 			}, nil
 		}
-		dto, err := adapters.FrontendToSplitFile(*payload)
+		dto, err := adapters.JSONSplitFileToDTO(*payload)
 		if err != nil {
 			logger.Error(err.Error())
 			return dispatcher.DispatchReply{Code: 2, Message: err.Error()}, err
@@ -48,7 +48,7 @@ func (n *NewFile) Receive(command dispatcher.Command, payload *string) (dispatch
 		if err != nil {
 			return dispatcher.DispatchReply{Code: 4, Message: "failed to save dto: " + err.Error()}, err
 		}
-		sf, err := adapters.SplitFileToDomain(dto)
+		sf, err := adapters.DTOSplitFileToDomain(dto)
 		if err != nil {
 			return dispatcher.DispatchReply{Code: 5, Message: err.Error()}, err
 		}

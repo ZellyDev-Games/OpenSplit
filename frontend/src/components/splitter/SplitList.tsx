@@ -77,12 +77,6 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
         }
     }, [sessionPayload]);
 
-    // get hierarchy and flatten it
-    const flatSegments: FlatSegment[] = flattenSegments(sessionPayload.loaded_split_file?.segments ?? []);
-
-    // Only leaves are real timed split points
-    const leafSegments = flatSegments.filter((s) => s.isLeaf);
-
     // Segment time display
     const getSegmentDisplayTime = (leafIndex: number, segment: SegmentPayload): JSX.Element => {
         const gold = segment.gold;
@@ -136,8 +130,8 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
     };
 
     // row renderer
-    const rows = flatSegments.map((seg) => {
-        if (!seg.isLeaf) {
+    const rows = sessionPayload.loaded_split_file?.segments.map((seg) => {
+        if (sessionPayload.runtime_segments?.indexOf(seg) === -1) {
             return (
                 <tr key={seg.id} className="parentRow">
                     <td className="splitName" style={{ paddingLeft: seg.depth * 16 }}>
@@ -149,7 +143,7 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
         }
 
         // leaf/real segment
-        const leafIndex = leafSegments.findIndex((l) => l.id === seg.id);
+        const leafIndex = sessionPayload.runtime_segments?.findIndex((l) => l.id === seg.id);
         const isSelected = leafIndex === sessionPayload.current_segment_index;
 
         return (

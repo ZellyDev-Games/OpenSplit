@@ -24,7 +24,7 @@ func (s *Session) StartUIPump() {
 			if !ok {
 				return
 			}
-			s.runtimeProvider.EventsEmit("session:update", adapters.DomainToSession(updatedSession))
+			s.runtimeProvider.EventsEmit("session:update", adapters.DomainToDTO(updatedSession))
 		}
 	}()
 }

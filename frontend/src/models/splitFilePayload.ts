@@ -15,6 +15,7 @@ export default class SplitFilePayload {
     sob: number = 0;
     pb: RunPayload | null = null;
     attempts: number = 0;
+    offset: number = 0;
 
     constructor(init?: Partial<SplitFilePayload>) {
         if (init) {

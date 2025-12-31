@@ -17,3 +17,13 @@ export default class SegmentPayload {
         this.children = (init?.children ?? []).map((c) => new SegmentPayload(c));
     }
 }
+
+export class FlattenedSegmentPayload {
+    segment: SegmentPayload;
+    depth: number;
+
+    constructor(init: SegmentPayload, depth: number = 0) {
+        this.segment = init;
+        this.depth = depth;
+    }
+}

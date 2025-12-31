@@ -10,20 +10,19 @@ type Segment struct {
 }
 
 type Split struct {
-	SplitIndex        int    `json:"split_index"`
 	SplitSegmentID    string `json:"split_segment_id"`
 	CurrentCumulative int64  `json:"current_cumulative"`
 	CurrentDuration   int64  `json:"current_duration"`
 }
 
 type Run struct {
-	ID               string    `json:"id"`
-	SplitFileID      string    `json:"split_file_id"`
-	SplitFileVersion int       `json:"split_file_version"`
-	TotalTime        int64     `json:"total_time"`
-	Splits           []*Split  `json:"splits"`
-	Segments         []Segment `json:"segments"`
-	Completed        bool      `json:"completed"`
+	ID               string           `json:"id"`
+	SplitFileID      string           `json:"split_file_id"`
+	SplitFileVersion int              `json:"split_file_version"`
+	TotalTime        int64            `json:"total_time"`
+	Splits           map[string]Split `json:"splits"`
+	LeafSegments     []Segment        `json:"leaf_segments"`
+	Completed        bool             `json:"completed"`
 }
 
 // SplitFile represents the data and history of a game/category combo.
@@ -40,4 +39,5 @@ type SplitFile struct {
 	Segments     []Segment `json:"segments"`
 	SOB          int64     `json:"sob"`
 	PB           *Run      `json:"pb"`
+	Offset       int64     `json:"offset"`
 }

@@ -1,6 +1,8 @@
 package statemachine
 
 import (
+	"errors"
+
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/repo/adapters"
 )
@@ -15,7 +17,12 @@ func NewEditingState() (*Editing, error) {
 
 // OnEnter sets the context from Wails, and signals the frontend to show the SplitEditor with the specified split file (or nil)
 func (e *Editing) OnEnter() error {
-	payload := adapters.DomainToSplitFile(machine.sessionService.SplitFile())
+	sf, loaded := machine.sessionService.SplitFile()
+	if !loaded {
+		return errors.New("editing state entered but split file not loaded")
+	}
+
+	payload := adapters.DomainSplitFileToDTO(sf)
 	machine.sessionService.Pause()
 	machine.runtimeProvider.EventsEmit("state:enter", EDITING, payload)
 	return nil
@@ -33,7 +40,7 @@ func (e *Editing) Receive(command dispatcher.Command, payload *string) (dispatch
 				Message: "nil payload received",
 			}, nil
 		}
-		dto, err := adapters.FrontendToSplitFile(*payload)
+		dto, err := adapters.JSONSplitFileToDTO(*payload)
 		if err != nil {
 			return dispatcher.DispatchReply{Code: 2, Message: err.Error()}, err
 		}
@@ -42,7 +49,7 @@ func (e *Editing) Receive(command dispatcher.Command, payload *string) (dispatch
 			return dispatcher.DispatchReply{Code: 4, Message: "failed to save dto: " + err.Error()}, err
 		}
 
-		sf, err := adapters.SplitFileToDomain(dto)
+		sf, err := adapters.DTOSplitFileToDomain(dto)
 		if err != nil {
 			return dispatcher.DispatchReply{Code: 5, Message: err.Error()}, err
 		}
