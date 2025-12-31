@@ -397,9 +397,9 @@ func deepCopySplitFile(inFile *SplitFile) SplitFile {
 }
 
 func deepCopyRuns(inRuns []Run) []Run {
-	runs := make([]Run, 0, len(inRuns))
-	for i, run := range inRuns {
-		runs[i] = deepCopyRun(run)
+	runs := make([]Run, len(inRuns))
+	for i := range inRuns {
+		runs[i] = deepCopyRun(inRuns[i])
 	}
 	return runs
 }

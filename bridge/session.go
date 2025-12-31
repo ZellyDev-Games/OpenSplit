@@ -3,8 +3,11 @@ package bridge
 import (
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dto"
+	"github.com/zellydev-games/opensplit/repo/adapters"
 	"github.com/zellydev-games/opensplit/session"
 )
+
+const uiModelEventName = "ui:model"
 
 type Session struct {
 	runtimeProvider       RuntimeProvider
@@ -19,15 +22,18 @@ func NewSession(sessionUpdatedChannel chan *session.Service, runtimeProvider Run
 }
 
 func (s *Session) StartUIPump() {
-	//go func() {
-	//	for {
-	//		updatedSession, ok := <-s.sessionUpdatedChannel
-	//		if !ok {
-	//			return
-	//		}
-	//		s.runtimeProvider.EventsEmit("session:update", adapters.DomainToDTO(updatedSession))
-	//	}
-	//}()
+	go func() {
+		for {
+			updatedSession, ok := <-s.sessionUpdatedChannel
+			if !ok {
+				return
+			}
+			EmitUIEvent(s.runtimeProvider, AppViewModel{
+				View:    AppViewRunning,
+				Session: adapters.DomainToDTO(updatedSession),
+			})
+		}
+	}()
 }
 
 type View string
@@ -52,4 +58,8 @@ type AppViewModel struct {
 
 	// Only set for settings
 	Config *config.Service `json:"config,omitempty"`
+}
+
+func EmitUIEvent(runtimeProvider RuntimeProvider, model AppViewModel) {
+	runtimeProvider.EventsEmit(uiModelEventName, model)
 }

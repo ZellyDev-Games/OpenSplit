@@ -43,7 +43,7 @@ func (w *Welcome) OnEnter() error {
 		}
 	}
 
-	emitUIEvent(bridge.AppViewModel{
+	bridge.EmitUIEvent(machine.runtimeProvider, bridge.AppViewModel{
 		View: bridge.AppViewWelcome,
 	})
 	return nil

@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
-	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/keyinfo"
@@ -14,8 +13,6 @@ import (
 	"github.com/zellydev-games/opensplit/repo"
 	"github.com/zellydev-games/opensplit/session"
 )
-
-const uiModelEventName = "ui:model"
 
 // machine is a private singleton instance of a *Service that represents a state machine.
 var machine *Service
@@ -144,8 +141,4 @@ func (s *Service) changeState(newState StateID, _ ...interface{}) {
 			logger.Error(fmt.Sprintf("OnEnter failed: %v", err))
 		}
 	}
-}
-
-func emitUIEvent(model bridge.AppViewModel) {
-	machine.runtimeProvider.EventsEmit(uiModelEventName, model)
 }

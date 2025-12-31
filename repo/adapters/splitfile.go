@@ -111,10 +111,10 @@ func checkSegmentIDs(segments []dto.Segment) {
 	}
 }
 
-func domainSegmentsToDTO(segs []session.Segment) []dto.Segment {
-	out := make([]dto.Segment, len(segs))
-	for _, s := range segs {
-		out = append(out, domainSegmentToDTO(s))
+func domainSegmentsToDTO(segments []session.Segment) []dto.Segment {
+	out := make([]dto.Segment, len(segments))
+	for i := range segments {
+		out[i] = domainSegmentToDTO(segments[i])
 	}
 	return out
 }
@@ -126,7 +126,7 @@ func domainSegmentToDTO(s session.Segment) dto.Segment {
 		Gold:     s.Gold.Milliseconds(),
 		Average:  s.Average.Milliseconds(),
 		PB:       s.PB.Milliseconds(),
-		Children: nil,
+		Children: []dto.Segment{},
 	}
 
 	for _, c := range s.Children {

@@ -66,7 +66,7 @@ func (r *Running) OnEnter() error {
 		}
 	}
 
-	emitUIEvent(bridge.AppViewModel{
+	bridge.EmitUIEvent(machine.runtimeProvider, bridge.AppViewModel{
 		View:    bridge.AppViewRunning,
 		Session: sessionDto,
 	})

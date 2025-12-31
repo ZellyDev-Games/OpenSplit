@@ -25,7 +25,7 @@ func (e *Editing) OnEnter() error {
 
 	splitFileDTO := adapters.DomainSplitFileToDTO(sf)
 	machine.sessionService.Pause()
-	emitUIEvent(bridge.AppViewModel{
+	bridge.EmitUIEvent(machine.runtimeProvider, bridge.AppViewModel{
 		View:               bridge.AppViewEditSplitFile,
 		SplitFile:          &splitFileDTO,
 		SpeedrunAPIBaseURL: machine.configService.SpeedRunAPIBase,

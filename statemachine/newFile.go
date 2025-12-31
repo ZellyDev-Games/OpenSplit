@@ -25,7 +25,7 @@ func (n *NewFile) ID() StateID {
 }
 
 func (n *NewFile) OnEnter() error {
-	emitUIEvent(bridge.AppViewModel{
+	bridge.EmitUIEvent(machine.runtimeProvider, bridge.AppViewModel{
 		View:               bridge.AppViewNewSplitFile,
 		SpeedrunAPIBaseURL: machine.configService.SpeedRunAPIBase,
 	})

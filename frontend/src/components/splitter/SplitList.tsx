@@ -1,4 +1,4 @@
-import { JSX, useEffect, useState } from "react";
+import {JSX, useEffect, useMemo, useState} from "react";
 
 import { EventsOn } from "../../../wailsjs/runtime";
 import SegmentPayload from "../../models/segmentPayload";
@@ -17,10 +17,40 @@ type SplitListParameters = {
     sessionPayload: SessionPayload;
 }
 
+type FlatSegment = {
+    Segment: SegmentPayload;
+    Depth: number;
+}
+
+function flattenSegments(segments: SegmentPayload[], depth: number = 0): FlatSegment[] {
+    const flatSegments: FlatSegment[] = [];
+    for (const segment of segments) {
+        console.log(segment)
+        flatSegments.push({
+            Segment: segment,
+            Depth: depth,
+        });
+
+        if (segment.children.length > 0) {
+            flatSegments.push(...flattenSegments(segment.children, depth + 1));
+        }
+    }
+
+    return flatSegments;
+}
+
 export default function SplitList({sessionPayload}: SplitListParameters) {
     const [completions, setCompletions] = useState<Completion[]>([]);
     const [compareAgainst] = useState<CompareAgainst>("average");
     const [time, setTime] = useState(0);
+
+    const flatSegments = useMemo<FlatSegment[]>(() => {
+        if (!sessionPayload.loaded_split_file) {
+            return [];
+        }
+
+        return flattenSegments(sessionPayload.loaded_split_file.segments);
+    }, [sessionPayload.loaded_split_file]);
 
     // subscribe to timer updates
     useEffect(() => {
@@ -111,25 +141,28 @@ export default function SplitList({sessionPayload}: SplitListParameters) {
             return [];
         }
 
-        sessionPayload.loaded_split_file.segments.forEach((segment: SegmentPayload) => {
-            // if this segment isn't in leaf segments it's a parent segment
+        flatSegments.forEach((segmentData: FlatSegment) => {
+            // if this segmentData isn't in leaf segments it's a parent segmentData
             // in this case we don't show times
-            const leafIndex = sessionPayload.leaf_segments?.indexOf(segment);
+            const leafIndex = sessionPayload.leaf_segments?.findIndex(
+                leaf => leaf.id == segmentData.Segment.id
+            );
             if (leafIndex === -1 || leafIndex === undefined) {
-                elements.push(<tr key={segment.id} className="parentRow">
-                    <td className="splitName" style={{ /*paddingLeft: segment.depth * 16 */ }}>
-                        <strong>{segment.name}</strong>
+                elements.push(<tr key={segmentData.Segment.id} className="parentRow">
+                    <td className="splitName" style={{ paddingLeft: segmentData.Depth * 16  }}>
+                        <strong>{segmentData.Segment.name}</strong>
                     </td>
                     <td className="splitComparison"></td>
                 </tr>)
             } else {
                 const isSelected = leafIndex === sessionPayload.current_segment_index;
-                elements.push(<tr key={segment.id} className={isSelected ? "selected" : ""}>
-                    <td className="splitName" style={{ /*paddingLeft: seg.depth * 16 */}}>
-                        {segment.name}
+                console.log(leafIndex, sessionPayload.current_segment_index);
+                elements.push(<tr key={segmentData.Segment.id} className={isSelected ? "selected" : ""}>
+                    <td className="splitName" style={{ paddingLeft: segmentData.Depth * 16 }}>
+                        {segmentData.Segment.name}
                     </td>
 
-                    <td className="splitComparison">{getSegmentDisplayTime(leafIndex, segment)}</td>
+                    <td className="splitComparison">{getSegmentDisplayTime(leafIndex, segmentData.Segment)}</td>
                 </tr>);
             }
         })

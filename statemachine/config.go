@@ -27,7 +27,7 @@ func NewConfigState(previousState StateID) (*Config, error) {
 }
 
 func (c *Config) OnEnter() error {
-	emitUIEvent(bridge.AppViewModel{
+	bridge.EmitUIEvent(machine.runtimeProvider, bridge.AppViewModel{
 		View:   bridge.AppViewSettings,
 		Config: machine.configService,
 	})
