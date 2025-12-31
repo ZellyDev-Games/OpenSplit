@@ -15,34 +15,9 @@ type Completion = {
 
 type SplitListParameters = {
     sessionPayload: SessionPayload;
-};
-
-type FlatSegment = SegmentPayload & {
-    depth: number;
-    isLeaf: boolean;
-};
-
-function flattenSegments(list: SegmentPayload[], depth = 0): FlatSegment[] {
-    const out: FlatSegment[] = [];
-
-    for (const seg of list) {
-        const isLeaf = !seg.children || seg.children.length === 0;
-
-        out.push({
-            ...seg,
-            depth,
-            isLeaf,
-        });
-
-        if (!isLeaf) {
-            out.push(...flattenSegments(seg.children, depth + 1));
-        }
-    }
-
-    return out;
 }
 
-export default function SplitList({ sessionPayload }: SplitListParameters) {
+export default function SplitList({sessionPayload}: SplitListParameters) {
     const [completions, setCompletions] = useState<Completion[]>([]);
     const [compareAgainst] = useState<CompareAgainst>("average");
     const [time, setTime] = useState(0);
@@ -56,25 +31,25 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
 
     // completed splits from current run
     useEffect(() => {
-        if (sessionPayload?.current_run) {
-            const completed: Completion[] = [];
-
-            sessionPayload.current_run.splits.forEach((c) => {
-                if (c != null) {
-                    const formatted = displayFormattedTimeParts(formatDuration(msToParts(c.current_cumulative)));
-
-                    completed.push({
-                        segmentID: c.split_segment_id,
-                        time: `${formatted[0]}${formatted[1]}`,
-                        raw: c.current_duration,
-                    });
-                }
-            });
-
-            setCompletions(completed);
-        } else {
+        if (!sessionPayload?.current_run) {
             setCompletions([]);
+            return;
         }
+
+        const completed: Completion[] = [];
+        for (const segmentID of Object.keys(sessionPayload.current_run.splits)) {
+            const split = sessionPayload.current_run.splits[segmentID];
+            const formatted = displayFormattedTimeParts(
+                formatDuration(
+                    msToParts(split.current_cumulative)));
+
+            completed.push({
+                segmentID: segmentID,
+                time: `${formatted[0]}${formatted[1]}`,
+                raw: split.current_duration
+            })
+        }
+        setCompletions(completed);
     }, [sessionPayload]);
 
     // Segment time display
@@ -130,35 +105,40 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
     };
 
     // row renderer
-    const rows = sessionPayload.loaded_split_file?.segments.map((seg) => {
-        if (sessionPayload.runtime_segments?.indexOf(seg) === -1) {
-            return (
-                <tr key={seg.id} className="parentRow">
-                    <td className="splitName" style={{ paddingLeft: seg.depth * 16 }}>
-                        <strong>{seg.name}</strong>
-                    </td>
-                    <td className="splitComparison"></td>
-                </tr>
-            );
+    const rows = (): JSX.Element[] => {
+        const elements: JSX.Element[] = [];
+        if (!sessionPayload.loaded_split_file || sessionPayload.leaf_segments == null) {
+            return [];
         }
 
-        // leaf/real segment
-        const leafIndex = sessionPayload.runtime_segments?.findIndex((l) => l.id === seg.id);
-        const isSelected = leafIndex === sessionPayload.current_segment_index;
+        sessionPayload.loaded_split_file.segments.forEach((segment: SegmentPayload) => {
+            // if this segment isn't in leaf segments it's a parent segment
+            // in this case we don't show times
+            const leafIndex = sessionPayload.leaf_segments?.indexOf(segment);
+            if (leafIndex === -1 || leafIndex === undefined) {
+                elements.push(<tr key={segment.id} className="parentRow">
+                    <td className="splitName" style={{ /*paddingLeft: segment.depth * 16 */ }}>
+                        <strong>{segment.name}</strong>
+                    </td>
+                    <td className="splitComparison"></td>
+                </tr>)
+            } else {
+                const isSelected = leafIndex === sessionPayload.current_segment_index;
+                elements.push(<tr key={segment.id} className={isSelected ? "selected" : ""}>
+                    <td className="splitName" style={{ /*paddingLeft: seg.depth * 16 */}}>
+                        {segment.name}
+                    </td>
 
-        return (
-            <tr key={seg.id} className={isSelected ? "selected" : ""}>
-                <td className="splitName" style={{ paddingLeft: seg.depth * 16 }}>
-                    {seg.name}
-                </td>
+                    <td className="splitComparison">{getSegmentDisplayTime(leafIndex, segment)}</td>
+                </tr>);
+            }
+        })
 
-                <td className="splitComparison">{getSegmentDisplayTime(leafIndex, seg)}</td>
-            </tr>
-        );
-    });
+        return elements;
+    }
 
     // Final row separated
-    const leafRows = rows.filter((r) => r.props.className !== "parentRow");
+    const leafRows = rows().filter((r) => r.props.className !== "parentRow");
     const finalRow = leafRows.at(-1);
 
     return (
@@ -174,7 +154,7 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
 
             <div className="splitContainer">
                 <table cellSpacing="0">
-                    <tbody>{rows}</tbody>
+                    <tbody>{rows()}</tbody>
                 </table>
             </div>
 

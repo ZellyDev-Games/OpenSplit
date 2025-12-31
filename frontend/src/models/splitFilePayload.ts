@@ -4,6 +4,7 @@ import SegmentPayload from "./segmentPayload";
 export default class SplitFilePayload {
     id: string = "";
     version: number = 1;
+    attempts: number = 0;
     game_name: string = "";
     game_category: string = "";
     window_x: number = 100;
@@ -14,7 +15,6 @@ export default class SplitFilePayload {
     segments: SegmentPayload[] = [];
     sob: number = 0;
     pb: RunPayload | null = null;
-    attempts: number = 0;
     offset: number = 0;
 
     constructor(init?: Partial<SplitFilePayload>) {

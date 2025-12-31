@@ -1,6 +1,7 @@
 package statemachine
 
 import (
+	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo/adapters"
@@ -24,7 +25,10 @@ func (n *NewFile) ID() StateID {
 }
 
 func (n *NewFile) OnEnter() error {
-	machine.runtimeProvider.EventsEmit("state:enter", NEWFILE)
+	emitUIEvent(bridge.AppViewModel{
+		View:               bridge.AppViewNewSplitFile,
+		SpeedrunAPIBaseURL: machine.configService.SpeedRunAPIBase,
+	})
 	return nil
 }
 func (n *NewFile) OnExit() error { return nil }

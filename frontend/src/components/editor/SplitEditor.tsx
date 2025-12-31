@@ -27,8 +27,6 @@ function addChildRecursive(list: SegmentPayload[], parent: SegmentPayload): Segm
     return list.map((item) => {
         if (item.id === parent.id) {
             const child = new SegmentPayload(); // NEW CHILD, not copy of parent
-            child.parent = item.id;
-
             return {
                 ...item,
                 children: [...item.children, child],

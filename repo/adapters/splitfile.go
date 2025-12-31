@@ -174,7 +174,6 @@ func domainRunsToDTO(runs []session.Run, splitFileID uuid.UUID, splitFileVersion
 func domainRunToDTO(run session.Run, splitFileID uuid.UUID, splitFileVersion int) dto.Run {
 	return dto.Run{
 		ID:               run.ID.String(),
-		SplitFileID:      splitFileID.String(),
 		SplitFileVersion: splitFileVersion,
 		TotalTime:        run.TotalTime.Milliseconds(),
 		Splits:           domainSplitsToDTO(run.Splits),

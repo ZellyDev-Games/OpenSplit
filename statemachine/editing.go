@@ -3,6 +3,7 @@ package statemachine
 import (
 	"errors"
 
+	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/repo/adapters"
 )
@@ -22,9 +23,13 @@ func (e *Editing) OnEnter() error {
 		return errors.New("editing state entered but split file not loaded")
 	}
 
-	payload := adapters.DomainSplitFileToDTO(sf)
+	splitFileDTO := adapters.DomainSplitFileToDTO(sf)
 	machine.sessionService.Pause()
-	machine.runtimeProvider.EventsEmit("state:enter", EDITING, payload)
+	emitUIEvent(bridge.AppViewModel{
+		View:               bridge.AppViewEditSplitFile,
+		SplitFile:          &splitFileDTO,
+		SpeedrunAPIBaseURL: machine.configService.SpeedRunAPIBase,
+	})
 	return nil
 }
 

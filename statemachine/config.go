@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/keyinfo"
 	"github.com/zellydev-games/opensplit/logger"
@@ -26,7 +27,10 @@ func NewConfigState(previousState StateID) (*Config, error) {
 }
 
 func (c *Config) OnEnter() error {
-	machine.runtimeProvider.EventsEmit("state:enter", CONFIG, machine.configService)
+	emitUIEvent(bridge.AppViewModel{
+		View:   bridge.AppViewSettings,
+		Config: machine.configService,
+	})
 	return nil
 }
 

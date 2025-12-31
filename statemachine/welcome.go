@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo"
@@ -42,7 +43,9 @@ func (w *Welcome) OnEnter() error {
 		}
 	}
 
-	machine.runtimeProvider.EventsEmit("state:enter", WELCOME)
+	emitUIEvent(bridge.AppViewModel{
+		View: bridge.AppViewWelcome,
+	})
 	return nil
 }
 func (w *Welcome) OnExit() error { return nil }
