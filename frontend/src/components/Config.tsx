@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Dispatch } from "../../wailsjs/go/dispatcher/Service";
 import { EventsOn, WindowSetSize } from "../../wailsjs/runtime";
 import { Command } from "../App";
-import { ConfigPayload } from "../models/configPayload";
+import { ConfigPayload, KeyInfo } from "../models/configPayload";
 
 export type ConfigParams = {
     configPayload: ConfigPayload;
@@ -17,7 +17,7 @@ export default function Config({ configPayload }: ConfigParams) {
 
     useEffect(() => {
         WindowSetSize(700, 800);
-        return EventsOn("config:update", (newConfigPayload) => {
+        return EventsOn("config:update", (newConfigPayload: ConfigPayload) => {
             console.log("received update from backend", newConfigPayload);
             setConfig(newConfigPayload);
             setRecording(false);
@@ -29,6 +29,18 @@ export default function Config({ configPayload }: ConfigParams) {
         if (reply.code == RECORDING_ARMED) {
             console.log("backend confirms recording is armed");
             setRecording(true);
+        }
+    };
+
+    const getHotkeyName = (ki: KeyInfo): string => {
+        console.log(ki);
+        let ret =
+            (ki.modifiers !== null && ki.modifiers.length > 0 && ki.modifier_locale_names.join(" + ") + " + ") || "";
+        ret += (ki.locale_name && ki.locale_name) || "";
+        if (ret === "") {
+            return "No Hotkey Assigned";
+        } else {
+            return ret;
         }
     };
 
@@ -45,10 +57,7 @@ export default function Config({ configPayload }: ConfigParams) {
             <div className="row" key={command[0]}>
                 <div className="hotkeyContainer">
                     <p className="hotkeyID">{command[1]}: </p>
-                    <p className="hotkeyValue">
-                        {(config.key_config[command[0]].key_code && config.key_config[command[0]].locale_name) ||
-                            "No Key Assignment"}
-                    </p>
+                    <p className="hotkeyValue">{getHotkeyName(config.key_config[command[0]])}</p>
                     <button disabled={recording} onClick={() => armHotkey(command[0])}>
                         {(recording && "Recording") || "Record Hotkey"}
                     </button>

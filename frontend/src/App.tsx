@@ -9,21 +9,6 @@ import { ConfigPayload } from "./models/configPayload";
 import SessionPayload from "./models/sessionPayload";
 import SplitFilePayload from "./models/splitFilePayload";
 
-export enum State {
-    WELCOME = 0,
-    NEWFILE = 1,
-    EDITING = 2,
-    RUNNING = 3,
-    CONFIG = 4,
-}
-
-type Model =
-    | { tag: State.WELCOME }
-    | { tag: State.NEWFILE; speedRunAPIBase: string }
-    | { tag: State.EDITING; splitFilePayload: SplitFilePayload | null; speedRunAPIBase: string }
-    | { tag: State.RUNNING; sessionPayload: SessionPayload }
-    | { tag: State.CONFIG; configPayload: ConfigPayload };
-
 export enum Command {
     QUIT,
     NEW,
@@ -40,79 +25,73 @@ export enum Command {
     PAUSE,
 }
 
-type stateEnterParams =
-    | [State.WELCOME, null]
-    | [State.NEWFILE, null]
-    | [State.EDITING, SplitFilePayload | null]
-    | [State.RUNNING, SessionPayload]
-    | [State.CONFIG, ConfigPayload];
+export enum AppView {
+    Welcome = "welcome",
+    NewSplitFile = "new-split-file",
+    EditSplitFile = "edit-split-file",
+    Running = "running",
+    Settings = "settings",
+}
 
-type StateViewProps = { model: Model };
-function StateRouter({ model }: StateViewProps) {
-    switch (model.tag) {
-        case State.WELCOME:
+export type AppViewModel =
+    | { view: AppView.Welcome }
+    | { view: AppView.NewSplitFile; speedrunApiBaseUrl: string }
+    | { view: AppView.EditSplitFile; splitFile: SplitFilePayload | null; speedrunApiBaseUrl: string }
+    | { view: AppView.Running; session: SessionPayload }
+    | { view: AppView.Settings; config: ConfigPayload };
+
+type ViewRouterProps = { model: AppViewModel };
+
+function ViewRouter({ model }: ViewRouterProps) {
+    switch (model.view) {
+        case AppView.Welcome:
             return <Welcome />;
-        case State.NEWFILE:
-            return <SplitEditor splitFilePayload={null} speedRunAPIBase={model.speedRunAPIBase} />;
-        case State.EDITING:
-            return <SplitEditor splitFilePayload={model.splitFilePayload} speedRunAPIBase={model.speedRunAPIBase} />;
-        case State.RUNNING:
-            return <Splitter sessionPayload={model.sessionPayload} />;
-        case State.CONFIG:
-            return <Config configPayload={model.configPayload} />;
+
+        case AppView.NewSplitFile:
+            return <SplitEditor splitFilePayload={null} speedRunAPIBase={model.speedrunApiBaseUrl} />;
+
+        case AppView.EditSplitFile:
+            return <SplitEditor splitFilePayload={model.splitFile} speedRunAPIBase={model.speedrunApiBaseUrl} />;
+
+        case AppView.Running:
+            return <Splitter sessionPayload={model.session} />;
+
+        case AppView.Settings:
+            return <Config configPayload={model.config} />;
     }
 }
 
-function App() {
-    const [model, setModel] = React.useState<Model>({ tag: State.WELCOME });
+export default function App() {
+    const [viewModel, setViewModel] = React.useState<AppViewModel>({ view: AppView.Welcome });
 
-    // Subscribe to state updates from the backend
     useEffect(() => {
-        const unsubStateUpdates = EventsOn("state:enter", (...params: stateEnterParams) => {
-            switch (params[0]) {
-                case State.WELCOME:
-                    setModel({ tag: State.WELCOME });
-                    break;
-                case State.NEWFILE:
-                    setModel({ tag: State.NEWFILE, speedRunAPIBase: "https://www.speedrun.com/api/v1" });
-                    break;
-                case State.EDITING:
-                    setModel({
-                        tag: State.EDITING,
-                        splitFilePayload: params[1],
-                        speedRunAPIBase: "https://www.speedrun.com/api/v1",
-                    });
-                    break;
-                case State.RUNNING:
-                    console.log("[FSM:RUNNING]", params[1]);
-                    setModel({ tag: State.RUNNING, sessionPayload: params[1] });
-                    break;
-                case State.CONFIG:
-                    console.log(params[1]);
-                    setModel({ tag: State.CONFIG, configPayload: params[1] });
-            }
+        const unsubViewModel = EventsOn("ui:model", (nextModel: AppViewModel) => {
+            console.log("[UI MODEL]", nextModel.view, nextModel);
+            setViewModel(nextModel);
         });
 
-        const unsubSessionUpdates = EventsOn("session:update", (updatedSession: SessionPayload) => {
-            setModel((prev) => {
-                if (prev.tag === State.RUNNING) {
-                    return { tag: State.RUNNING, sessionPayload: updatedSession };
+        const unsubSession = EventsOn("session:update", (updatedSession: SessionPayload) => {
+            setViewModel((prev) => {
+                if (prev.view == AppView.Running) {
+                    return {
+                        ...prev,
+                        session: updatedSession,
+                    };
                 }
+
                 return prev;
             });
         });
 
         return () => {
-            unsubStateUpdates();
-            unsubSessionUpdates();
+            unsubViewModel();
+            unsubSession();
         };
     }, []);
 
     return (
         <div id="App" className="app">
-            <StateRouter model={model} />
+            <ViewRouter model={viewModel} />
         </div>
     );
 }
-
-export default App;

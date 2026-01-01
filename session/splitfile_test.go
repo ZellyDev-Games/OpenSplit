@@ -19,62 +19,62 @@ func TestBuildStats(t *testing.T) {
 		SplitFileVersion: 1,
 		TotalTime:        time.Second * 35,
 		Completed:        true,
-		Splits: []*Split{{
-			SplitIndex:        0,
-			SplitSegmentID:    sf.Segments[0].ID,
-			CurrentCumulative: time.Second * 25,
-			CurrentDuration:   time.Second * 25,
-		}, {
-			SplitIndex:        1,
-			SplitSegmentID:    sf.Segments[1].ID,
-			CurrentCumulative: time.Second * 35,
-			CurrentDuration:   time.Second * 10,
-		}},
+		Splits: map[uuid.UUID]Split{
+			uid: {
+				SplitSegmentID:    uid,
+				CurrentCumulative: time.Second * 25,
+				CurrentDuration:   time.Second * 25,
+			},
+			uid2: {
+				SplitSegmentID:    uid2,
+				CurrentCumulative: time.Second * 35,
+				CurrentDuration:   time.Second * 10,
+			}},
 	}, {
 		ID:               rID2,
 		SplitFileVersion: 1,
 		TotalTime:        time.Second * 90,
 		Completed:        true,
-		Splits: []*Split{{
-			SplitIndex:        0,
-			SplitSegmentID:    sf.Segments[0].ID,
-			CurrentCumulative: time.Second * 60,
-			CurrentDuration:   time.Second * 60,
-		}, {
-			SplitIndex:        1,
-			SplitSegmentID:    sf.Segments[1].ID,
-			CurrentCumulative: time.Second * 90,
-			CurrentDuration:   time.Second * 30,
-		}},
+		Splits: map[uuid.UUID]Split{
+			uid: {
+				SplitSegmentID:    uid,
+				CurrentCumulative: time.Second * 60,
+				CurrentDuration:   time.Second * 60,
+			},
+			uid2: {
+				SplitSegmentID:    uid2,
+				CurrentCumulative: time.Second * 90,
+				CurrentDuration:   time.Second * 30,
+			},
+		},
 	}, {
 		ID:               rID3,
 		SplitFileVersion: 1,
 		TotalTime:        time.Second * 34,
 		Completed:        true,
-		Splits: []*Split{{
-			SplitIndex:        0,
-			SplitSegmentID:    sf.Segments[0].ID,
-			CurrentCumulative: time.Second * 30,
-			CurrentDuration:   time.Second * 30,
-		}, {
-			SplitIndex:        1,
-			SplitSegmentID:    sf.Segments[1].ID,
-			CurrentCumulative: time.Second * 34,
-			CurrentDuration:   time.Second * 4,
-		}},
-	}}
+		Splits: map[uuid.UUID]Split{
+			uid: {
+				SplitSegmentID:    sf.Segments[0].ID,
+				CurrentCumulative: time.Second * 30,
+				CurrentDuration:   time.Second * 30,
+			},
+			uid2: {
+				SplitSegmentID:    sf.Segments[1].ID,
+				CurrentCumulative: time.Second * 34,
+				CurrentDuration:   time.Second * 4,
+			}}}}
 
 	sf.BuildStats()
-	want := (sf.Runs[0].Splits[0].CurrentDuration +
-		sf.Runs[1].Splits[0].CurrentDuration +
-		sf.Runs[2].Splits[0].CurrentDuration) / 3
+	want := (sf.Runs[0].Splits[uid].CurrentDuration +
+		sf.Runs[1].Splits[uid].CurrentDuration +
+		sf.Runs[2].Splits[uid].CurrentDuration) / 3
 	if sf.Segments[0].Average != want {
 		t.Errorf("segment 1 Average time: want %s got %s", want, sf.Segments[0].Average)
 	}
 
-	want = (sf.Runs[0].Splits[1].CurrentDuration +
-		sf.Runs[1].Splits[1].CurrentDuration +
-		sf.Runs[2].Splits[1].CurrentDuration) / 3
+	want = (sf.Runs[0].Splits[uid2].CurrentDuration +
+		sf.Runs[1].Splits[uid2].CurrentDuration +
+		sf.Runs[2].Splits[uid2].CurrentDuration) / 3
 	if sf.Segments[1].Average != want {
 		t.Errorf("segment 2 Average time: want %s got %s", want, sf.Segments[1].Average)
 	}

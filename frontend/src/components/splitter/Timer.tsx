@@ -26,8 +26,12 @@ export type FormattedTimeParts = {
     centisText: string;
 };
 
-export default function Timer() {
-    const [time, setTime] = useState(0);
+type TimerParams = {
+    offset: number | undefined;
+};
+
+export default function Timer({ offset }: TimerParams) {
+    const [time, setTime] = useState(offset || 0);
 
     useEffect(() => {
         return EventsOn("timer:update", (val: number) => {
@@ -40,6 +44,7 @@ export default function Timer() {
     return (
         <div className={"timer-container"}>
             <div className="time-container" aria-label="formatted duration">
+                <span className="time-sign">{time < 0 && "-"}</span>
                 <span className="time-hours" data-unit="hours" data-present={formattedTimeParts.showHours ? "1" : "0"}>
                     <strong>{formattedTimeParts.hoursText}</strong>
                 </span>
