@@ -1,8 +1,10 @@
 package statemachine
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/keyinfo"
 	"github.com/zellydev-games/opensplit/logger"
@@ -17,7 +19,7 @@ func NewRunningState() (*Running, error) {
 }
 
 func (r *Running) OnEnter() error {
-	sessionDto := adapters.DomainToSession(machine.sessionService)
+	sessionDto := adapters.DomainToDTO(machine.sessionService)
 
 	if machine.hotkeyProvider != nil {
 		err := machine.hotkeyProvider.StartHook(func(data keyinfo.KeyData) {
@@ -64,7 +66,10 @@ func (r *Running) OnEnter() error {
 		}
 	}
 
-	machine.runtimeProvider.EventsEmit("state:enter", RUNNING, sessionDto)
+	bridge.EmitUIEvent(machine.runtimeProvider, bridge.AppViewModel{
+		View:    bridge.AppViewRunning,
+		Session: sessionDto,
+	})
 	return nil
 }
 
@@ -90,10 +95,14 @@ func (r *Running) Receive(command dispatcher.Command, _ *string) (dispatcher.Dis
 		machine.changeState(EDITING, nil)
 	case dispatcher.SAVE:
 		logger.Debug("Running received SAVE command")
-		sf := machine.sessionService.SplitFile()
+		sf, loaded := machine.sessionService.SplitFile()
+		if !loaded {
+			msg := "save called without loaded splitfile.  Wait, how did we get to running state without one?"
+			return dispatcher.DispatchReply{Code: 3, Message: msg}, errors.New(msg)
+		}
 		w, h := machine.runtimeProvider.WindowGetSize()
 		x, y := machine.runtimeProvider.WindowGetPosition()
-		dto := adapters.DomainToSplitFile(sf)
+		dto := adapters.DomainSplitFileToDTO(sf)
 		err := machine.repoService.SaveSplitFile(dto, x, y, w, h)
 		if err != nil {
 			msg := fmt.Sprintf("failed to save split file to session: %s", err)

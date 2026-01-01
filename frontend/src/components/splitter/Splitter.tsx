@@ -69,7 +69,7 @@ export default function Splitter({ sessionPayload }: SplitterParams) {
         <div {...contextMenu.bind} className="splitter">
             <ContextMenu state={contextMenu.state} close={contextMenu.close} items={contextMenuItems} />
             <SplitList sessionPayload={sessionPayload} />
-            <Timer />
+            <Timer offset={(sessionPayload.loaded_split_file?.offset || 0) * -1} />
         </div>
     );
 }

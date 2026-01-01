@@ -1,6 +1,7 @@
 package statemachine
 
 import (
+	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo/adapters"
@@ -24,7 +25,10 @@ func (n *NewFile) ID() StateID {
 }
 
 func (n *NewFile) OnEnter() error {
-	machine.runtimeProvider.EventsEmit("state:enter", NEWFILE)
+	bridge.EmitUIEvent(machine.runtimeProvider, bridge.AppViewModel{
+		View:               bridge.AppViewNewSplitFile,
+		SpeedrunAPIBaseURL: machine.configService.SpeedRunAPIBase,
+	})
 	return nil
 }
 func (n *NewFile) OnExit() error { return nil }
@@ -39,7 +43,7 @@ func (n *NewFile) Receive(command dispatcher.Command, payload *string) (dispatch
 				Message: "nil payload received",
 			}, nil
 		}
-		dto, err := adapters.FrontendToSplitFile(*payload)
+		dto, err := adapters.JSONSplitFileToDTO(*payload)
 		if err != nil {
 			logger.Error(err.Error())
 			return dispatcher.DispatchReply{Code: 2, Message: err.Error()}, err
@@ -48,7 +52,7 @@ func (n *NewFile) Receive(command dispatcher.Command, payload *string) (dispatch
 		if err != nil {
 			return dispatcher.DispatchReply{Code: 4, Message: "failed to save dto: " + err.Error()}, err
 		}
-		sf, err := adapters.SplitFileToDomain(dto)
+		sf, err := adapters.DTOSplitFileToDomain(dto)
 		if err != nil {
 			return dispatcher.DispatchReply{Code: 5, Message: err.Error()}, err
 		}

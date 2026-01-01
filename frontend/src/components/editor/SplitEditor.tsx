@@ -26,9 +26,7 @@ type SplitEditorParams = {
 function addChildRecursive(list: SegmentPayload[], parent: SegmentPayload): SegmentPayload[] {
     return list.map((item) => {
         if (item.id === parent.id) {
-            const child = new SegmentPayload(); // NEW CHILD, not copy of parent
-            child.parent = item.id;
-
+            const child = new SegmentPayload();
             return {
                 ...item,
                 children: [...item.children, child],
@@ -55,6 +53,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
     const [gameCategory, setGameCategory] = React.useState<string>(splitFilePayload?.game_category ?? "");
     const [attempts, setAttempts] = React.useState<number>(splitFilePayload?.attempts ?? 0);
     const [segments, setSegments] = useState<SegmentPayload[]>(splitFilePayload?.segments ?? []);
+    const [offsetMS, setOffsetMS] = React.useState(0);
 
     // Speedrun search
     const [gameResults, setGameResults] = React.useState<Game[]>([]);
@@ -66,7 +65,6 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
         WindowCenter();
     }, []);
 
-    // Pull apart the segment times from the split file in a way our UI can use them.
     useEffect(() => {
         (async () => {
             if (!splitFilePayload) return;
@@ -75,6 +73,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
             setGameCategory(splitFilePayload.game_category);
             setAttempts(splitFilePayload.attempts);
             setSegments(splitFilePayload.segments);
+            setOffsetMS(splitFilePayload.offset);
         })();
     }, []);
 
@@ -131,6 +130,14 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
         setSegments((prev) => updateRecursive(prev));
     }
 
+    const handleOffsetChange = (v: string) => {
+        let t = parseInt(v, 10);
+        if (isNaN(t)) {
+            t = 0;
+        }
+        setOffsetMS(t);
+    };
+
     const deleteSegment = (id: string) => {
         function deleteRecursive(list: SegmentPayload[]): SegmentPayload[] {
             return list
@@ -161,6 +168,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
             attempts: Number(attempts),
             pb: splitFilePayload?.pb ?? null,
             sob: splitFilePayload?.sob ?? 0,
+            offset: offsetMS,
         });
 
         const payload = JSON.stringify(newSplitFilePayload);
@@ -300,6 +308,18 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                         id="attempts"
                         name="attempts"
                         inputMode="numeric"
+                    />
+                </div>
+
+                <div className="row">
+                    <label htmlFor="offset">Negative Start Offset (milliseconds)</label>
+                    <input
+                        onChange={(e) => handleOffsetChange(e.target.value)}
+                        id="offsetMS"
+                        name="offsetMS"
+                        type="text"
+                        autoComplete="off"
+                        value={offsetMS}
                     />
                 </div>
 

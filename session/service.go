@@ -40,13 +40,13 @@ type Timer interface {
 	Pause()
 	Reset()
 	GetCurrentTime() time.Duration
+	SubtractTime(duration time.Duration)
 }
 
-// Split represents an advancement of a run through the Segments.
+// Split represents an advancement of a run through the DeepCopyLeafSegments.
 //
 // Split identifies a completed segment, and how long that segment took
 type Split struct {
-	SplitIndex        int
 	SplitSegmentID    uuid.UUID
 	CurrentCumulative time.Duration
 	CurrentDuration   time.Duration
@@ -66,26 +66,10 @@ type Segment struct {
 type Run struct {
 	ID               uuid.UUID
 	TotalTime        time.Duration
-	Splits           []*Split
-	Segments         []Segment
+	Splits           map[uuid.UUID]Split // uuid key here is a segment ID
+	LeafSegments     []Segment
 	Completed        bool
 	SplitFileVersion int
-}
-
-type SplitFile struct {
-	ID           uuid.UUID
-	GameName     string
-	GameCategory string
-	Version      int
-	Attempts     int
-	Segments     []Segment
-	WindowX      int
-	WindowY      int
-	WindowHeight int
-	WindowWidth  int
-	SOB          time.Duration
-	Runs         []Run
-	PB           *Run
 }
 
 // Service represents the current state of a run.
@@ -97,7 +81,7 @@ type Service struct {
 	mu                   sync.Mutex
 	timer                Timer
 	loadedSplitFile      *SplitFile
-	runtimeSegments      []Segment
+	leafSegments         []*Segment
 	currentRun           *Run
 	currentSegmentIndex  int
 	sessionState         State
@@ -121,13 +105,13 @@ func NewService(timer Timer) (*Service, chan *Service) {
 	return service, service.sessionUpdateChannel
 }
 
-func (s *Service) SetLoadedSplitFile(sf *SplitFile) {
+func (s *Service) SetLoadedSplitFile(sf SplitFile) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	defer s.sendUpdate()
 
-	s.loadedSplitFile = sf
-	s.runtimeSegments = FlattenSegments(sf.Segments)
+	s.loadedSplitFile = &sf
+	s.leafSegments = getLeafSegments(sf.Segments, nil)
 
 	s.currentRun = nil
 	s.currentSegmentIndex = -1
@@ -170,15 +154,22 @@ func (s *Service) Undo() {
 	}
 
 	s.currentSegmentIndex--
+	if s.currentSegmentIndex < 0 || s.currentSegmentIndex >= len(s.leafSegments) {
+		logger.Error(
+			fmt.Sprintf("Undo() set currentSegmentIndex outside of bounds %d", s.currentSegmentIndex))
+		return
+	}
 
-	// nil out the split at the current index
-	s.currentRun.Splits[s.currentSegmentIndex] = nil
+	// delete the split at the current index
+	segmentID := s.currentRun.LeafSegments[s.currentSegmentIndex].ID
+	delete(s.currentRun.Splits, segmentID)
 
 	// recompute TotalTime from last non-nil split
 	total := time.Duration(0)
 	for i := s.currentSegmentIndex - 1; i >= 0; i-- {
-		if sp := s.currentRun.Splits[i]; sp != nil {
-			total = sp.CurrentCumulative
+		segmentID := s.currentRun.LeafSegments[i].ID
+		if split, ok := s.currentRun.Splits[segmentID]; ok {
+			total = split.CurrentCumulative
 			break
 		}
 	}
@@ -199,7 +190,7 @@ func (s *Service) Skip() {
 	defer s.sendUpdate()
 
 	if s.currentRun == nil ||
-		s.currentSegmentIndex >= len(s.runtimeSegments)-1 ||
+		s.currentSegmentIndex >= len(s.leafSegments)-1 ||
 		s.sessionState == Idle ||
 		s.sessionState == Finished {
 		return
@@ -243,10 +234,14 @@ func (s *Service) CloseRun() {
 	s.resetLocked()
 }
 
-func (s *Service) SplitFile() *SplitFile {
+func (s *Service) SplitFile() (SplitFile, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.deepCopySplitFile()
+	sf := SplitFile{}
+	if s.loadedSplitFile == nil {
+		return sf, false
+	}
+	return deepCopySplitFile(s.loadedSplitFile), true
 }
 
 // Dirty returns the unsaved changes status of the session
@@ -259,20 +254,18 @@ func (s *Service) State() State { s.mu.Lock(); defer s.mu.Unlock(); return s.ses
 func (s *Service) Index() int { s.mu.Lock(); defer s.mu.Unlock(); return s.currentSegmentIndex }
 
 // Run returns the currently loaded Run
-//
-// Returns true as second param only if result is valid
 func (s *Service) Run() (Run, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	r := Run{}
 	if s.currentRun == nil {
-		return Run{}, false
+		return r, false
 	}
-	r := *s.currentRun
-	r.Splits = append([]*Split(nil), r.Splits...)
+	r = deepCopyRun(*s.currentRun)
 	return r, true
 }
 
-// resetLocked assumed that the system is under lock when called.
+// resetLocked assumes that the system is under lock when called.
 func (s *Service) resetLocked() {
 	s.timer.Pause()
 	s.timer.Reset()
@@ -306,19 +299,20 @@ func (s *Service) startNewRun() SplitResult {
 		return SplitNoop
 	}
 
-	if len(s.runtimeSegments) == 0 {
-		logger.Debug("Split() called on run with no Segments, NO-OP")
+	if len(s.leafSegments) == 0 {
+		logger.Debug("Split() called on run with no DeepCopyLeafSegments, NO-OP")
 		return SplitNoop
 	}
 	s.resetLocked()
+	s.timer.SubtractTime(s.loadedSplitFile.Offset)
 	s.timer.Start()
 	s.loadedSplitFile.Attempts++
 	s.sessionState = Running
 	s.currentSegmentIndex = 0
 	s.currentRun = &Run{
 		ID:               uuid.New(),
-		Splits:           make([]*Split, len(s.runtimeSegments)),
-		Segments:         append([]Segment(nil), s.runtimeSegments...),
+		Splits:           map[uuid.UUID]Split{},
+		LeafSegments:     s.loadedSplitFile.DeepCopyLeafSegments(),
 		SplitFileVersion: s.loadedSplitFile.Version,
 	}
 	s.dirty = true
@@ -326,7 +320,7 @@ func (s *Service) startNewRun() SplitResult {
 }
 
 func (s *Service) advanceRun() SplitResult {
-	if s.currentSegmentIndex < 0 || s.currentSegmentIndex >= len(s.runtimeSegments) {
+	if s.currentSegmentIndex < 0 || s.currentSegmentIndex >= len(s.leafSegments) {
 		logger.Warn(
 			fmt.Sprintf("Split() called in Running state, but current segment index is out of bounds: %d",
 				s.currentSegmentIndex))
@@ -334,20 +328,25 @@ func (s *Service) advanceRun() SplitResult {
 	}
 	now := s.timer.GetCurrentTime()
 
+	//if splitfile has a negative offset, don't let user split until it starts counting
+	if now < 1*time.Millisecond {
+		return SplitNoop
+	}
+
 	// find prev cumulative from the last non-nil split
 	prev := time.Duration(0)
 	for i := s.currentSegmentIndex - 1; i >= 0; i-- {
-		if sp := s.currentRun.Splits[i]; sp != nil {
-			prev = sp.CurrentCumulative
+		segmentID := s.currentRun.LeafSegments[i].ID
+		if split, ok := s.currentRun.Splits[segmentID]; ok {
+			prev = split.CurrentCumulative
 			break
 		}
 	}
 
 	segTime := now - prev
-
-	s.currentRun.Splits[s.currentSegmentIndex] = &Split{
-		SplitIndex:        s.currentSegmentIndex,
-		SplitSegmentID:    s.runtimeSegments[s.currentSegmentIndex].ID,
+	segmentID := s.currentRun.LeafSegments[s.currentSegmentIndex].ID
+	s.currentRun.Splits[segmentID] = Split{
+		SplitSegmentID:    segmentID,
 		CurrentCumulative: now,
 		CurrentDuration:   segTime,
 	}
@@ -355,7 +354,7 @@ func (s *Service) advanceRun() SplitResult {
 	s.dirty = true
 	s.currentSegmentIndex++
 
-	if s.currentSegmentIndex > len(s.runtimeSegments)-1 {
+	if s.currentSegmentIndex > len(s.leafSegments)-1 {
 		s.timer.Pause()
 		s.sessionState = Finished
 		s.currentRun.TotalTime = now
@@ -375,123 +374,66 @@ func (s *Service) sendUpdate() {
 	}
 }
 
-func (s *Service) deepCopySplitFile() *SplitFile {
-	if s.loadedSplitFile == nil {
-		return nil
-	}
-
-	segments := deepCopySegments(s.loadedSplitFile.Segments)
-
-	runs := make([]Run, 0, len(s.loadedSplitFile.Runs))
-	for _, run := range s.loadedSplitFile.Runs {
-		flatSegs := make([]Segment, len(run.Segments))
-		for i, segment := range run.Segments {
-			flatSegs[i] = Segment{
-				ID:      segment.ID,
-				Name:    segment.Name,
-				Gold:    segment.Gold,
-				Average: segment.Average,
-				PB:      segment.PB,
-			}
-		}
-
-		// Copy splits
-		splits := make([]*Split, len(run.Segments))
-		for _, split := range run.Splits {
-			if split == nil {
-				continue
-			}
-			splits[split.SplitIndex] = &Split{
-				SplitIndex:        split.SplitIndex,
-				SplitSegmentID:    split.SplitSegmentID,
-				CurrentCumulative: split.CurrentCumulative,
-				CurrentDuration:   split.CurrentDuration,
-			}
-		}
-
-		runs = append(runs, Run{
-			ID:               run.ID,
-			SplitFileVersion: run.SplitFileVersion,
-			TotalTime:        run.TotalTime,
-			Splits:           splits,
-			Completed:        run.Completed,
-			Segments:         flatSegs,
-		})
-	}
+func deepCopySplitFile(inFile *SplitFile) SplitFile {
+	segments := deepCopySegments(inFile.Segments)
+	runs := deepCopyRuns(inFile.Runs)
 
 	var pbRun *Run
-	if s.loadedSplitFile.PB != nil {
-		src := s.loadedSplitFile.PB
-
-		flatSegs := make([]Segment, len(src.Segments))
-		for i, segment := range src.Segments {
-			flatSegs[i] = Segment{
-				ID:      segment.ID,
-				Name:    segment.Name,
-				Gold:    segment.Gold,
-				Average: segment.Average,
-				PB:      segment.PB,
-			}
-		}
-
-		splits := make([]*Split, len(src.Segments))
-		for _, split := range src.Splits {
-			if split == nil {
-				continue
-			}
-			splits[split.SplitIndex] = &Split{
-				SplitIndex:        split.SplitIndex,
-				SplitSegmentID:    split.SplitSegmentID,
-				CurrentCumulative: split.CurrentCumulative,
-				CurrentDuration:   split.CurrentDuration,
-			}
-		}
-
-		pbRun = &Run{
-			ID:               src.ID,
-			SplitFileVersion: src.SplitFileVersion,
-			TotalTime:        src.TotalTime,
-			Splits:           splits,
-			Completed:        src.Completed,
-			Segments:         flatSegs,
-		}
+	if inFile.PB != nil {
+		pbCopy := deepCopyRun(*inFile.PB)
+		pbRun = &pbCopy
 	}
 
-	return &SplitFile{
-		ID:           s.loadedSplitFile.ID,
-		GameName:     s.loadedSplitFile.GameName,
-		GameCategory: s.loadedSplitFile.GameCategory,
-		Version:      s.loadedSplitFile.Version,
-		Attempts:     s.loadedSplitFile.Attempts,
+	return SplitFile{
+		ID:           inFile.ID,
+		GameName:     inFile.GameName,
+		GameCategory: inFile.GameCategory,
+		Version:      inFile.Version,
+		Attempts:     inFile.Attempts,
+		Offset:       inFile.Offset,
 		Segments:     segments,
-		WindowX:      s.loadedSplitFile.WindowX,
-		WindowY:      s.loadedSplitFile.WindowY,
-		WindowHeight: s.loadedSplitFile.WindowHeight,
-		WindowWidth:  s.loadedSplitFile.WindowWidth,
-		SOB:          s.loadedSplitFile.SOB,
+		WindowX:      inFile.WindowX,
+		WindowY:      inFile.WindowY,
+		WindowHeight: inFile.WindowHeight,
+		WindowWidth:  inFile.WindowWidth,
+		SOB:          inFile.SOB,
 		Runs:         runs,
 		PB:           pbRun,
 	}
 }
 
-func FlattenSegments(list []Segment) []Segment {
-	var out []Segment
-	for _, s := range list {
-		if len(s.Children) == 0 {
-			// Leaf segment – real split
-			out = append(out, Segment{
-				ID:      s.ID,
-				Name:    s.Name,
-				Gold:    s.Gold,
-				Average: s.Average,
-				PB:      s.PB,
-			})
-		} else {
-			// Parent segment – just recurse into children
-			out = append(out, FlattenSegments(s.Children)...)
+func deepCopyRuns(inRuns []Run) []Run {
+	runs := make([]Run, len(inRuns))
+	for i := range inRuns {
+		runs[i] = deepCopyRun(inRuns[i])
+	}
+	return runs
+}
+
+func deepCopyRun(run Run) Run {
+	segments := deepCopySegments(run.LeafSegments)
+	splits := deepCopySplits(run.Splits)
+
+	return Run{
+		ID:               run.ID,
+		SplitFileVersion: run.SplitFileVersion,
+		TotalTime:        run.TotalTime,
+		Splits:           splits,
+		Completed:        run.Completed,
+		LeafSegments:     segments,
+	}
+}
+
+func deepCopySplits(inSplits map[uuid.UUID]Split) map[uuid.UUID]Split {
+	splits := map[uuid.UUID]Split{}
+	for segmentID, split := range inSplits {
+		splits[segmentID] = Split{
+			SplitSegmentID:    split.SplitSegmentID,
+			CurrentCumulative: split.CurrentCumulative,
+			CurrentDuration:   split.CurrentDuration,
 		}
 	}
-	return out
+	return splits
 }
 
 func deepCopySegments(list []Segment) []Segment {
