@@ -8,8 +8,9 @@ import (
 
 type mockTicker struct{ ch chan time.Time }
 
-func (m *mockTicker) Ch() <-chan time.Time { return m.ch }
-func (m *mockTicker) Stop()                {}
+func (m *mockTicker) Ch() <-chan time.Time       { return m.ch }
+func (m *mockTicker) Stop()                      {}
+func (m *mockTicker) SubtractTime(time.Duration) {}
 
 func TestRun(t *testing.T) {
 	mockT := &mockTicker{}
@@ -54,5 +55,15 @@ func TestParseStringToTime(t *testing.T) {
 	w := time.Hour*1 + time.Minute*2 + time.Second*3 + time.Millisecond*400
 	if d != w {
 		t.Errorf("ParseStringToTime() got %d, want %d", d, w)
+	}
+}
+
+func TestSubtractTime(t *testing.T) {
+	mockT := &mockTicker{}
+	mockT.ch = make(chan time.Time, 1)
+	s, _ := NewStopwatch(mockT)
+	s.SubtractTime(10 * time.Second)
+	if s.currentTime != -10*time.Second {
+		t.Errorf("SubtractTime() got %v, want %v", s.currentTime, -10*time.Second)
 	}
 }

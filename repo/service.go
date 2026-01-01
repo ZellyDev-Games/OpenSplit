@@ -30,16 +30,16 @@ func NewService(repository Repository) *Service {
 	return &Service{repository: repository}
 }
 
-func (s *Service) LoadSplitFile() (*session.SplitFile, error) {
+func (s *Service) LoadSplitFile() (session.SplitFile, error) {
 	splitFile, err := s.repository.LoadSplitFile()
 	if err != nil {
-		return nil, err
+		return session.SplitFile{}, err
 	}
-	splitFileSTO, _ := adapters.FrontendToSplitFile(string(splitFile))
-	return adapters.SplitFileToDomain(splitFileSTO)
+	splitFileSTO, _ := adapters.JSONSplitFileToDTO(string(splitFile))
+	return adapters.DTOSplitFileToDomain(splitFileSTO)
 }
 
-func (s *Service) SaveSplitFile(splitFile *dto.SplitFile, X int, Y int, Width int, Height int) error {
+func (s *Service) SaveSplitFile(splitFile dto.SplitFile, X int, Y int, Width int, Height int) error {
 	splitFile.WindowX = X
 	splitFile.WindowY = Y
 	splitFile.WindowWidth = Width
