@@ -790,42 +790,54 @@ func compare(input string, prior *int, current *int, expected *int) bool {
 		} else {
 			return *prior > *expected
 		}
-	case "pbae":
+	case "pbse":
 		if (expected == nil) || (prior == nil) {
 			return false
 		} else {
 			return (*prior & *expected) != 0
 		}
-	case "cbae":
+	case "cbse":
 		if (expected == nil) || (current == nil) {
 			return false
 		} else {
 			return (*current & *expected) != 0
 		}
-	case "pboe":
+	case "pbue":
 		if (expected == nil) || (prior == nil) {
 			return false
 		} else {
-			return (*prior | *expected) != 0
+			return (*prior & *expected) == 0
 		}
-	case "cboe":
+	case "cbue":
 		if (expected == nil) || (current == nil) {
 			return false
 		} else {
-			return (*current | *expected) != 0
+			return (*current & *expected) == 0
 		}
-	case "pbne":
-		if (expected == nil) || (prior == nil) {
-			return false
-		} else {
-			return (*prior ^ *expected) != 0
-		}
-	case "cbne":
-		if (expected == nil) || (current == nil) {
-			return false
-		} else {
-			return (*current ^ *expected) != 0
-		}
+	// case "pboe":
+	// 	if (expected == nil) || (prior == nil) {
+	// 		return false
+	// 	} else {
+	// 		return (*prior | *expected) != 0
+	// 	}
+	// case "cboe":
+	// 	if (expected == nil) || (current == nil) {
+	// 		return false
+	// 	} else {
+	// 		return (*current | *expected) != 0
+	// 	}
+	// case "pbne":
+	// 	if (expected == nil) || (prior == nil) {
+	// 		return false
+	// 	} else {
+	// 		return (*prior ^ *expected) != 0
+	// 	}
+	// case "cbne":
+	// 	if (expected == nil) || (current == nil) {
+	// 		return false
+	// 	} else {
+	// 		return (*current ^ *expected) != 0
+	// 	}
 	default:
 		return false
 	}
