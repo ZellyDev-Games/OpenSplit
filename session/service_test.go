@@ -21,6 +21,8 @@ type MockTimer struct {
 	ResetCalled                   int
 	GetCurrentTimeFormattedCalled int
 	GetCurrentTimeCalled          int
+	SubtractTimeCalled            int
+	Negative                      bool
 }
 
 func (t *MockTimer) IsRunning() bool {
@@ -57,7 +59,20 @@ func (t *MockTimer) GetCurrentTimeFormatted() string {
 
 func (t *MockTimer) GetCurrentTime() time.Duration {
 	t.GetCurrentTimeCalled++
-	return time.Hour*1 + time.Minute*2 + time.Second*3 + time.Millisecond*40
+	currentTime := time.Hour*1 + time.Minute*2 + time.Second*3 + time.Millisecond*40
+	if t.Negative {
+		currentTime = -currentTime
+	}
+
+	return currentTime
+}
+
+func (t *MockTimer) SubtractTime(_ time.Duration) {
+	t.SubtractTimeCalled++
+}
+
+func (t *MockTimer) SetNegativeTime(negative bool) {
+	t.Negative = negative
 }
 
 type MockRepository struct {
@@ -66,8 +81,8 @@ type MockRepository struct {
 	SaveAsCalled int
 }
 
-func (r *MockRepository) Load() (*SplitFile, error) {
-	return &SplitFile{
+func (r *MockRepository) Load() (SplitFile, error) {
+	return SplitFile{
 		ID:           uid,
 		Version:      1,
 		GameName:     "Test Loaded Game",
@@ -102,14 +117,14 @@ func (r *MockRepository) SaveAs(_ *SplitFile) error {
 
 func getSplitFile() *SplitFile {
 	return &SplitFile{
-		ID:           uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
+		ID:           uid,
 		GameName:     "Test Game",
 		GameCategory: "Test Category",
 		Segments: []Segment{{
-			ID:   uuid.MustParse("037ba872-2fdd-4531-aaee-101d777408b4"),
+			ID:   uid,
 			Name: "Test Segment 1",
 		}, {
-			ID:   uuid.MustParse("4bc1a05c-d4f3-4095-887f-519e2fbb54f3"),
+			ID:   uid2,
 			Name: "Test Segment 2",
 		}},
 		Attempts: 0,
@@ -135,6 +150,7 @@ func TestSplit(t *testing.T) {
 
 	sf, _ := m.Load()
 	s.SetLoadedSplitFile(sf)
+
 	time.Sleep(splitDebounce + 1*time.Millisecond)
 	s.Split()
 
@@ -158,14 +174,22 @@ func TestSplit(t *testing.T) {
 		t.Fatalf("Split() Attempts want %d, got %d", 1, s.loadedSplitFile.Attempts)
 	}
 
+	mt.SetNegativeTime(true)
+	time.Sleep(splitDebounce + 1*time.Millisecond)
+	s.Split()
+	if s.currentSegmentIndex != 0 {
+		t.Fatalf("Split() currentsegmentindex when time is negative want %d, got %d", -1, s.currentSegmentIndex)
+	}
+	mt.SetNegativeTime(false)
+
 	time.Sleep(splitDebounce + 1*time.Millisecond)
 	s.Split()
 	if s.currentSegmentIndex != 1 {
 		t.Fatalf("Split() s.currentSegmentIndex want %d, got %d", 1, s.currentSegmentIndex)
 	}
 
-	if s.currentRun.Splits[0].SplitSegmentID != uid {
-		t.Fatalf("Split() 1st recorded split segment ID want %s, got %s", uid.String(), s.currentRun.Splits[0].SplitSegmentID.String())
+	if s.currentRun.Splits[uid].SplitSegmentID != uid {
+		t.Fatalf("Split() 1st recorded split segment ID want %s, got %s", uid.String(), s.currentRun.Splits[uid].SplitSegmentID.String())
 	}
 
 	time.Sleep(splitDebounce + 1*time.Millisecond)
@@ -178,8 +202,8 @@ func TestSplit(t *testing.T) {
 		t.Fatalf("Split() s.timer.IsRunning() want %v, got %v", false, s.timer.IsRunning())
 	}
 
-	totalTime1 := s.currentRun.Splits[0].CurrentDuration
-	totalTime2 := s.currentRun.Splits[1].CurrentDuration
+	totalTime1 := s.currentRun.Splits[uid].CurrentDuration
+	totalTime2 := s.currentRun.Splits[uid2].CurrentDuration
 	totalTime := totalTime1 + totalTime2
 	if s.currentRun.TotalTime != totalTime {
 		t.Fatalf("Split() final split total time want %d, got %d (%d + %d)", totalTime, s.currentRun.TotalTime, totalTime1, totalTime2)
@@ -240,7 +264,7 @@ func TestUndo(t *testing.T) {
 		t.Fatalf("Undo() on third segment currentSegmentIndex want %d, got %d", 1, s.currentSegmentIndex)
 	}
 
-	if s.currentRun.Splits[1] != nil {
+	if _, ok := s.currentRun.Splits[uid2]; ok {
 		t.Fatalf("Undo() on second split should have set second split to nil")
 	}
 }
@@ -255,7 +279,7 @@ func TestSkip(t *testing.T) {
 		t.Fatalf("Skip() currentSegmentIndex want %d, got %d", 1, s.currentSegmentIndex)
 	}
 
-	if s.currentRun.Splits[0] != nil {
+	if _, ok := s.currentRun.Splits[uid]; ok {
 		t.Fatalf("Skip() skipped split should be nil")
 	}
 }
@@ -356,14 +380,14 @@ func TestRun(t *testing.T) {
 	s, _, m, _ := getService()
 	sf, _ := m.Load()
 	s.SetLoadedSplitFile(sf)
-	_, clean := s.Run()
-	if clean {
-		t.Fatalf("Run() returned clean flag with currentRun == nil")
+	r, valid := s.Run()
+	if valid {
+		t.Fatalf("Run() returned valid current run with currentRun == nil")
 	}
 	s.Split()
-	r, clean := s.Run()
-	if !clean {
-		t.Fatalf("Run() returned not clean flag with valid currentRun")
+	r, valid = s.Run()
+	if !valid {
+		t.Fatalf("Run() returned nil with valid currentRun")
 	}
 
 	if r.ID == uuid.Nil {

@@ -115,6 +115,10 @@ func (s *Stopwatch) GetCurrentTime() time.Duration {
 	return s.currentTime
 }
 
+func (s *Stopwatch) SubtractTime(duration time.Duration) {
+	s.currentTime -= duration
+}
+
 // FormatTimeToString takes a time.Duration and returns a string designed to be worked with by the frontend.
 //
 // Inverse of ParseStringToTime
