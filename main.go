@@ -21,6 +21,7 @@ import (
 	"github.com/zellydev-games/opensplit/hotkeys"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/platform"
+	"github.com/zellydev-games/opensplit/racetime"
 	"github.com/zellydev-games/opensplit/repo"
 	"github.com/zellydev-games/opensplit/session"
 	"github.com/zellydev-games/opensplit/statemachine"
@@ -63,6 +64,10 @@ func main() {
 	// Build dispatcher that can receive commands from frontend or backend and dispatch them to the state machine
 	commandDispatcher := dispatcher.NewService(machine)
 
+	// TODO:
+	// Convert client_id and client_secret to live site (AFTER getting approval from racetime.gg staff)
+	race := racetime.NewService("http", "localhost:8000", "localhost:9999")
+
 	var hotkeyProvider statemachine.HotkeyProvider
 
 	err := wails.Run(&options.App{
@@ -103,6 +108,7 @@ func main() {
 		},
 		Bind: []interface{}{
 			commandDispatcher,
+			race,
 		},
 	})
 
