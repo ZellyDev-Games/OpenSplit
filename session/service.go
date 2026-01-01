@@ -328,6 +328,11 @@ func (s *Service) advanceRun() SplitResult {
 	}
 	now := s.timer.GetCurrentTime()
 
+	//if splitfile has a negative offset, don't let user split until it starts counting
+	if now < 1*time.Millisecond {
+		return SplitNoop
+	}
+
 	// find prev cumulative from the last non-nil split
 	prev := time.Duration(0)
 	for i := s.currentSegmentIndex - 1; i >= 0; i-- {
@@ -385,6 +390,7 @@ func deepCopySplitFile(inFile *SplitFile) SplitFile {
 		GameCategory: inFile.GameCategory,
 		Version:      inFile.Version,
 		Attempts:     inFile.Attempts,
+		Offset:       inFile.Offset,
 		Segments:     segments,
 		WindowX:      inFile.WindowX,
 		WindowY:      inFile.WindowY,

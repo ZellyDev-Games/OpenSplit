@@ -1,4 +1,4 @@
-import {JSX, useEffect, useMemo, useState} from "react";
+import { JSX, useEffect, useMemo, useState } from "react";
 
 import { EventsOn } from "../../../wailsjs/runtime";
 import SegmentPayload from "../../models/segmentPayload";
@@ -15,17 +15,17 @@ type Completion = {
 
 type SplitListParameters = {
     sessionPayload: SessionPayload;
-}
+};
 
 type FlatSegment = {
     Segment: SegmentPayload;
     Depth: number;
-}
+};
 
 function flattenSegments(segments: SegmentPayload[], depth: number = 0): FlatSegment[] {
     const flatSegments: FlatSegment[] = [];
     for (const segment of segments) {
-        console.log(segment)
+        console.log(segment);
         flatSegments.push({
             Segment: segment,
             Depth: depth,
@@ -39,7 +39,7 @@ function flattenSegments(segments: SegmentPayload[], depth: number = 0): FlatSeg
     return flatSegments;
 }
 
-export default function SplitList({sessionPayload}: SplitListParameters) {
+export default function SplitList({ sessionPayload }: SplitListParameters) {
     const [completions, setCompletions] = useState<Completion[]>([]);
     const [compareAgainst] = useState<CompareAgainst>("average");
     const [time, setTime] = useState(0);
@@ -69,15 +69,13 @@ export default function SplitList({sessionPayload}: SplitListParameters) {
         const completed: Completion[] = [];
         for (const segmentID of Object.keys(sessionPayload.current_run.splits)) {
             const split = sessionPayload.current_run.splits[segmentID];
-            const formatted = displayFormattedTimeParts(
-                formatDuration(
-                    msToParts(split.current_cumulative)));
+            const formatted = displayFormattedTimeParts(formatDuration(msToParts(split.current_cumulative)));
 
             completed.push({
                 segmentID: segmentID,
                 time: `${formatted[0]}${formatted[1]}`,
-                raw: split.current_duration
-            })
+                raw: split.current_duration,
+            });
         }
         setCompletions(completed);
     }, [sessionPayload]);
@@ -144,31 +142,33 @@ export default function SplitList({sessionPayload}: SplitListParameters) {
         flatSegments.forEach((segmentData: FlatSegment) => {
             // if this segmentData isn't in leaf segments it's a parent segmentData
             // in this case we don't show times
-            const leafIndex = sessionPayload.leaf_segments?.findIndex(
-                leaf => leaf.id == segmentData.Segment.id
-            );
+            const leafIndex = sessionPayload.leaf_segments?.findIndex((leaf) => leaf.id == segmentData.Segment.id);
             if (leafIndex === -1 || leafIndex === undefined) {
-                elements.push(<tr key={segmentData.Segment.id} className="parentRow">
-                    <td className="splitName" style={{ paddingLeft: segmentData.Depth * 16  }}>
-                        <strong>{segmentData.Segment.name}</strong>
-                    </td>
-                    <td className="splitComparison"></td>
-                </tr>)
+                elements.push(
+                    <tr key={segmentData.Segment.id} className="parentRow">
+                        <td className="splitName" style={{ paddingLeft: segmentData.Depth * 16 }}>
+                            <strong>{segmentData.Segment.name}</strong>
+                        </td>
+                        <td className="splitComparison"></td>
+                    </tr>,
+                );
             } else {
                 const isSelected = leafIndex === sessionPayload.current_segment_index;
                 console.log(leafIndex, sessionPayload.current_segment_index);
-                elements.push(<tr key={segmentData.Segment.id} className={isSelected ? "selected" : ""}>
-                    <td className="splitName" style={{ paddingLeft: segmentData.Depth * 16 }}>
-                        {segmentData.Segment.name}
-                    </td>
+                elements.push(
+                    <tr key={segmentData.Segment.id} className={isSelected ? "selected" : ""}>
+                        <td className="splitName" style={{ paddingLeft: segmentData.Depth * 16 }}>
+                            {segmentData.Segment.name}
+                        </td>
 
-                    <td className="splitComparison">{getSegmentDisplayTime(leafIndex, segmentData.Segment)}</td>
-                </tr>);
+                        <td className="splitComparison">{getSegmentDisplayTime(leafIndex, segmentData.Segment)}</td>
+                    </tr>,
+                );
             }
-        })
+        });
 
         return elements;
-    }
+    };
 
     // Final row separated
     const leafRows = rows().filter((r) => r.props.className !== "parentRow");

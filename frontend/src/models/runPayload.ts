@@ -1,5 +1,5 @@
-import SplitPayload from "./splitPayload";
 import SegmentPayload from "./segmentPayload";
+import SplitPayload from "./splitPayload";
 
 export default class RunPayload {
     id: string = "";

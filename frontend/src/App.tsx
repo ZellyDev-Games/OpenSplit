@@ -1,11 +1,10 @@
 import React, { useEffect } from "react";
-import { EventsOn } from "../wailsjs/runtime";
 
+import { EventsOn } from "../wailsjs/runtime";
 import Config from "./components/Config";
 import SplitEditor from "./components/editor/SplitEditor";
 import Splitter from "./components/splitter/Splitter";
 import Welcome from "./components/splitter/Welcome";
-
 import { ConfigPayload } from "./models/configPayload";
 import SessionPayload from "./models/sessionPayload";
 import SplitFilePayload from "./models/splitFilePayload";
@@ -66,12 +65,28 @@ export default function App() {
     const [viewModel, setViewModel] = React.useState<AppViewModel>({ view: AppView.Welcome });
 
     useEffect(() => {
-        const unsubscribe = EventsOn("ui:model", (nextModel: AppViewModel) => {
+        const unsubViewModel = EventsOn("ui:model", (nextModel: AppViewModel) => {
             console.log("[UI MODEL]", nextModel.view, nextModel);
             setViewModel(nextModel);
         });
 
-        return () => unsubscribe();
+        const unsubSession = EventsOn("session:update", (updatedSession: SessionPayload) => {
+            setViewModel((prev) => {
+                if (prev.view == AppView.Running) {
+                    return {
+                        ...prev,
+                        session: updatedSession,
+                    };
+                }
+
+                return prev;
+            });
+        });
+
+        return () => {
+            unsubViewModel();
+            unsubSession();
+        };
     }, []);
 
     return (

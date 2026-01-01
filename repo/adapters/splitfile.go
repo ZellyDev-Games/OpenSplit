@@ -32,6 +32,7 @@ func DomainSplitFileToDTO(sf session.SplitFile) dto.SplitFile {
 		WindowY:      sf.WindowY,
 		WindowWidth:  sf.WindowWidth,
 		WindowHeight: sf.WindowHeight,
+		Attempts:     sf.Attempts,
 		Offset:       sf.Offset.Milliseconds(),
 	}
 }
@@ -62,6 +63,7 @@ func DTOSplitFileToDomain(payload dto.SplitFile) (session.SplitFile, error) {
 
 	newSplitFile.ID = id
 	newSplitFile.Version = payload.Version
+	newSplitFile.Attempts = payload.Attempts
 	newSplitFile.GameName = payload.GameName
 	newSplitFile.GameCategory = payload.GameCategory
 	newSplitFile.Segments = dtoSegmentsToDomain(payload.Segments)

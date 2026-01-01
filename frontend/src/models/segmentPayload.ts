@@ -15,4 +15,3 @@ export default class SegmentPayload {
         this.children = (init?.children ?? []).map((c) => new SegmentPayload(c));
     }
 }
-

@@ -22,6 +22,7 @@ type MockTimer struct {
 	GetCurrentTimeFormattedCalled int
 	GetCurrentTimeCalled          int
 	SubtractTimeCalled            int
+	Negative                      bool
 }
 
 func (t *MockTimer) IsRunning() bool {
@@ -58,11 +59,20 @@ func (t *MockTimer) GetCurrentTimeFormatted() string {
 
 func (t *MockTimer) GetCurrentTime() time.Duration {
 	t.GetCurrentTimeCalled++
-	return time.Hour*1 + time.Minute*2 + time.Second*3 + time.Millisecond*40
+	currentTime := time.Hour*1 + time.Minute*2 + time.Second*3 + time.Millisecond*40
+	if t.Negative {
+		currentTime = -currentTime
+	}
+
+	return currentTime
 }
 
 func (t *MockTimer) SubtractTime(_ time.Duration) {
 	t.SubtractTimeCalled++
+}
+
+func (t *MockTimer) SetNegativeTime(negative bool) {
+	t.Negative = negative
 }
 
 type MockRepository struct {
@@ -140,6 +150,7 @@ func TestSplit(t *testing.T) {
 
 	sf, _ := m.Load()
 	s.SetLoadedSplitFile(sf)
+
 	time.Sleep(splitDebounce + 1*time.Millisecond)
 	s.Split()
 
@@ -162,6 +173,14 @@ func TestSplit(t *testing.T) {
 	if s.loadedSplitFile.Attempts != 1 {
 		t.Fatalf("Split() Attempts want %d, got %d", 1, s.loadedSplitFile.Attempts)
 	}
+
+	mt.SetNegativeTime(true)
+	time.Sleep(splitDebounce + 1*time.Millisecond)
+	s.Split()
+	if s.currentSegmentIndex != 0 {
+		t.Fatalf("Split() currentsegmentindex when time is negative want %d, got %d", -1, s.currentSegmentIndex)
+	}
+	mt.SetNegativeTime(false)
 
 	time.Sleep(splitDebounce + 1*time.Millisecond)
 	s.Split()

@@ -28,10 +28,7 @@ func (s *Session) StartUIPump() {
 			if !ok {
 				return
 			}
-			EmitUIEvent(s.runtimeProvider, AppViewModel{
-				View:    AppViewRunning,
-				Session: adapters.DomainToDTO(updatedSession),
-			})
+			s.runtimeProvider.EventsEmit("session:update", adapters.DomainToDTO(updatedSession))
 		}
 	}()
 }
@@ -60,6 +57,7 @@ type AppViewModel struct {
 	Config *config.Service `json:"config,omitempty"`
 }
 
+// EmitUIEvent informs the frontend of a state change
 func EmitUIEvent(runtimeProvider RuntimeProvider, model AppViewModel) {
 	runtimeProvider.EventsEmit(uiModelEventName, model)
 }

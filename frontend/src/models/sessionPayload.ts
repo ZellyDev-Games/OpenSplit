@@ -1,6 +1,6 @@
 import RunPayload from "./runPayload";
-import SplitFilePayload from "./splitFilePayload";
 import SegmentPayload from "./segmentPayload";
+import SplitFilePayload from "./splitFilePayload";
 
 export default class SessionPayload {
     loaded_split_file: SplitFilePayload | null = null;
