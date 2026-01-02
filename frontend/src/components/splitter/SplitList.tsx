@@ -3,9 +3,8 @@ import { JSX, useEffect, useMemo, useState } from "react";
 import { EventsOn } from "../../../wailsjs/runtime";
 import SegmentPayload from "../../models/segmentPayload";
 import SessionPayload from "../../models/sessionPayload";
+import { CompareAgainst, Comparison } from "./Splitter";
 import { displayFormattedTimeParts, formatDuration, msToParts } from "./Timer";
-
-export type CompareAgainst = "best" | "average";
 
 type Completion = {
     segmentID: string;
@@ -15,6 +14,7 @@ type Completion = {
 
 type SplitListParameters = {
     sessionPayload: SessionPayload;
+    comparison: Comparison;
 };
 
 type FlatSegment = {
@@ -39,9 +39,8 @@ function flattenSegments(segments: SegmentPayload[], depth: number = 0): FlatSeg
     return flatSegments;
 }
 
-export default function SplitList({ sessionPayload }: SplitListParameters) {
+export default function SplitList({ sessionPayload, comparison }: SplitListParameters) {
     const [completions, setCompletions] = useState<Completion[]>([]);
-    const [compareAgainst] = useState<CompareAgainst>("average");
     const [time, setTime] = useState(0);
 
     const flatSegments = useMemo<FlatSegment[]>(() => {
@@ -86,7 +85,7 @@ export default function SplitList({ sessionPayload }: SplitListParameters) {
         const average = segment.average;
         const best = segment.pb;
 
-        const target = compareAgainst === "average" ? average : best;
+        const target = comparison === CompareAgainst.Average ? average : best;
 
         const completion = completions.find((comp) => comp.segmentID === segment.id);
 
