@@ -9,11 +9,6 @@ import (
 	"github.com/zellydev-games/opensplit/session"
 )
 
-type sessionEmitCall struct {
-	event string
-	args  []any
-}
-
 func TestNewSession(t *testing.T) {
 	c := make(chan *session.Service)
 	rp := newMockRuntimeProvider()
