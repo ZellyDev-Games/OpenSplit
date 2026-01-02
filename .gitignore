@@ -6,3 +6,4 @@ frontend/package-lock*
 frontend/package.json.md5
 cover.out
 .DS_Store
+coverage.out
