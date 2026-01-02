@@ -157,7 +157,7 @@ func (s Splitters) processNWA(commandDispatcher *dispatcher.Service) {
 		("2-2:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x2 && gameplay,current=0x13"),
 		("2-3:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x3 && gameplay,current=0x13"),
 		("2-4:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x4 && gameplay,current=0x13"),
-		("2-5:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x4 && gameplay,current=0x13 && W2P2HP,current=0x1 && W2P1HP,current=0x0 && BossHP,current=0x0"),
+		("2-5:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x4 && gameplay,current=0x13 && W2P1HP,current=0x0"),
 		("3-1:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x1 && gameplay,current=0x13"),
 		("3-2:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x2 && gameplay,current=0x13"),
 		("3-3:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x3 && gameplay,current=0x13"),
@@ -170,16 +170,16 @@ func (s Splitters) processNWA(commandDispatcher *dispatcher.Service) {
 		("4-5:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x4 && gameplay,current=0x13 && FBossHP,current=0xFF"),
 	}
 
-	// receive setup data...probably through a channel
-	//Setup Memory
-	s.NWAAutoSplitter.MemAndConditionsSetup(memData, startConditionImport, resetConditionImport, splitConditionImport)
-
 	s.NWAAutoSplitter.EmuInfo()      // Gets info about the emu; name, version, nwa_version, id, supported commands
 	s.NWAAutoSplitter.EmuGameInfo()  // Gets info about the loaded game
 	s.NWAAutoSplitter.EmuStatus()    // Gets the status of the emu
 	s.NWAAutoSplitter.ClientID()     // Provides the client name to the NWA interface
 	s.NWAAutoSplitter.CoreInfo()     // Might be useful to display the platform & core names
 	s.NWAAutoSplitter.CoreMemories() // Get info about the memory banks available
+
+	// receive setup data...probably through a channel
+	//Setup Memory
+	s.NWAAutoSplitter.MemAndConditionsSetup(memData, startConditionImport, resetConditionImport, splitConditionImport)
 
 	splitCount := 0
 	runStarted := false
