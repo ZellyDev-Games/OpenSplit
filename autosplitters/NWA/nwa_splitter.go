@@ -11,8 +11,6 @@ import (
 // public
 type NWASplitter struct {
 	Client          NWASyncClient
-	vars            map[string]*memoryWatcher
-	data            []byte
 	nwaMemory       []memoryWatcher
 	startConditions []conditionList
 	resetConditions []conditionList
@@ -53,8 +51,6 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 	delimiter7 := "^"
 	compareStringCurrent := "current"
 	compareStringPrior := "prior"
-	b.data = make([]byte, 0x10000)
-	b.vars = map[string]*memoryWatcher{}
 
 	for _, p := range memData {
 		mem := strings.Split(p, ",")
@@ -67,7 +63,6 @@ func (b *NWASplitter) MemAndConditionsSetup(memData []string, startConditionImpo
 			currentValue: new(int),
 			priorValue:   new(int),
 		}
-		b.vars[mem[0]] = &entry
 		b.nwaMemory = append(b.nwaMemory, entry)
 	}
 
