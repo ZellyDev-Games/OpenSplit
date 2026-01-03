@@ -6,7 +6,7 @@ import { Command } from "../../App";
 import { MenuItem, useContextMenu } from "../../hooks/useContextMenu";
 import SessionPayload from "../../models/sessionPayload";
 import { ContextMenu } from "../ContextMenu";
-import SplitList from "./SplitList";
+import SegmentList from "./SegmentList";
 import Timer from "./Timer";
 
 export enum CompareAgainst {
@@ -92,7 +92,7 @@ export default function Splitter({ sessionPayload }: SplitterParams) {
     return (
         <div {...contextMenu.bind} className="splitter">
             <ContextMenu state={contextMenu.state} close={contextMenu.close} items={contextMenuItems} />
-            <SplitList sessionPayload={sessionPayload} comparison={comparison} />
+            <SegmentList sessionPayload={sessionPayload} comparison={comparison} />
             <Timer offset={(sessionPayload.loaded_split_file?.offset || 0) * -1} />
         </div>
     );
