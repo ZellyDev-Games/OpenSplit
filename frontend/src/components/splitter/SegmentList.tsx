@@ -98,7 +98,7 @@ function segmentRow(
 
     if (split != null) {
         delta = split.current_cumulative - cumulativeTarget;
-    } else if (activeRow && time !== null && time > cumulativeTarget - 10000) {
+    } else if (activeRow && time !== null && time > cumulativeTarget - 60000) {
         delta = time - cumulativeTarget;
     }
 
