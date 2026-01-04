@@ -8,12 +8,13 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/logger"
 )
 
-// ErrUserCancelledSave is a error that informs the calling system that the user cancelled a file open/load dialog.
+// ErrUserCancelledSave is an error that informs the calling system that the user cancelled a file open/load dialog.
 //
 // Wails generates exported bound methods to typescript functions that return a promise, if a not nil error is returned
 // as the second return, Wails will reject the promise instead of fulfilling it. So this isn't necessarily an error
@@ -64,12 +65,12 @@ func (j *JsonFile) ClearCachedFileName() {
 	j.fileName = ""
 }
 
-func (j *JsonFile) SaveAs(payload []byte) error {
-	return j.SaveSplitFile(payload)
+func (j *JsonFile) SaveAs(payload []byte, defaultFileName string) error {
+	return j.SaveSplitFile(payload, defaultFileName)
 }
 
 // SaveSplitFile takes a payload marshalled as bytes and saves it to disk
-func (j *JsonFile) SaveSplitFile(payload []byte) error {
+func (j *JsonFile) SaveSplitFile(payload []byte, identifier string) error {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		logger.Error("save failed: " + err.Error())
@@ -80,6 +81,7 @@ func (j *JsonFile) SaveSplitFile(payload []byte) error {
 		filename, err := j.runtimeProvider.SaveFileDialog(runtime.SaveDialogOptions{
 			Title:            "Save OpenSplit File",
 			DefaultDirectory: defaultDirectory,
+			DefaultFilename:  identifier,
 			Filters: []runtime.FileFilter{{
 				DisplayName: "OpenSplit Files",
 				Pattern:     "*.osf",
@@ -97,6 +99,10 @@ func (j *JsonFile) SaveSplitFile(payload []byte) error {
 		}
 
 		j.fileName = filename
+	}
+
+	if !strings.HasSuffix(strings.ToLower(j.fileName), ".osf") {
+		j.fileName += ".osf"
 	}
 
 	j.lastUsedDirectory = filepath.Dir(j.fileName)
