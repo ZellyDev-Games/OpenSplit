@@ -465,7 +465,8 @@ func (b *NWASplitter) ClientID() {
 	args := "OpenSplit"
 	summary, err := b.Client.ExecuteCommand(cmd, &args)
 	if err != nil {
-		panic(err)
+		// panic(err)
+		println(err)
 	}
 	fmt.Printf("%#v\n", summary)
 }
@@ -475,7 +476,8 @@ func (b *NWASplitter) EmuInfo() {
 	args := "0"
 	summary, err := b.Client.ExecuteCommand(cmd, &args)
 	if err != nil {
-		panic(err)
+		println(err)
+		// panic(err)
 	}
 	fmt.Printf("%#v\n", summary)
 }
@@ -484,7 +486,8 @@ func (b *NWASplitter) EmuGameInfo() {
 	cmd := "GAME_INFO"
 	summary, err := b.Client.ExecuteCommand(cmd, nil)
 	if err != nil {
-		panic(err)
+		// panic(err)
+		println(err)
 	}
 	fmt.Printf("%#v\n", summary)
 }
@@ -493,7 +496,8 @@ func (b *NWASplitter) EmuStatus() {
 	cmd := "EMULATION_STATUS"
 	summary, err := b.Client.ExecuteCommand(cmd, nil)
 	if err != nil {
-		panic(err)
+		// panic(err)
+		println(err)
 	}
 	fmt.Printf("%#v\n", summary)
 }
@@ -502,7 +506,8 @@ func (b *NWASplitter) CoreInfo() {
 	cmd := "CORE_CURRENT_INFO"
 	summary, err := b.Client.ExecuteCommand(cmd, nil)
 	if err != nil {
-		panic(err)
+		// panic(err)
+		println(err)
 	}
 	fmt.Printf("%#v\n", summary)
 }
@@ -511,7 +516,8 @@ func (b *NWASplitter) CoreMemories() {
 	cmd := "CORE_MEMORIES"
 	summary, err := b.Client.ExecuteCommand(cmd, nil)
 	if err != nil {
-		panic(err)
+		// panic(err)
+		println(err)
 	}
 	fmt.Printf("%#v\n", summary)
 }
@@ -520,7 +526,8 @@ func (b *NWASplitter) SoftResetConsole() {
 	cmd := "EMULATION_RESET"
 	summary, err := b.Client.ExecuteCommand(cmd, nil)
 	if err != nil {
-		panic(err)
+		// panic(err)
+		println(err)
 	}
 	fmt.Printf("%#v\n", summary)
 }
@@ -530,7 +537,8 @@ func (b *NWASplitter) HardResetConsole() {
 	cmd := "EMULATION_RELOAD"
 	summary, err := b.Client.ExecuteCommand(cmd, nil)
 	if err != nil {
-		panic(err)
+		// panic(err)
+		println(err)
 	}
 	fmt.Printf("%#v\n", summary)
 }
