@@ -15,8 +15,8 @@ var ErrConfigMissing = errors.New("config missing")
 // Repository defines a contract for a repo provider to operate against
 type Repository interface {
 	LoadSplitFile() ([]byte, error)
-	SaveSplitFile([]byte) error
-	SaveAs([]byte) error
+	SaveSplitFile([]byte, string) error
+	SaveAs([]byte, string) error
 	ClearCachedFileName()
 	SaveConfig([]byte) error
 	LoadConfig() ([]byte, error)
@@ -48,7 +48,12 @@ func (s *Service) SaveSplitFile(splitFile dto.SplitFile, X int, Y int, Width int
 	if err != nil {
 		return err
 	}
-	return s.repository.SaveSplitFile(payload)
+	identifier := splitFile.GameName
+	if splitFile.GameCategory != "" {
+		identifier += "-" + splitFile.GameCategory
+	}
+	identifier += ".osf"
+	return s.repository.SaveSplitFile(payload, identifier)
 }
 
 func (s *Service) Close() {

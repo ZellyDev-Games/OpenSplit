@@ -3,9 +3,9 @@ import { JSX, useEffect, useMemo, useState } from "react";
 import { EventsOn } from "../../../wailsjs/runtime";
 import SegmentPayload from "../../models/segmentPayload";
 import SessionPayload from "../../models/sessionPayload";
+import SplitPayload from "../../models/splitPayload";
 import { CompareAgainst, Comparison } from "./Splitter";
 import { displayFormattedTimeParts, formatDuration, msToParts } from "./Timer";
-import SplitPayload from "../../models/splitPayload";
 
 type SplitListParameters = {
     sessionPayload: SessionPayload;
@@ -45,7 +45,7 @@ const getDeltaDisplayTime = (delta: number, gold: boolean = false) => {
 
     return (
         <strong className={className}>
-            { (delta > 0) && "+" }
+            {delta > 0 && "+"}
             {t[0]}
             <small>{t[1]}</small>
         </strong>
@@ -57,7 +57,7 @@ const getSegmentDisplayTime = (
     segment: SegmentPayload,
     split: SplitPayload | null,
     targetCumulative: number,
-    targetIndividual: number
+    targetIndividual: number,
 ): JSX.Element => {
     const gold = segment.gold;
 
@@ -92,7 +92,7 @@ function segmentRow(
     cumulativeTarget: number,
     individualTarget: number,
     activeRow: boolean = false,
-    time: number | null = null
+    time: number | null = null,
 ) {
     let delta: number | null = null;
 
@@ -196,7 +196,7 @@ export default function SegmentList({ sessionPayload, comparison }: SplitListPar
                         </td>
                         <td className="splitDelta" />
                         <td className="splitComparison" />
-                    </tr>
+                    </tr>,
                 );
                 continue;
             }
@@ -209,12 +209,7 @@ export default function SegmentList({ sessionPayload, comparison }: SplitListPar
             const split = sessionPayload.current_run?.splits[segmentData.Segment.id] ?? null;
 
             const rowEl = isSelected ? (
-                <ActiveRow
-                    key={segmentData.Segment.id}
-                    segmentData={segmentData}
-                    cTarget={cTarget}
-                    iTarget={iTarget}
-                />
+                <ActiveRow key={segmentData.Segment.id} segmentData={segmentData} cTarget={cTarget} iTarget={iTarget} />
             ) : (
                 segmentRow(segmentData, split, cTarget, iTarget)
             );
