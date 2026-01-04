@@ -208,7 +208,7 @@ func (s Splitters) processNWA(commandDispatcher *dispatcher.Service) {
 				_, _ = commandDispatcher.Dispatch(dispatcher.RESET, nil)
 			}
 			if s.ResetGameOnTimerReset {
-				_ = s.QUSB2SNESAutoSplitter.Reset()
+				s.NWAAutoSplitter.SoftResetConsole()
 			}
 			splitCount = 0
 			runStarted = !runStarted
