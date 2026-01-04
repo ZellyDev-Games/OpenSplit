@@ -1,0 +1,53 @@
+ResetTimerOnGameReset = true
+ResetGameOnTimerReset = false
+IP = 0.0.0.0
+Port = 23074
+
+#memory (Do not combine memory or it will treated as 1 combined value)
+stage,$000AE1,1            #0-3
+substage,$000AE3,1         #0-4
+crates,$001A8A,1           #5,6,7,8
+invul,$001C05,1            #02
+play_state,$0003B1,1       #00 - dead/complete, 01 - alive/playable
+scene2,$000886,1           #03 - tool scene, 04 - win screen
+scene,$00161F,1            
+gameplay,$00AE5,1          #11 - menus/loading, 13 - gameplay
+state,$001400,1            #d8 - bonus countdown active, d0 - between act cutscene
+BossHP,$001491,1           #63
+W2P1HP,$001493,1           #14
+W2P2HP,$001499,1           #
+FBossHP,$00149D,1          #Starts at 64, Dies at 1, switches to FF after explosion
+power_up,$0003AF,1
+weapon,$0003CD,1
+
+#start
+start:state,prior=0xC0 && state,current=0x0 && stage,current=0x0 && substage,current=0x0 && gameplay,current=0x11 && play_state,current=0x0
+start:state,prior=0xD0 && state,current=0x0 && stage,current=0x0 && substage,current=0x0 && gameplay,current=0x11 && play_state,current=0x0
+
+#reset (some games might have multiple reset conditions) (expectedValue is optional)
+cutscene_reset:state,current=0x0 && state,prior=0xD0 && gameplay,prior=0x11 && gameplay,current=0x0
+tool_reset:gameplay,prior=0x11 && gameplay,current=0x0 && scene,prior=0x4 && scene,current=0x0 && scene2,prior=0x3 && scene2,current=0x0
+level_reset:gameplay,prior=0x13 && gameplay,current=0x0 && crates,current=0x0 && substage,current=0x0 && stage,current=0x0
+
+#split (some games might have multiple split conditions) (expectedValue is optional)
+#= ≠ < > & ~
+1-1:state,prior=0xC8 && state,current=0x0 && stage,current=0x0 && substage,current=0x1 && gameplay,current=0x13
+1-2:state,prior=0xC8 && state,current=0x0 && stage,current=0x0 && substage,current=0x2 && gameplay,current=0x13
+1-3:state,prior=0xC8 && state,current=0x0 && stage,current=0x0 && substage,current=0x3 && gameplay,current=0x13
+1-4:state,prior=0xC8 && state,current=0x0 && stage,current=0x0 && substage,current=0x4 && gameplay,current=0x13
+1-5:state,prior=0xC8 && state,current=0x0 && stage,current=0x0 && substage,current=0x4 && gameplay,current=0x13 && BossHP,current=0x0
+2-1:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x1 && gameplay,current=0x13
+2-2:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x2 && gameplay,current=0x13
+2-3:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x3 && gameplay,current=0x13
+2-4:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x4 && gameplay,current=0x13
+2-5:state,prior=0xC8 && state,current=0x0 && stage,current=0x1 && substage,current=0x4 && gameplay,current=0x13 && W2P1HP,current=0x0
+3-1:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x1 && gameplay,current=0x13
+3-2:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x2 && gameplay,current=0x13
+3-3:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x3 && gameplay,current=0x13
+3-4:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x4 && gameplay,current=0x13
+3-5:state,prior=0xC8 && state,current=0x0 && stage,current=0x2 && substage,current=0x4 && gameplay,current=0x13 && BossHP,current=0x0
+4-1:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x1 && gameplay,current=0x13
+4-2:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x2 && gameplay,current=0x13
+4-3:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x3 && gameplay,current=0x13
+4-4:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x4 && gameplay,current=0x13
+4-5:state,prior=0xC8 && state,current=0x0 && stage,current=0x3 && substage,current=0x4 && gameplay,current=0x13 && FBossHP,current=0xFF
