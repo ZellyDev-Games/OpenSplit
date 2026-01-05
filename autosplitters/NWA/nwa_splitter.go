@@ -563,6 +563,14 @@ func (b *NWASplitter) Update(splitIndex int) (nwaSummary, error) {
 	}
 	fmt.Printf("%#v\n", summary)
 
+	if len(summary.([]byte)) == 0 {
+		return nwaSummary{
+			Start: false,
+			Reset: false,
+			Split: false,
+		}, nil
+	}
+
 	switch v := summary.(type) {
 	case []byte:
 		// update memoryWatcher with data
