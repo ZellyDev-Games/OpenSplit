@@ -93,7 +93,7 @@ func (s Splitters) newClient() (*nwa.NWASplitter, *qusb2snes.SyncClient) {
 
 // Memory should be moved out of here and received from the config file and sent to the splitter
 func (s Splitters) processNWA(commandDispatcher *dispatcher.Service) {
-	mil := 1 * time.Millisecond
+	mil := 2 * time.Millisecond
 
 	// // Battletoads test data
 	// memData := []string{
@@ -225,7 +225,7 @@ func (s Splitters) processNWA(commandDispatcher *dispatcher.Service) {
 }
 
 func (s Splitters) processQUSB2SNES(commandDispatcher *dispatcher.Service) {
-	mil := 1 * time.Millisecond
+	mil := 2 * time.Millisecond
 
 	// Home Improvment test data
 	memData := []string{
