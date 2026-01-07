@@ -551,9 +551,11 @@ func (b *NWASplitter) Update(splitIndex int) (nwaSummary, error) {
 	domain := b.nwaMemory[0].memoryBank
 	var requestString string
 
+	var watcherCount int
 	for _, watcher := range b.nwaMemory {
 		requestString += ";" + watcher.address + ";" + watcher.size
 		*watcher.priorValue = *watcher.currentValue
+		watcherCount++
 	}
 
 	args := domain + requestString
@@ -563,7 +565,7 @@ func (b *NWASplitter) Update(splitIndex int) (nwaSummary, error) {
 	}
 	fmt.Printf("%#v\n", summary)
 
-	if len(summary.([]byte)) == 0 {
+	if len(summary.([]byte)) != watcherCount {
 		return nwaSummary{
 			Start: false,
 			Reset: false,
