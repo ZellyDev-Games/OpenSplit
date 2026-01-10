@@ -81,17 +81,17 @@ type USB2SnesResult struct {
 	Results []string `json:"Results"`
 }
 
-type USB2SnesFileType int
+// type USB2SnesFileType int
 
-const (
-	File USB2SnesFileType = iota
-	Dir
-)
+// const (
+// 	File USB2SnesFileType = iota
+// 	Dir
+// )
 
-type USB2SnesFileInfo struct {
-	Name     string
-	FileType USB2SnesFileType
-}
+// type USB2SnesFileInfo struct {
+// 	Name     string
+// 	FileType USB2SnesFileType
+// }
 
 type SyncClient struct {
 	Client *websocket.Conn
