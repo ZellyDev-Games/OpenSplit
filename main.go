@@ -68,7 +68,7 @@ func main() {
 
 	// UseAutoSplitter and Type should come from the splits config file
 	// ResetTimerOnGameReset, ResetGameOnTimerReset, Addr, Port should come from the autosplitter config file
-	// // NWA
+	// NWA
 	AutoSplitterService := autosplitters.Splitters{
 		NWAAutoSplitter:       new(nwa.NWASplitter),
 		QUSB2SNESAutoSplitter: new(qusb2snes.SyncClient),
