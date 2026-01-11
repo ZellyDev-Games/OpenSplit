@@ -97,7 +97,9 @@ func (s Splitters) processNWA(commandDispatcher *dispatcher.Service) {
 
 	// // Battletoads test data
 	// memData := []string{
-	// 	("level,RAM,$0010,1")}
+	// 	("level,RAM,$0010,1"),
+	// 	("qdead,RAM,$0005,1"),
+	// }
 	// startConditionImport := []string{
 	// 	("start:level,prior=0x0 && level,current=0x1")}
 	// resetConditionImport := []string{
@@ -115,6 +117,7 @@ func (s Splitters) processNWA(commandDispatcher *dispatcher.Service) {
 	// 	("level11:level,prior=0xFF && level,current=0xB"),
 	// 	("level12:level,prior=0xFF && level,current=0xC"),
 	// 	("level13:level,prior=0xFF && level,current=0xD"),
+	// 	("queen:level,current=0xD && qdead,prior=0x0 && qdead,current=0x5"),
 	// }
 
 	// Home Improvment test data

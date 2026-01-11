@@ -5,6 +5,7 @@ Port = 48879
 
 #memory (Do not combine memory or it will treated as 1 giant value)
 level,RAM,$0010,1
+qdead,RAM,$0005,1
 
 #start
 start:level,prior=0x0 && level,current=0x1
@@ -26,3 +27,4 @@ level10:level,prior=0xFF && level,current=0xA
 level11:level,prior=0xFF && level,current=0xB
 level12:level,prior=0xFF && level,current=0xC
 level13:level,prior=0xFF && level,current=0xD
+queen:level,current=0xD && qdead,prior=0x0 && qdead,current=0x5
