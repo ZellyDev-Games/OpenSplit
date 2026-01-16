@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
-	"github.com/zellydev-games/opensplit/autosplitters"
-	nwa "github.com/zellydev-games/opensplit/autosplitters/NWA"
-	qusb2snes "github.com/zellydev-games/opensplit/autosplitters/QUSB2SNES"
+	"github.com/zellydev-games/opensplit/autosplitter"
+	nwa "github.com/zellydev-games/opensplit/autosplitter/NWA"
+	qusb2snes "github.com/zellydev-games/opensplit/autosplitter/QUSB2SNES"
 	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dispatcher"
@@ -34,7 +34,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
 
-//go:embed all:frontend/dist
+//go:embed all:../frontend/dist
 var assets embed.FS
 
 var (
@@ -69,7 +69,7 @@ func main() {
 	// UseAutoSplitter and Type should come from the splits config file
 	// ResetTimerOnGameReset, ResetGameOnTimerReset, Addr, Port should come from the autosplitter config file
 	// // NWA
-	AutoSplitterService := autosplitters.Splitters{
+	AutoSplitterService := autosplitter.Splitters{
 		NWAAutoSplitter:       new(nwa.NWASplitter),
 		QUSB2SNESAutoSplitter: new(qusb2snes.SyncClient),
 		UseAutosplitter:       true,
@@ -77,10 +77,10 @@ func main() {
 		ResetGameOnTimerReset: false,
 		Addr:                  "0.0.0.0",
 		Port:                  48879,
-		Type:                  autosplitters.NWA}
+		Type:                  autosplitter.NWA}
 
 	// // QUSB2SNES
-	// AutoSplitterService := autosplitters.Splitters{
+	// AutoSplitterService := autosplitter.Splitters{
 	// 	NWAAutoSplitter:       new(nwa.NWASplitter),
 	// 	QUSB2SNESAutoSplitter: new(qusb2snes.SyncClient),
 	// 	UseAutosplitter:       true,
@@ -88,7 +88,7 @@ func main() {
 	// 	ResetGameOnTimerReset: false,
 	// 	Addr:                  "0.0.0.0",
 	// 	Port:                  23074,
-	// 	Type:                  autosplitters.QUSB2SNES}
+	// 	Type:                  autosplitter.QUSB2SNES}
 
 	var hotkeyProvider statemachine.HotkeyProvider
 
