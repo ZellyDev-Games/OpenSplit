@@ -267,6 +267,7 @@ func (s *Service) CloseRun() {
 	s.mu.Unlock()
 	logger.Info(logModule, "run closed, resetting session")
 	s.resetLocked()
+	s.dirty = false
 }
 
 func (s *Service) SplitFile() (SplitFile, bool) {

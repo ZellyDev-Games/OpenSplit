@@ -1,14 +1,18 @@
 package main
 
 import (
+	"compress/gzip"
 	"context"
 	"embed"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"path"
 	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -30,7 +34,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
 
-//go:embed all:frontend
+//go:embed all:frontend/dist
 var assets embed.FS
 
 const logModule = "main"
@@ -116,7 +120,29 @@ func main() {
 }
 
 func setupLogging(logDir string) {
-	f, err := os.OpenFile(path.Join(logDir, "OpenSplit.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	logPath := path.Join(logDir, "OpenSplit.log")
+
+	// Rotate + compress existing log file, if present
+	if _, err := os.Stat(logPath); err == nil {
+		ts := time.Now().Format("20060102-150405")
+		rotated := logPath + "." + ts
+		compressed := rotated + ".gz"
+
+		if err := os.Rename(logPath, rotated); err != nil {
+			panic(err)
+		}
+
+		if err := compressFile(rotated, compressed); err != nil {
+			panic(err)
+		}
+
+		_ = os.Remove(rotated)
+	}
+
+	// Enforce retention limit
+	enforceLogRetention(logDir, "OpenSplit.log", 10)
+
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		panic(err)
 	}
@@ -205,4 +231,67 @@ func gracefulShutdown(hotkeyService statemachine.HotkeyProvider) {
 		logger.Info(logModule, "shutdown complete")
 		close(shutdownDone)
 	})
+}
+
+func compressFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	gz := gzip.NewWriter(out)
+	defer gz.Close()
+
+	_, err = io.Copy(gz, in)
+	return err
+}
+
+func enforceLogRetention(dir, base string, max int) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+
+	type logFile struct {
+		name string
+		mod  time.Time
+	}
+
+	var logs []logFile
+
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if strings.HasPrefix(name, base+".") && strings.HasSuffix(name, ".gz") {
+			info, err := e.Info()
+			if err != nil {
+				continue
+			}
+			logs = append(logs, logFile{
+				name: name,
+				mod:  info.ModTime(),
+			})
+		}
+	}
+
+	if len(logs) <= max {
+		return
+	}
+
+	sort.Slice(logs, func(i, j int) bool {
+		return logs[i].mod.Before(logs[j].mod)
+	})
+
+	for i := 0; i < len(logs)-max; i++ {
+		_ = os.Remove(path.Join(dir, logs[i].name))
+	}
 }
