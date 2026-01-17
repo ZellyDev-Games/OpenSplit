@@ -49,3 +49,7 @@ func (w *WailsRuntime) WindowGetSize() (int, int) {
 func (w *WailsRuntime) WindowGetPosition() (int, int) {
 	return runtime.WindowGetPosition(w.ctx)
 }
+
+func (w *WailsRuntime) EventsOn(event string, callback func(...any)) func() {
+	return runtime.EventsOn(w.ctx, event, callback)
+}

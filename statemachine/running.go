@@ -1,7 +1,6 @@
 package statemachine
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/zellydev-games/opensplit/bridge"
@@ -19,8 +18,8 @@ func NewRunningState() (*Running, error) {
 }
 
 func (r *Running) OnEnter() error {
+	machine.saveOnWindowDimensionChanges = true
 	sessionDto := adapters.DomainToDTO(machine.sessionService)
-
 	if machine.hotkeyProvider != nil {
 		err := machine.hotkeyProvider.StartHook(func(data keyinfo.KeyData) {
 			for command, keyData := range machine.configService.KeyConfig {
@@ -74,6 +73,7 @@ func (r *Running) OnEnter() error {
 }
 
 func (r *Running) OnExit() error {
+	machine.saveOnWindowDimensionChanges = false
 	if machine.hotkeyProvider != nil {
 		err := machine.hotkeyProvider.Unhook()
 		if err != nil {
@@ -87,23 +87,22 @@ func (r *Running) Receive(command dispatcher.Command, _ *string) (dispatcher.Dis
 	switch command {
 	case dispatcher.CLOSE:
 		logger.Debug("Running received CLOSE command")
+		err := machine.promptDirtySave()
+		if err != nil {
+			return dispatcher.DispatchReply{}, err
+		}
 		machine.sessionService.CloseRun()
 		machine.repoService.Close()
 		machine.changeState(WELCOME, nil)
 	case dispatcher.EDIT:
 		logger.Debug("Running received EDIT command")
+		if _, ok := machine.sessionService.Run(); ok {
+			return dispatcher.DispatchReply{Code: 1, Message: fmt.Sprintf("can't edit splitfile mid run")}, nil
+		}
 		machine.changeState(EDITING, nil)
 	case dispatcher.SAVE:
 		logger.Debug("Running received SAVE command")
-		sf, loaded := machine.sessionService.SplitFile()
-		if !loaded {
-			msg := "save called without loaded splitfile.  Wait, how did we get to running state without one?"
-			return dispatcher.DispatchReply{Code: 3, Message: msg}, errors.New(msg)
-		}
-		w, h := machine.runtimeProvider.WindowGetSize()
-		x, y := machine.runtimeProvider.WindowGetPosition()
-		dto := adapters.DomainSplitFileToDTO(sf)
-		err := machine.repoService.SaveSplitFile(dto, x, y, w, h)
+		err := machine.saveSplitFile()
 		if err != nil {
 			msg := fmt.Sprintf("failed to save split file to session: %s", err)
 			logger.Error(msg)
@@ -119,6 +118,10 @@ func (r *Running) Receive(command dispatcher.Command, _ *string) (dispatcher.Dis
 	case dispatcher.PAUSE:
 		machine.sessionService.Pause()
 	case dispatcher.RESET:
+		_ = machine.promptPartialRun()
+
+		// note: promptPartialRun only adds the partial run to the session's loadedSplitFile's Runs slice.
+		// Nothing has been saved to disk at this point, so keep the file dirty if needs be.
 		machine.sessionService.Reset()
 	default:
 		logger.Warn(fmt.Sprintf("unhandled default case in Running: %d", command))

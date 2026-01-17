@@ -105,6 +105,18 @@ func NewService(timer Timer) (*Service, chan *Service) {
 	return service, service.sessionUpdateChannel
 }
 
+// UpdateWindowDimensions sets the loadedSplitFile window dimensions
+// This is needed because there's a subsystem that asynchronously
+// updates the splitfile's window dimension information on disk, and the loaded
+// session in memory has no idea about those changes, so if the session is copied and saved,
+// it clobbers the changes that subsystem made previously.
+func (s *Service) UpdateWindowDimensions(x, y, w, h int) {
+	s.loadedSplitFile.WindowX = x
+	s.loadedSplitFile.WindowY = y
+	s.loadedSplitFile.WindowWidth = w
+	s.loadedSplitFile.WindowHeight = h
+}
+
 func (s *Service) SetLoadedSplitFile(sf SplitFile) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -179,8 +191,6 @@ func (s *Service) Undo() {
 		s.sessionState = Running
 		s.timer.Start()
 	}
-
-	s.dirty = true
 }
 
 // Skip sets the current segment to the next one without recording a split
@@ -196,7 +206,6 @@ func (s *Service) Skip() {
 		return
 	}
 	s.currentSegmentIndex++
-	s.dirty = true
 }
 
 // Pause toggles the pause state of a run
@@ -247,6 +256,13 @@ func (s *Service) SplitFile() (SplitFile, bool) {
 // Dirty returns the unsaved changes status of the session
 func (s *Service) Dirty() bool { s.mu.Lock(); defer s.mu.Unlock(); return s.dirty }
 
+// ClearDirty clears th dirty flag, indicating that this session is up to date with what is on repo
+func (s *Service) ClearDirty() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.dirty = false
+}
+
 // State returns the session State
 func (s *Service) State() State { s.mu.Lock(); defer s.mu.Unlock(); return s.sessionState }
 
@@ -270,17 +286,16 @@ func (s *Service) resetLocked() {
 	s.timer.Pause()
 	s.timer.Reset()
 
+	s.currentRun = nil
+	s.sessionState = Idle
+	s.currentSegmentIndex = -1
+}
+
+func (s *Service) PersistRunToSession() {
 	if s.currentRun != nil {
 		s.loadedSplitFile.Runs = append(s.loadedSplitFile.Runs, *s.currentRun)
 		s.loadedSplitFile.BuildStats()
-		if s.sessionState == Finished {
-			s.currentRun.Completed = true
-		}
-		s.currentRun = nil
 	}
-
-	s.sessionState = Idle
-	s.currentSegmentIndex = -1
 }
 
 func (s *Service) debounced() bool {
@@ -303,7 +318,7 @@ func (s *Service) startNewRun() SplitResult {
 		logger.Debug("Split() called on run with no DeepCopyLeafSegments, NO-OP")
 		return SplitNoop
 	}
-	s.resetLocked()
+
 	s.timer.SubtractTime(s.loadedSplitFile.Offset)
 	s.timer.Start()
 	s.loadedSplitFile.Attempts++
@@ -315,6 +330,7 @@ func (s *Service) startNewRun() SplitResult {
 		LeafSegments:     s.loadedSplitFile.DeepCopyLeafSegments(),
 		SplitFileVersion: s.loadedSplitFile.Version,
 	}
+
 	s.dirty = true
 	return SplitStarted
 }
@@ -358,6 +374,8 @@ func (s *Service) advanceRun() SplitResult {
 		s.timer.Pause()
 		s.sessionState = Finished
 		s.currentRun.TotalTime = now
+		s.currentRun.Completed = true
+		s.PersistRunToSession()
 		return SplitFinished
 	}
 	return SplitAdvanced
