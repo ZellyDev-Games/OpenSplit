@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"github.com/zellydev-games/opensplit/config"
+	"github.com/zellydev-games/opensplit/logger"
 )
 
 type Config struct {
@@ -23,4 +24,5 @@ func (c *Config) StartUIPump() {
 			c.runtimeProvider.EventsEmit("config:update", updatedConfig)
 		}
 	}()
+	logger.Debug(logModule, "config UI pump started")
 }

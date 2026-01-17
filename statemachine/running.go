@@ -60,7 +60,7 @@ func (r *Running) OnEnter() error {
 		})
 
 		if err != nil {
-			logger.Error(err.Error())
+			logger.Error(logModule, err.Error())
 			return err
 		}
 	}
@@ -86,7 +86,7 @@ func (r *Running) OnExit() error {
 func (r *Running) Receive(command dispatcher.Command, _ *string) (dispatcher.DispatchReply, error) {
 	switch command {
 	case dispatcher.CLOSE:
-		logger.Debug("Running received CLOSE command")
+		logger.Debug(logModule, "Running received CLOSE command")
 		err := machine.promptDirtySave()
 		if err != nil {
 			return dispatcher.DispatchReply{}, err
@@ -95,21 +95,21 @@ func (r *Running) Receive(command dispatcher.Command, _ *string) (dispatcher.Dis
 		machine.repoService.Close()
 		machine.changeState(WELCOME, nil)
 	case dispatcher.EDIT:
-		logger.Debug("Running received EDIT command")
+		logger.Debug(logModule, "Running received EDIT command")
 		if _, ok := machine.sessionService.Run(); ok {
 			return dispatcher.DispatchReply{Code: 1, Message: "can't edit splitfile mid run"}, nil
 		}
 		machine.changeState(EDITING, nil)
 	case dispatcher.SAVE:
-		logger.Debug("Running received SAVE command")
+		logger.Debug(logModule, "Running received SAVE command")
 		err := machine.saveSplitFile()
 		if err != nil {
 			msg := fmt.Sprintf("failed to save split file to session: %s", err)
-			logger.Error(msg)
+			logger.Error(logModule, msg)
 			return dispatcher.DispatchReply{Code: 2, Message: msg}, err
 		}
 	case dispatcher.SPLIT:
-		logger.Debug("Running received SPLIT command")
+		logger.Debug(logModule, "Running received SPLIT command")
 		machine.sessionService.Split()
 	case dispatcher.UNDO:
 		machine.sessionService.Undo()
@@ -124,7 +124,7 @@ func (r *Running) Receive(command dispatcher.Command, _ *string) (dispatcher.Dis
 		// Nothing has been saved to disk at this point, so keep the file dirty if needs be.
 		machine.sessionService.Reset()
 	default:
-		logger.Warn(fmt.Sprintf("unhandled default case in Running: %d", command))
+		logger.Warnf(logModule, "unhandled default case in Running: %d", command)
 	}
 
 	return dispatcher.DispatchReply{}, nil

@@ -3,6 +3,7 @@ package bridge
 import (
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dto"
+	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo/adapters"
 	"github.com/zellydev-games/opensplit/session"
 )
@@ -31,6 +32,7 @@ func (s *Session) StartUIPump() {
 			s.runtimeProvider.EventsEmit("session:update", adapters.DomainToDTO(updatedSession))
 		}
 	}()
+	logger.Debug(logModule, "session UI pump started")
 }
 
 type View string
@@ -59,5 +61,6 @@ type AppViewModel struct {
 
 // EmitUIEvent informs the frontend of a state change
 func EmitUIEvent(runtimeProvider RuntimeProvider, model AppViewModel) {
+	logger.Debugf(logModule, "setting UI model: %s", model.View)
 	runtimeProvider.EventsEmit(uiModelEventName, model)
 }

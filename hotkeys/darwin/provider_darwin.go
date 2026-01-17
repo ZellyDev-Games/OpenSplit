@@ -17,6 +17,7 @@ import (
 	"unsafe"
 
 	"github.com/zellydev-games/opensplit/keyinfo"
+	"github.com/zellydev-games/opensplit/logger"
 )
 
 type Event struct {
@@ -55,6 +56,7 @@ func (m *Manager) StartHook(callback func(data keyinfo.KeyData)) error {
 			}
 		}
 	}()
+	logger.Infof(logModule, "started hook")
 	return nil
 }
 
@@ -63,5 +65,6 @@ func (m *Manager) Unhook() error {
 	defer m.mu.Unlock()
 	m.callback = nil
 	C.hk_stop()
+	logger.Infof(logModule, "hook removed")
 	return nil
 }

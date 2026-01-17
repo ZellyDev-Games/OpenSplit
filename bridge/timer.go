@@ -1,6 +1,10 @@
 package bridge
 
-import "time"
+import (
+	"time"
+
+	"github.com/zellydev-games/opensplit/logger"
+)
 
 type Timer struct {
 	timerEventStopChannel chan any
@@ -30,4 +34,5 @@ func (t *Timer) StartUIPump() {
 			}
 		}
 	}()
+	logger.Debug(logModule, "started timer UI pump")
 }

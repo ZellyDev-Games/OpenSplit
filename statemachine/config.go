@@ -53,18 +53,19 @@ func (c *Config) Receive(command dispatcher.Command, payload *string) (dispatche
 	case dispatcher.RESET:
 		c.recordingArmed = true
 		c.listeningFor = command
-		logger.Info(fmt.Sprintf("recording armed for command: %d", c.listeningFor))
+		logger.Infof(logModule, "recording armed for command: %d", c.listeningFor)
 		err := machine.hotkeyProvider.StartHook(func(data keyinfo.KeyData) {
 			c.handleHotkey(data)
 			c.recordingArmed = false
-			logger.Info(fmt.Sprintf("updated command %v with hotkey %s (%d)", c.listeningFor, data.LocaleName, data.KeyCode))
+			logger.Infof(logModule, "updated command %v with hotkey %s (%d)",
+				c.listeningFor, data.LocaleName, data.KeyCode)
 			err := machine.hotkeyProvider.Unhook()
 			if err != nil {
-				logger.Error(err.Error())
+				logger.Error(logModule, err.Error())
 			}
 		})
 		if err != nil {
-			logger.Error(err.Error())
+			logger.Error(logModule, err.Error())
 			c.recordingArmed = false
 			return dispatcher.DispatchReply{Code: 6}, err
 		}

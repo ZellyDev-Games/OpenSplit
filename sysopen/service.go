@@ -11,6 +11,8 @@ import (
 	"github.com/zellydev-games/opensplit/logger"
 )
 
+const logModule = "sysopen"
+
 // Service provides a binding to allow the frontend to open a folder in the native OS file explorer.
 type Service struct {
 	ctx        context.Context
@@ -35,7 +37,7 @@ func (s *Service) Startup(ctx context.Context) {
 func (s *Service) OpenSkinsFolder() {
 	err := s.OpenFolder(s.skinFolder)
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Error(logModule, err.Error())
 	}
 }
 
@@ -57,7 +59,7 @@ func (s *Service) OpenFolder(path string) error {
 		return err
 	}
 	if !info.IsDir() {
-		logger.Warn("sysopen.OpenFolder not called with directory path")
+		logger.Warn(logModule, "sysopen.OpenFolder not called with directory path")
 		return nil
 	}
 

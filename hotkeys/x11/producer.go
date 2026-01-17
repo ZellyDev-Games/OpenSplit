@@ -17,6 +17,8 @@ import (
 	"github.com/zellydev-games/opensplit/logger"
 )
 
+const logModule = "hotkeys"
+
 type Manager struct {
 	callback   func(data keyinfo.KeyData)
 	mu         sync.Mutex
@@ -33,16 +35,16 @@ func SetupHotkeys() *Manager {
 //
 // The underlying low level listener needs to deliver a keycode and the name of the key
 func (x *Manager) StartHook(callback func(data keyinfo.KeyData)) error {
-	logger.Info("starting x11 hotkey producer hook")
+	logger.Info(logModule, "starting x11 hotkey producer hook")
 	x.mu.Lock()
 	x.callback = callback
 	if x.started {
 		x.mu.Unlock()
-		logger.Debug("previously started, updating callback and leaving")
+		logger.Debug(logModule, "previously started, updating callback and leaving")
 		return nil
 	}
 	x.started = true
-	logger.Debug("x11 hotkey producer flagged as started")
+	logger.Debug(logModule, "x11 hotkey producer flagged as started")
 	x.mu.Unlock()
 
 	go func() {
@@ -58,7 +60,7 @@ func (x *Manager) StartHook(callback func(data keyinfo.KeyData)) error {
 			x.mu.Unlock()
 			return
 		}
-		logger.Debug("x11 display opened and raw event selector installed")
+		logger.Debug(logModule, "x11 display opened and raw event selector installed")
 
 		var ev C.xi2_event
 		for {
@@ -84,7 +86,7 @@ func (x *Manager) StartHook(callback func(data keyinfo.KeyData)) error {
 			}
 		}
 	}()
-	logger.Info("x11 hotkey producer actually started")
+	logger.Info(logModule, "x11 hotkey producer started")
 	return nil
 }
 
@@ -92,6 +94,6 @@ func (x *Manager) Unhook() error {
 	x.mu.Lock()
 	defer x.mu.Unlock()
 	x.callback = nil
-	logger.Debug("x11 hotkey producer unhook")
+	logger.Debug(logModule, "x11 hotkey producer unhook")
 	return nil
 }

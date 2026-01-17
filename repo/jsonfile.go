@@ -3,7 +3,6 @@ package repo
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io/fs"
 	"os"
 	"path"
@@ -61,7 +60,7 @@ func NewJsonFile(runtime RuntimeProvider, fileProvider FileProvider) *JsonFile {
 }
 
 func (j *JsonFile) ClearCachedFileName() {
-	logger.Debug("clearing last used filename")
+	logger.Debug(logModule, "clearing last used filename")
 	j.fileName = ""
 }
 
@@ -73,7 +72,7 @@ func (j *JsonFile) SaveAs(payload []byte, defaultFileName string) error {
 func (j *JsonFile) SaveSplitFile(payload []byte, identifier string) error {
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
-		logger.Error("save failed: " + err.Error())
+		logger.Errorf(logModule, "save failed: %s", err.Error())
 		return err
 	}
 
@@ -89,12 +88,12 @@ func (j *JsonFile) SaveSplitFile(payload []byte, identifier string) error {
 		})
 
 		if err != nil {
-			logger.Error(fmt.Sprintf("failed to get path from save file dialog: %s", err.Error()))
+			logger.Errorf(logModule, "failed to get path from save file dialog: %s", err.Error())
 			return err
 		}
 
 		if filename == "" {
-			logger.Debug("user cancelled save")
+			logger.Debug(logModule, "user cancelled save")
 			return ErrUserCancelledSave
 		}
 
@@ -108,7 +107,7 @@ func (j *JsonFile) SaveSplitFile(payload []byte, identifier string) error {
 	j.lastUsedDirectory = filepath.Dir(j.fileName)
 	err = j.fileProvider.WriteFile(j.fileName, payload, 0644)
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to save split file: %s", err.Error()))
+		logger.Errorf(logModule, "failed to save split file: %s", err.Error())
 		return err
 	}
 	return err
@@ -121,13 +120,13 @@ func (j *JsonFile) SaveSplitFile(payload []byte, identifier string) error {
 func (j *JsonFile) GetLoadedSplitFile() ([]byte, error) {
 	if j.fileName == "" {
 		msg := "GetLoadedSplitFile called with no previously loaded file"
-		logger.Debug(msg)
+		logger.Debug(logModule, msg)
 		return nil, errors.New(msg)
 	}
 
 	data, err := j.fileProvider.ReadFile(j.fileName)
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to load split file: %s", err.Error()))
+		logger.Errorf(logModule, "failed to load split file: %s", err.Error())
 		return nil, err
 	}
 	return data, nil
@@ -151,12 +150,12 @@ func (j *JsonFile) LoadSplitFile() ([]byte, error) {
 	})
 
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to get path from open file dialog: %s", err.Error()))
+		logger.Errorf(logModule, "failed to get path from open file dialog: %s", err.Error())
 		return nil, err
 	}
 
 	if filename == "" {
-		logger.Debug("user cancelled load")
+		logger.Debug(logModule, "user cancelled load")
 		return nil, ErrUserCancelledSave
 	}
 
@@ -164,7 +163,7 @@ func (j *JsonFile) LoadSplitFile() ([]byte, error) {
 
 	data, err := j.fileProvider.ReadFile(filename)
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to load split file: %s", err.Error()))
+		logger.Errorf(logModule, "failed to load split file: %s", err.Error())
 		return nil, err
 	}
 
@@ -174,20 +173,20 @@ func (j *JsonFile) LoadSplitFile() ([]byte, error) {
 func (j *JsonFile) SaveConfig(configServicePayload []byte) error {
 	defaultDirectoryBase, err := j.fileProvider.UserHomeDir()
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to get user home directory: %s", err.Error()))
+		logger.Errorf(logModule, "failed to get user home directory: %s", err.Error())
 		return err
 	}
 
 	configDirectory := path.Join(defaultDirectoryBase, "OpenSplit")
 	err = j.fileProvider.MkdirAll(configDirectory, 0755)
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to create OpenSplit user data folder: %s", err.Error()))
+		logger.Errorf(logModule, "failed to create OpenSplit user data folder: %s", err.Error())
 		return err
 	}
 
 	err = j.fileProvider.WriteFile(path.Join(configDirectory, "os-config.json"), configServicePayload, 0644)
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to save split file: %s", err.Error()))
+		logger.Errorf(logModule, "failed to save split file: %s", err.Error())
 		return err
 	}
 	return err
@@ -196,14 +195,14 @@ func (j *JsonFile) SaveConfig(configServicePayload []byte) error {
 func (j *JsonFile) LoadConfig() ([]byte, error) {
 	defaultDirectoryBase, err := j.fileProvider.UserHomeDir()
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to get user home directory: %s", err.Error()))
+		logger.Errorf(logModule, "failed to get user home directory: %s", err.Error())
 		return nil, err
 	}
 
 	configDirectory := path.Join(defaultDirectoryBase, "OpenSplit")
 	err = j.fileProvider.MkdirAll(configDirectory, 0755)
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to create OpenSplit user data folder: %s", err.Error()))
+		logger.Errorf(logModule, "failed to create OpenSplit user data folder: %s", err.Error())
 		return nil, err
 	}
 
@@ -212,7 +211,7 @@ func (j *JsonFile) LoadConfig() ([]byte, error) {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, ErrConfigMissing
 		}
-		logger.Error(fmt.Sprintf("failed to load OpenSplit config: %s", err.Error()))
+		logger.Errorf(logModule, "failed to load OpenSplit config: %s", err.Error())
 		return nil, err
 	}
 	return data, err
@@ -225,13 +224,13 @@ func (j *JsonFile) getDefaultDirectory() (string, error) {
 	} else {
 		defaultDirectoryBase, err := j.fileProvider.UserHomeDir()
 		if err != nil {
-			logger.Error(fmt.Sprintf("failed to get user home directory: %s", err.Error()))
+			logger.Errorf(logModule, "failed to get user home directory: %s", err.Error())
 			return "", err
 		}
 		defaultDirectory = path.Join(defaultDirectoryBase, "OpenSplit", "Split Files")
 		err = j.fileProvider.MkdirAll(defaultDirectory, 0755)
 		if err != nil {
-			logger.Error(fmt.Sprintf("failed to create OpenSplit user data folder: %s", err.Error()))
+			logger.Errorf(logModule, "failed to create OpenSplit user data folder: %s", err.Error())
 			return "", err
 		}
 	}

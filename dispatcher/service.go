@@ -2,7 +2,11 @@ package dispatcher
 
 import (
 	"sync"
+
+	"github.com/zellydev-games/opensplit/logger"
 )
+
+const logModule = "dispatcher"
 
 // Command bytes are sent to the Service.Dispatch method receiver to indicate the state machine should take some action.
 type Command byte
@@ -45,6 +49,7 @@ func NewService(receiver DispatchReceiver) *Service {
 }
 
 func (s *Service) Dispatch(command Command, payload *string) (DispatchReply, error) {
+	logger.Debugf(logModule, "dispatching command: %v", command)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.receiver.ReceiveDispatch(command, payload)
