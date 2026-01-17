@@ -2,13 +2,14 @@ package skin
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 
 	"github.com/zellydev-games/opensplit/logger"
 )
+
+const logModule = "skins"
 
 // Service allows for platform switching of skins
 type Service struct {
@@ -27,7 +28,7 @@ func (s *Service) GetAvailableSkins() []string {
 	var availableSkins []string
 	entries, err := os.ReadDir(s.skinDir)
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to read skins directory: %s", err.Error()))
+		logger.Errorf(logModule, "failed to read skins directory: %s", err.Error())
 		return []string{}
 	}
 

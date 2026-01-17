@@ -45,7 +45,7 @@ func (n *NewFile) Receive(command dispatcher.Command, payload *string) (dispatch
 		}
 		dto, err := adapters.JSONSplitFileToDTO(*payload)
 		if err != nil {
-			logger.Error(err.Error())
+			logger.Error(logModule, err.Error())
 			return dispatcher.DispatchReply{Code: 2, Message: err.Error()}, err
 		}
 		err = machine.repoService.SaveSplitFile(dto)

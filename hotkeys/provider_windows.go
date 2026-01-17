@@ -15,6 +15,8 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+const logModule = "hotkeys"
+
 var (
 	user32            = syscall.NewLazyDLL("user32.dll")
 	setWindowsHook    = user32.NewProc("SetWindowsHookExW")
@@ -94,7 +96,7 @@ func (w *WindowsManager) StartHook(callback func(data keyinfo.KeyData)) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.hooked {
-		logger.Warn("StartHook() called on hooked manager")
+		logger.Warn(logModule, "StartHook() called on hooked manager")
 		return nil
 	}
 
@@ -110,17 +112,17 @@ func (w *WindowsManager) StartHook(callback func(data keyinfo.KeyData)) error {
 			0,
 			0)
 		if hhook == 0 {
-			logger.Error(err.Error())
+			logger.Error(logModule, err.Error())
 			return
 		}
 
 		w.hhookHandle = hhook
-		logger.Debug(fmt.Sprintf("hook set at address %d", hhook))
+		logger.Debugf(logModule, "hook set at address %d", hhook)
 		for {
 			msg := &threadMessage{}
 			ret, _, _ := getMessage.Call(uintptr(unsafe.Pointer(msg)), 0, 0, 0)
 			if ret == 0 {
-				logger.Debug("WM_QUIT received, quitting message loop")
+				logger.Debug(logModule, "WM_QUIT received, quitting message loop")
 				err = w.Unhook()
 				if err != nil {
 					return
@@ -142,17 +144,17 @@ func (w *WindowsManager) Unhook() error {
 	defer w.mu.Unlock()
 
 	if !w.hooked {
-		logger.Warn("Unhook() called on unhooked manager")
+		logger.Warn(logModule, "Unhook() called on unhooked manager")
 		return nil
 	}
 
 	ret, _, err := unhookWindowsHook.Call(w.hhookHandle)
 	if ret == 0 {
-		logger.Error(err.Error())
+		logger.Error(logModule, err.Error())
 		return err
 	}
 
-	logger.Debug(fmt.Sprintf("hook removed at address %d", w.hhookHandle))
+	logger.Debugf(logModule, "hook removed at address %d", w.hhookHandle)
 	w.hooked = false
 	return nil
 }
@@ -202,7 +204,7 @@ func (w *WindowsManager) handleKeyDown(nCode uintptr, identifier uintptr, kbHook
 					uintptr(len(buf)),
 				)
 				if nameLen == 0 {
-					logger.Error(err.Error())
+					logger.Error(logModule, err.Error())
 				}
 
 				localeString := windows.UTF16ToString(buf)

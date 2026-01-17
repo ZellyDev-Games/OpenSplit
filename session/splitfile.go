@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/zellydev-games/opensplit/logger"
 )
 
 type SplitFile struct {
@@ -39,11 +40,13 @@ func (s *SplitFile) BuildStats() {
 	}
 
 	leafSegments := getLeafSegments(s.Segments, nil)
+	logger.Infof("stats", "building stats for %d segments", len(leafSegments))
 
 	// Edge case: no leaf segments
 	if len(leafSegments) == 0 {
 		s.SOB = 0
 		s.PB = nil
+		logger.Warn("stats", "no leaf segments found")
 		return
 	}
 
@@ -94,6 +97,7 @@ func (s *SplitFile) BuildStats() {
 
 	s.PB = PB
 	s.SOB = SOB
+	logger.Infof("stats", "stats built: PB: %f SOB:%f", s.PB.TotalTime.Seconds(), s.SOB.Seconds())
 }
 
 func (s *SplitFile) perSegmentAggregates(runs []Run) (golds map[uuid.UUID]time.Duration, sums map[uuid.UUID]time.Duration, counts map[uuid.UUID]int) {
