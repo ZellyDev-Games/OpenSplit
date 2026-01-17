@@ -95,6 +95,7 @@ func main() {
 
 			startInterruptListener(ctx, hotkeyProvider)
 			runtime.WindowSetAlwaysOnTop(ctx, true)
+			runtime.WindowSetMinSize(ctx, 100, 100)
 			logger.Info("application startup complete")
 		},
 		OnBeforeClose: func(ctx context.Context) bool {
