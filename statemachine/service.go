@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/config"
@@ -11,6 +12,7 @@ import (
 	"github.com/zellydev-games/opensplit/keyinfo"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo"
+	"github.com/zellydev-games/opensplit/repo/adapters"
 	"github.com/zellydev-games/opensplit/session"
 )
 
@@ -37,6 +39,7 @@ type RuntimeProvider interface {
 	EventsEmit(string, ...any)
 	WindowGetSize() (int, int)
 	WindowGetPosition() (int, int)
+	EventsOn(string, func(...any)) func()
 	Quit()
 }
 
@@ -57,13 +60,16 @@ type state interface {
 
 // Service represents a state machine and holds references to all the tools to allow states to do useful work
 type Service struct {
-	ctx             context.Context
-	currentState    state
-	sessionService  *session.Service
-	repoService     *repo.Service
-	runtimeProvider RuntimeProvider
-	hotkeyProvider  HotkeyProvider
-	configService   *config.Service
+	ctx                                   context.Context
+	splitfileLock                         sync.Mutex
+	currentState                          state
+	sessionService                        *session.Service
+	repoService                           *repo.Service
+	runtimeProvider                       RuntimeProvider
+	hotkeyProvider                        HotkeyProvider
+	configService                         *config.Service
+	saveOnWindowDimensionChanges          bool
+	unsubscribeFromWindowDimensionChanges func()
 }
 
 // InitMachine sets the global singleton, and gives it a friendly default state
@@ -80,6 +86,7 @@ func InitMachine(runtimeProvider RuntimeProvider, repoService *repo.Service, ses
 // Startup is called by Wails.Run to pass in a context to use against Wails.platform
 func (s *Service) Startup(ctx context.Context) {
 	machine.ctx = ctx
+	s.unsubscribeFromWindowDimensionChanges = s.setupWindowDimensionListener()
 	machine.changeState(WELCOME, s.sessionService)
 }
 
@@ -97,6 +104,10 @@ func (s *Service) ReceiveDispatch(command dispatcher.Command, payload *string) (
 
 	if command == dispatcher.QUIT {
 		logger.Debug("QUIT command dispatched from front end")
+		_ = s.promptDirtySave()
+		if s.unsubscribeFromWindowDimensionChanges != nil {
+			s.unsubscribeFromWindowDimensionChanges()
+		}
 		s.runtimeProvider.Quit()
 		return dispatcher.DispatchReply{}, nil
 	}
@@ -141,4 +152,100 @@ func (s *Service) changeState(newState StateID, _ ...interface{}) {
 			logger.Error(fmt.Sprintf("OnEnter failed: %v", err))
 		}
 	}
+}
+
+func (s *Service) saveSplitFile() error {
+	s.splitfileLock.Lock()
+	defer s.splitfileLock.Unlock()
+	sf, loaded := s.sessionService.SplitFile()
+	if !loaded {
+		msg := "save called without loaded splitfile"
+		return errors.New(msg)
+	}
+	dto := adapters.DomainSplitFileToDTO(sf)
+	err := machine.repoService.SaveSplitFile(dto)
+	if err != nil {
+		return err
+	}
+
+	machine.sessionService.ClearDirty()
+	return nil
+}
+
+func (s *Service) setupWindowDimensionListener() func() {
+	return s.runtimeProvider.EventsOn("window:dimensions", func(data ...any) {
+		if s.saveOnWindowDimensionChanges {
+			logger.Info(fmt.Sprintf("Window dimensions have changed: x:%f y:%f w:%f h:%f", data...))
+
+			x := 10
+			y := 10
+			w := 100
+			h := 100
+
+			if f, ok := data[0].(float64); ok {
+				x = max(10, int(f))
+			}
+
+			if f, ok := data[1].(float64); ok {
+				y = max(10, int(f))
+			}
+
+			if f, ok := data[2].(float64); ok {
+				w = max(100, int(f))
+			}
+
+			if f, ok := data[3].(float64); ok {
+				h = max(100, int(f))
+			}
+
+			err := machine.repoService.SaveSplitFileWindowDimensions(x, y, w, h)
+			if err != nil {
+				logger.Error(fmt.Sprintf("SaveSplitFileWindowDimensions failed: %v", err))
+			}
+			machine.sessionService.UpdateWindowDimensions(x, y, w, h)
+		}
+	})
+}
+
+func (s *Service) promptPartialRun() error {
+	run, ok := s.sessionService.Run()
+	if ok && !run.Completed {
+		response, err := s.runtimeProvider.MessageDialog(runtime.MessageDialogOptions{
+			Type:          runtime.QuestionDialog,
+			Title:         "Add partial run splits to session?",
+			Message:       "Do you want to save the splits from this partial run?",
+			Buttons:       []string{"Yes", "No"},
+			DefaultButton: "Yes",
+		})
+		if err != nil {
+			return err
+		}
+
+		if response == "Yes" {
+			s.sessionService.PersistRunToSession()
+			return nil
+		}
+	}
+	return nil
+}
+
+func (s *Service) promptDirtySave() error {
+	if s.sessionService.Dirty() {
+		response, err := s.runtimeProvider.MessageDialog(runtime.MessageDialogOptions{
+			Type:          runtime.QuestionDialog,
+			Title:         "Save New Run Data?",
+			Message:       "You have unsaved runs, would you like to save them?",
+			Buttons:       []string{"Yes", "No"},
+			DefaultButton: "Yes",
+		})
+		if err != nil {
+			return err
+		}
+
+		if response == "Yes" {
+			return s.saveSplitFile()
+		}
+	}
+
+	return nil
 }

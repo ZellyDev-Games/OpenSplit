@@ -3,9 +3,9 @@ import { JSX, useEffect, useMemo, useState } from "react";
 import { EventsOn } from "../../../wailsjs/runtime";
 import SegmentPayload from "../../models/segmentPayload";
 import SessionPayload from "../../models/sessionPayload";
+import SplitPayload from "../../models/splitPayload";
 import { CompareAgainst, Comparison } from "./Splitter";
 import { displayFormattedTimeParts, formatDuration, msToParts } from "./Timer";
-import SplitPayload from "../../models/splitPayload";
 
 type SplitListParameters = {
     sessionPayload: SessionPayload;
@@ -45,7 +45,7 @@ const getDeltaDisplayTime = (delta: number, gold: boolean = false) => {
 
     return (
         <strong className={className}>
-            { (delta > 0) && "+" }
+            {delta > 0 && "+"}
             {t[0]}
             <small>{t[1]}</small>
         </strong>
@@ -56,8 +56,8 @@ const getDeltaDisplayTime = (delta: number, gold: boolean = false) => {
 const getSegmentDisplayTime = (
     segment: SegmentPayload,
     split: SplitPayload | null,
-    targetCumulative: number,
-    targetIndividual: number
+    targetCumulative: number | null,
+    targetIndividual: number | null,
 ): JSX.Element => {
     const gold = segment.gold;
 
@@ -77,6 +77,10 @@ const getSegmentDisplayTime = (
     }
 
     // Default target display
+    if (targetCumulative == null) {
+        return <strong>-</strong>;
+    }
+
     const t = displayFormattedTimeParts(formatDuration(msToParts(targetCumulative)));
     return (
         <strong>
@@ -89,16 +93,16 @@ const getSegmentDisplayTime = (
 function segmentRow(
     segmentData: FlatSegment,
     split: SplitPayload | null,
-    cumulativeTarget: number,
-    individualTarget: number,
+    cumulativeTarget: number | null,
+    individualTarget: number | null,
     activeRow: boolean = false,
-    time: number | null = null
+    time: number | null = null,
 ) {
     let delta: number | null = null;
 
-    if (split != null) {
+    if (split != null && cumulativeTarget) {
         delta = split.current_cumulative - cumulativeTarget;
-    } else if (activeRow && time !== null && time > cumulativeTarget - 60000) {
+    } else if (activeRow && time !== null && cumulativeTarget && time > cumulativeTarget - 60000) {
         delta = time - cumulativeTarget;
     }
 
@@ -142,16 +146,19 @@ export default function SegmentList({ sessionPayload, comparison }: SplitListPar
         const results: Targets = { cumulative: {}, individual: {} };
 
         sessionPayload.leaf_segments?.forEach((segment) => {
-            switch (comparison) {
-                case CompareAgainst.Average:
-                    results.individual[segment.id] = segment.average;
-                    break;
-                case CompareAgainst.Best:
-                    results.individual[segment.id] = segment.pb;
-                    break;
+            console.log(segment);
+            if (segment.average !== 0) {
+                switch (comparison) {
+                    case CompareAgainst.Average:
+                        results.individual[segment.id] = segment.average;
+                        break;
+                    case CompareAgainst.Best:
+                        results.individual[segment.id] = segment.pb;
+                        break;
+                }
+                results.cumulative[segment.id] = results.individual[segment.id] + cumulative;
+                cumulative += results.individual[segment.id];
             }
-            results.cumulative[segment.id] = results.individual[segment.id] + cumulative;
-            cumulative += results.individual[segment.id];
         });
 
         return results;
@@ -196,7 +203,7 @@ export default function SegmentList({ sessionPayload, comparison }: SplitListPar
                         </td>
                         <td className="splitDelta" />
                         <td className="splitComparison" />
-                    </tr>
+                    </tr>,
                 );
                 continue;
             }
@@ -209,12 +216,7 @@ export default function SegmentList({ sessionPayload, comparison }: SplitListPar
             const split = sessionPayload.current_run?.splits[segmentData.Segment.id] ?? null;
 
             const rowEl = isSelected ? (
-                <ActiveRow
-                    key={segmentData.Segment.id}
-                    segmentData={segmentData}
-                    cTarget={cTarget}
-                    iTarget={iTarget}
-                />
+                <ActiveRow key={segmentData.Segment.id} segmentData={segmentData} cTarget={cTarget} iTarget={iTarget} />
             ) : (
                 segmentRow(segmentData, split, cTarget, iTarget)
             );
