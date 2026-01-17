@@ -51,7 +51,7 @@ func (m *MockRuntimeProvider) SaveFileDialog(runtime.SaveDialogOptions) (string,
 
 func (m *MockRuntimeProvider) OpenFileDialog(runtime.OpenDialogOptions) (string, error) {
 	m.LoadCalled++
-	return "testfile", nil
+	return "testfile.osf", nil
 }
 
 func (m *MockRuntimeProvider) Startup(context.Context) {
@@ -65,7 +65,7 @@ func TestSave(t *testing.T) {
 	m := &MockRuntimeProvider{}
 	f := &MockFileProvider{}
 	j := NewJsonFile(m, f)
-	err := j.SaveSplitFile([]byte(""))
+	err := j.SaveSplitFile([]byte(""), "testfile.osf")
 	if err != nil {
 		t.Error(err)
 	}
