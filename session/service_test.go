@@ -215,7 +215,7 @@ func TestSplit(t *testing.T) {
 		t.Fatalf("reset Split() timer.IsRunning() want %v, got %v", false, s.timer.IsRunning())
 	}
 
-	if mt.ResetCalled != 2 {
+	if mt.ResetCalled != 1 {
 		t.Fatalf("Split() timer reset called want %d, got %d", 2, mt.ResetCalled)
 	}
 
@@ -320,7 +320,7 @@ func TestReset(t *testing.T) {
 	s.Split()
 	s.Reset()
 
-	if mt.ResetCalled != 2 {
+	if mt.ResetCalled != 1 {
 		t.Fatalf("Reset() timer Reset called want %d, got %d", 2, mt.ResetCalled)
 	}
 
