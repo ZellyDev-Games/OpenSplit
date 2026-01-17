@@ -169,7 +169,10 @@ func (s *Service) Undo() {
 		return
 	}
 
-	oldSegmentName := s.leafSegments[s.currentSegmentIndex].Name
+	oldSegmentName := "Finished"
+	if s.currentSegmentIndex < len(s.leafSegments) {
+		oldSegmentName = s.leafSegments[s.currentSegmentIndex].Name
+	}
 	s.currentSegmentIndex--
 	if s.currentSegmentIndex < 0 || s.currentSegmentIndex >= len(s.leafSegments) {
 		logger.Errorf(

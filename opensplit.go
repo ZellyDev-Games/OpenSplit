@@ -238,16 +238,22 @@ func compressFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func(in *os.File) {
+		_ = in.Close()
+	}(in)
 
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func(out *os.File) {
+		_ = out.Close()
+	}(out)
 
 	gz := gzip.NewWriter(out)
-	defer gz.Close()
+	defer func(gz *gzip.Writer) {
+		_ = gz.Close()
+	}(gz)
 
 	_, err = io.Copy(gz, in)
 	return err
