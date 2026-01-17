@@ -97,7 +97,7 @@ func (r *Running) Receive(command dispatcher.Command, _ *string) (dispatcher.Dis
 	case dispatcher.EDIT:
 		logger.Debug("Running received EDIT command")
 		if _, ok := machine.sessionService.Run(); ok {
-			return dispatcher.DispatchReply{Code: 1, Message: fmt.Sprintf("can't edit splitfile mid run")}, nil
+			return dispatcher.DispatchReply{Code: 1, Message: "can't edit splitfile mid run"}, nil
 		}
 		machine.changeState(EDITING, nil)
 	case dispatcher.SAVE:
