@@ -9,6 +9,8 @@ import (
 	"github.com/zellydev-games/opensplit/logger"
 )
 
+const logModule = "timer"
+
 // TickerInterface wraps time.Ticker to allow DI for testing
 type TickerInterface interface {
 	Ch() <-chan time.Time
@@ -59,7 +61,7 @@ func (s *Stopwatch) IsRunning() bool {
 
 func (s *Stopwatch) Run() {
 	if s.ctx == nil {
-		logger.Error("Run called before Startup in stopwatch")
+		logger.Error(logModule, "Run called before Startup in stopwatch")
 		return
 	}
 	go func() {

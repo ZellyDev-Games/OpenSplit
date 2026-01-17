@@ -6,9 +6,12 @@ import (
 
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dto"
+	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo/adapters"
 	"github.com/zellydev-games/opensplit/session"
 )
+
+const logModule = "repo"
 
 // ErrConfigMissing signals to the caller that the config file is not there (first run, or user moved it), so generate a default
 var ErrConfigMissing = errors.New("config missing")
@@ -36,6 +39,7 @@ func NewService(repository Repository) *Service {
 
 // LoadSplitFile reads splitfile bytes from a repo and returns it as a session.SplitFile
 func (s *Service) LoadSplitFile() (session.SplitFile, error) {
+	logger.Debug(logModule, "loading split file")
 	s.splitFileLock.RLock()
 	splitFile, err := s.repository.LoadSplitFile()
 	if err != nil {
@@ -43,8 +47,9 @@ func (s *Service) LoadSplitFile() (session.SplitFile, error) {
 		return session.SplitFile{}, err
 	}
 	s.splitFileLock.RUnlock()
-	splitFileSTO, _ := adapters.JSONSplitFileToDTO(string(splitFile))
-	return adapters.DTOSplitFileToDomain(splitFileSTO)
+	splitFileDTO, _ := adapters.JSONSplitFileToDTO(string(splitFile))
+	logger.Infof(logModule, "loaded split file: %s-%s", splitFileDTO.GameName, splitFileDTO.GameCategory)
+	return adapters.DTOSplitFileToDomain(splitFileDTO)
 }
 
 // SaveSplitFileWindowDimensions loads the active filename in the repository service,
@@ -68,6 +73,7 @@ func (s *Service) SaveSplitFileWindowDimensions(X int, Y int, Width int, Height 
 	diskSplitFile.WindowWidth = Width
 	diskSplitFile.WindowHeight = Height
 
+	logger.Debugf(logModule, "saving window dimensions: X: %d, Y: %d, Width: %d, Height: %d", X, Y, Width, Height)
 	return s.SaveSplitFile(diskSplitFile)
 }
 
@@ -88,15 +94,24 @@ func (s *Service) SaveSplitFile(splitFile dto.SplitFile) error {
 	splitFile.WindowWidth = max(100, splitFile.WindowWidth)
 	splitFile.WindowHeight = max(100, splitFile.WindowHeight)
 
+	logger.Debugf(logModule, "repository saving split file: %s", identifier)
 	s.splitFileLock.Lock()
-	defer s.splitFileLock.Unlock()
-	return s.repository.SaveSplitFile(payload, identifier)
+	err = s.repository.SaveSplitFile(payload, identifier)
+	s.splitFileLock.Unlock()
+	if err != nil {
+		logger.Errorf(logModule, "repo failed to save splitfile: %s", err)
+		return err
+	}
+
+	logger.Infof(logModule, "repository saved split file: %s", identifier)
+	return nil
 }
 
 func (s *Service) Close() {
 	s.splitFileLock.Lock()
-	defer s.splitFileLock.Unlock()
 	s.repository.ClearCachedFileName()
+	s.splitFileLock.Unlock()
+	logger.Infof(logModule, "repository cleared splitfile")
 }
 
 func (s *Service) SaveConfig(configService *config.Service) error {
@@ -104,16 +119,28 @@ func (s *Service) SaveConfig(configService *config.Service) error {
 	if err != nil {
 		return err
 	}
+
+	logger.Debug(logModule, "repository saving config")
 	s.configLock.Lock()
-	defer s.configLock.Unlock()
-	return s.repository.SaveConfig(payload)
+	err = s.repository.SaveConfig(payload)
+	s.configLock.Unlock()
+
+	if err != nil {
+		logger.Errorf(logModule, "repo failed to save config: %s", err)
+		return err
+	}
+
+	logger.Infof(logModule, "repository saved config")
+	return nil
 }
 
 func (s *Service) LoadConfig(c *config.Service) error {
+	logger.Debug(logModule, "repository loading config")
 	s.configLock.RLock()
 	b, err := s.repository.LoadConfig()
 	if err != nil {
 		s.configLock.RUnlock()
+		logger.Errorf(logModule, "repo failed to load config: %s", err)
 		return err
 	}
 	s.configLock.RUnlock()
@@ -127,5 +154,6 @@ func (s *Service) LoadConfig(c *config.Service) error {
 	c.SpeedRunAPIBase = newConfig.SpeedRunAPIBase
 	c.KeyConfig = newConfig.KeyConfig
 	s.configLock.Unlock()
+	logger.Info(logModule, "repo loaded config")
 	return nil
 }

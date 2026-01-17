@@ -3,7 +3,6 @@ package statemachine
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -15,6 +14,8 @@ import (
 	"github.com/zellydev-games/opensplit/repo/adapters"
 	"github.com/zellydev-games/opensplit/session"
 )
+
+const logModule = "statemachine"
 
 // machine is a private singleton instance of a *Service that represents a state machine.
 var machine *Service
@@ -98,12 +99,12 @@ func (s *Service) AttachHotkeyProvider(provider HotkeyProvider) {
 // ReceiveDispatch allows external facing code to send Command bytes to the state machine
 func (s *Service) ReceiveDispatch(command dispatcher.Command, payload *string) (dispatcher.DispatchReply, error) {
 	if s.currentState == nil {
-		logger.Error("command sent to state machine without a loaded state")
+		logger.Error(logModule, "command sent to state machine without a loaded state")
 		return dispatcher.DispatchReply{}, errors.New("command sent to state machine without a loaded state")
 	}
 
 	if command == dispatcher.QUIT {
-		logger.Debug("QUIT command dispatched from front end")
+		logger.Debug(logModule, "QUIT command dispatched from front end")
 		_ = s.promptDirtySave()
 		if s.unsubscribeFromWindowDimensionChanges != nil {
 			s.unsubscribeFromWindowDimensionChanges()
@@ -112,34 +113,35 @@ func (s *Service) ReceiveDispatch(command dispatcher.Command, payload *string) (
 		return dispatcher.DispatchReply{}, nil
 	}
 
-	logger.Debug(fmt.Sprintf("command %d dispatched to state %s", command, s.currentState.String()))
+	logger.Debugf(logModule, "command %d dispatched to state %s", command, s.currentState.String())
 	return s.currentState.Receive(command, payload)
 }
 
 // changeState provides a structured way to change the current state, calling appropriate lifecycle methods along the way
 func (s *Service) changeState(newState StateID, _ ...interface{}) {
 	if s.currentState != nil {
-		logger.Debug(fmt.Sprintf("exiting state %s", s.currentState.String()))
-		if err := s.currentState.OnExit(); err != nil {
-			logger.Error(fmt.Sprintf("OnExit failed: %v", err))
+		logger.Debugf(logModule, "exiting state %s", s.currentState.String())
+		err := s.currentState.OnExit()
+		if err != nil {
+			logger.Errorf(logModule, "OnExit failed: %v", err)
 		}
 	}
 
 	switch newState {
 	case WELCOME:
-		logger.Debug("entering state Welcome")
+		logger.Debug(logModule, "entering state Welcome")
 		s.currentState, _ = NewWelcomeState()
 	case NEWFILE:
-		logger.Debug("entering state NewFile")
+		logger.Debug(logModule, "entering state NewFile")
 		s.currentState, _ = NewNewFileState()
 	case EDITING:
-		logger.Debug("entering state Editing")
+		logger.Debug(logModule, "entering state Editing")
 		s.currentState, _ = NewEditingState()
 	case RUNNING:
-		logger.Debug("entering state Running")
+		logger.Debug(logModule, "entering state Running")
 		s.currentState, _ = NewRunningState()
 	case CONFIG:
-		logger.Debug("entering state Config")
+		logger.Debug(logModule, "entering state Config")
 		configState, _ := NewConfigState(s.currentState.ID())
 		s.currentState = configState
 	default:
@@ -149,7 +151,7 @@ func (s *Service) changeState(newState StateID, _ ...interface{}) {
 	if s.currentState != nil {
 		err := s.currentState.OnEnter()
 		if err != nil {
-			logger.Error(fmt.Sprintf("OnEnter failed: %v", err))
+			logger.Errorf(logModule, "OnEnter failed: %v", err)
 		}
 	}
 }
@@ -175,7 +177,7 @@ func (s *Service) saveSplitFile() error {
 func (s *Service) setupWindowDimensionListener() func() {
 	return s.runtimeProvider.EventsOn("window:dimensions", func(data ...any) {
 		if s.saveOnWindowDimensionChanges {
-			logger.Info(fmt.Sprintf("Window dimensions have changed: x:%f y:%f w:%f h:%f", data...))
+			logger.Infof(logModule, "Window dimensions have changed: x:%f y:%f w:%f h:%f", data...)
 
 			x := 10
 			y := 10
@@ -200,7 +202,7 @@ func (s *Service) setupWindowDimensionListener() func() {
 
 			err := machine.repoService.SaveSplitFileWindowDimensions(x, y, w, h)
 			if err != nil {
-				logger.Error(fmt.Sprintf("SaveSplitFileWindowDimensions failed: %v", err))
+				logger.Errorf(logModule, "SaveSplitFileWindowDimensions failed: %v", err)
 			}
 			machine.sessionService.UpdateWindowDimensions(x, y, w, h)
 		}

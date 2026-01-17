@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"embed"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -31,8 +30,10 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
 
-//go:embed all:frontend/dist
+//go:embed all:frontend
 var assets embed.FS
+
+const logModule = "main"
 
 var (
 	shutdownOnce sync.Once
@@ -40,12 +41,13 @@ var (
 )
 
 func main() {
-	_, logDir, _ := setupPaths()
-	setupLogging(logDir)
-	logger.Info("logging initialized, starting opensplit")
-
 	runtimeProvider := platform.NewWailsRuntime()
 	fileProvider := platform.NewFileRuntime()
+
+	_, logDir, _, _, _ := setupPaths(fileProvider)
+	setupLogging(logDir)
+	logger.Info(logModule, "logging initialized, starting opensplit")
+
 	jsonRepo := repo.NewJsonFile(runtimeProvider, fileProvider)
 
 	timerService, timerUpdateChannel := timer.NewStopwatch(timer.NewTicker(time.Millisecond * 20))
@@ -96,7 +98,7 @@ func main() {
 			startInterruptListener(ctx, hotkeyProvider)
 			runtime.WindowSetAlwaysOnTop(ctx, true)
 			runtime.WindowSetMinSize(ctx, 100, 100)
-			logger.Info("application startup complete")
+			logger.Info(logModule, "application startup complete")
 		},
 		OnBeforeClose: func(ctx context.Context) bool {
 			gracefulShutdown(hotkeyProvider)
@@ -108,7 +110,8 @@ func main() {
 	})
 
 	if err != nil {
-		println("Error:", err.Error())
+		logger.Error(logModule, err.Error())
+		os.Exit(1)
 	}
 }
 
@@ -134,15 +137,17 @@ func setupLogging(logDir string) {
 //	return http.StripPrefix("/skins/", http.FileServer(http.Dir(skinDir)))
 //}
 
-func setupPaths() (string, string, string) {
-	base, err := os.UserConfigDir()
+func setupPaths(fileProvider repo.FileProvider) (string, string, string, string, string) {
+	base, err := fileProvider.UserHomeDir()
 	if err != nil {
 		panic(err)
 	}
 
 	appDir := filepath.Join(base, "OpenSplit")
 	logDir := filepath.Join(appDir, "logs")
-	skinDir := filepath.Join(appDir, "skins")
+	skinDir := filepath.Join(appDir, "Skins")
+	autosplittersDir := filepath.Join(appDir, "Autosplitters")
+	splitFileDir := filepath.Join(appDir, "Split Files")
 	err = os.MkdirAll(appDir, 0755)
 	if err != nil {
 		panic(err)
@@ -157,7 +162,17 @@ func setupPaths() (string, string, string) {
 	if err != nil {
 		panic(err)
 	}
-	return appDir, logDir, skinDir
+
+	err = os.MkdirAll(splitFileDir, 0755)
+	if err != nil {
+		panic(err)
+	}
+
+	err = os.MkdirAll(autosplittersDir, 0755)
+	if err != nil {
+		panic(err)
+	}
+	return appDir, logDir, skinDir, splitFileDir, autosplittersDir
 }
 
 func startInterruptListener(ctx context.Context, hotkeyProvider statemachine.HotkeyProvider) {
@@ -165,7 +180,7 @@ func startInterruptListener(ctx context.Context, hotkeyProvider statemachine.Hot
 		ch := make(chan os.Signal, 1)
 		signal.Notify(ch, os.Interrupt, syscall.SIGTERM) // disables default exit for these
 		s := <-ch
-		logger.Info(fmt.Sprintf("received exit signal %s", s))
+		logger.Infof(logModule, "received exit signal %s", s)
 
 		// Do cleanup *now* so we don't depend on Wails calling OnShutdown
 		if hotkeyProvider != nil {
@@ -187,7 +202,7 @@ func startInterruptListener(ctx context.Context, hotkeyProvider statemachine.Hot
 func gracefulShutdown(hotkeyService statemachine.HotkeyProvider) {
 	shutdownOnce.Do(func() {
 		_ = hotkeyService.Unhook()
-		logger.Info("shutdown complete")
+		logger.Info(logModule, "shutdown complete")
 		close(shutdownDone)
 	})
 }

@@ -2,7 +2,6 @@ package adapters
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,6 +9,8 @@ import (
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/session"
 )
+
+const logModule = "adapters"
 
 func DomainSplitFileToDTO(sf session.SplitFile) dto.SplitFile {
 	// add personal best if exists
@@ -45,7 +46,7 @@ func DTOSplitFileToDomain(payload dto.SplitFile) (session.SplitFile, error) {
 	} else {
 		parsedID, err := uuid.Parse(payload.ID)
 		if err != nil {
-			logger.Error("DTOSplitFileToDomain failed to parse ID from payload")
+			logger.Error(logModule, "DTOSplitFileToDomain failed to parse ID from payload")
 			return newSplitFile, err
 		}
 		id = parsedID
@@ -54,7 +55,7 @@ func DTOSplitFileToDomain(payload dto.SplitFile) (session.SplitFile, error) {
 	if payload.PB != nil {
 		domainPB, err := dtoRunToDomain(*payload.PB)
 		if err != nil {
-			logger.Error("failed to get PB for split file")
+			logger.Error(logModule, "failed to get PB for split file")
 			PB = nil
 		} else {
 			PB = &domainPB
@@ -138,9 +139,9 @@ func domainSegmentToDTO(s session.Segment) dto.Segment {
 	return dtoSeg
 }
 
-func dtoSegmentsToDomain(segs []dto.Segment) []session.Segment {
-	out := make([]session.Segment, len(segs))
-	for i, s := range segs {
+func dtoSegmentsToDomain(segments []dto.Segment) []session.Segment {
+	out := make([]session.Segment, len(segments))
+	for i, s := range segments {
 		out[i] = dtoSegmentToDomain(s)
 	}
 	return out
@@ -187,7 +188,7 @@ func dtoRunsToDomain(runs []dto.Run) []session.Run {
 	for _, r := range runs {
 		r, err := dtoRunToDomain(r)
 		if err != nil {
-			logger.Error(fmt.Sprintf("failed to get run from DTO splitfile: %s\n", err.Error()))
+			logger.Errorf(logModule, "failed to get run from DTO splitfile: %s\n", err.Error())
 			continue
 		}
 		out = append(out, r)
@@ -228,7 +229,7 @@ func dtoSplitsToDomain(splits map[string]dto.Split) map[uuid.UUID]session.Split 
 	for segmentID, split := range splits {
 		uid, err := uuid.Parse(segmentID)
 		if err != nil {
-			logger.Error("failed to parse split ID from splits payload")
+			logger.Error(logModule, "failed to parse split ID from splits payload")
 			continue
 		}
 		out[uid] = session.Split{

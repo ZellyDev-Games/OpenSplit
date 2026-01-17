@@ -6,7 +6,10 @@ import (
 
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/keyinfo"
+	"github.com/zellydev-games/opensplit/logger"
 )
+
+const logModule = "config"
 
 // Service holds configuration options so that Service.GetEnvironment can work for both backend and frontend.
 type Service struct {
@@ -44,7 +47,7 @@ func (s *Service) UpdateKeyBinding(command dispatcher.Command, data keyinfo.KeyD
 	defer s.mu.Unlock()
 	s.KeyConfig[command] = data
 	s.sendUIBridgeUpdate()
-
+	logger.Infof(logModule, "updated key binding for command %v to %s", command, data.LocaleName)
 }
 
 // CreateDefaultConfig sets the service's options to reasonable defaults.
@@ -58,6 +61,7 @@ func (s *Service) CreateDefaultConfig() {
 	s.KeyConfig[dispatcher.PAUSE] = keyinfo.KeyData{}
 	s.KeyConfig[dispatcher.RESET] = keyinfo.KeyData{}
 	s.sendUIBridgeUpdate()
+	logger.Infof(logModule, "created default config")
 }
 
 func (s *Service) sendUIBridgeUpdate() {
