@@ -1,0 +1,28 @@
+ResetTimerOnGameReset = true
+ResetGameOnTimerReset = false
+IP = 0.0.0.0
+Port = 48879
+
+#memory (Do not combine memory or it will treated as 1 giant value)
+level,RAM,$0010,1
+
+#start
+start:level,prior=0x0 && level,current=0x1
+
+#reset (some games might have multiple reset conditions) (expectedValue is optional) (values MUST always be last)
+reset:level,current=0x0 && level,prior≠0x0
+
+#split (some games might have multiple split conditions) (expectedValue is optional) (values MUST always be last)
+#= ≠ < > & ~
+level2:level,prior=0xFF && level,current=0x2
+level3:level,prior=0xFF && level,current=0x3
+level4:level,prior=0xFF && level,current=0x4
+level5:level,prior=0xFF && level,current=0x5
+level6:level,prior=0xFF && level,current=0x6
+level7:level,prior=0xFF && level,current=0x7
+level8:level,prior=0xFF && level,current=0x8
+level9:level,prior=0xFF && level,current=0x9
+level10:level,prior=0xFF && level,current=0xA
+level11:level,prior=0xFF && level,current=0xB
+level12:level,prior=0xFF && level,current=0xC
+level13:level,prior=0xFF && level,current=0xD
