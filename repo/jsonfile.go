@@ -114,6 +114,25 @@ func (j *JsonFile) SaveSplitFile(payload []byte, identifier string) error {
 	return err
 }
 
+// GetLoadedSplitFile gets the bytes off disk of the last split file loaded with LoadSplitFile
+// This is primarily used to update some fields (e.g. the window dimensions) from whatever was saved last on disk.
+// The alternative would be to get the loaded split file from session.Service but that will have updated run
+// and split information, and we might not want to save that.
+func (j *JsonFile) GetLoadedSplitFile() ([]byte, error) {
+	if j.fileName == "" {
+		msg := "GetLoadedSplitFile called with no previously loaded file"
+		logger.Debug(msg)
+		return nil, errors.New(msg)
+	}
+
+	data, err := j.fileProvider.ReadFile(j.fileName)
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to load split file: %s", err.Error()))
+		return nil, err
+	}
+	return data, nil
+}
+
 // LoadSplitFile reads a JSON (*.osf) file from the path returned from the open file dialog
 // and unserializes it into a SplitFilePayload
 func (j *JsonFile) LoadSplitFile() ([]byte, error) {
