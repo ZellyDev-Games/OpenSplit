@@ -87,7 +87,7 @@ type ParentRef = { node: SegmentPayload; siblings: SegmentPayload[]; index: numb
 function findNodeMutable(
     siblings: SegmentPayload[],
     id: string,
-    parents: ParentRef[] = []
+    parents: ParentRef[] = [],
 ): { siblings: SegmentPayload[]; index: number; parents: ParentRef[] } | null {
     for (let i = 0; i < siblings.length; i++) {
         const node = siblings[i];
@@ -110,11 +110,11 @@ function findNodeMutable(
  * - Accessible enough: uses title + aria-label + data-tooltip for CSS tooltip
  */
 function IconButton({
-                        icon,
-                        onClick,
-                        tooltip,
-                        show = true,
-                    }: {
+    icon,
+    onClick,
+    tooltip,
+    show = true,
+}: {
     icon: any;
     onClick: () => void;
     tooltip: string;
@@ -410,7 +410,12 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
      * - depth: indent depth
      * - inheritedGroupShade: shading applied because this row is a direct child of a grouped parent
      */
-    function renderRows(list: SegmentPayload[], depth: number, inheritedGroup: GroupCtx | null, isDirectChild: boolean) {
+    function renderRows(
+        list: SegmentPayload[],
+        depth: number,
+        inheritedGroup: GroupCtx | null,
+        isDirectChild: boolean,
+    ) {
         return list.map((segment, i) => {
             const hasChildren = (segment.children ?? []).length > 0;
 
@@ -457,8 +462,16 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                     <tr className={rowClassName} style={rowStyle}>
                         <td>
                             <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 6 }}>
-                                <IconButton icon={faArrowUp} tooltip="Move segment up" onClick={() => moveSegmentUp(segment.id)} />
-                                <IconButton icon={faArrowDown} tooltip="Move segment down" onClick={() => moveSegmentDown(segment.id)} />
+                                <IconButton
+                                    icon={faArrowUp}
+                                    tooltip="Move segment up"
+                                    onClick={() => moveSegmentUp(segment.id)}
+                                />
+                                <IconButton
+                                    icon={faArrowDown}
+                                    tooltip="Move segment down"
+                                    onClick={() => moveSegmentDown(segment.id)}
+                                />
                                 <IconButton
                                     icon={faArrowUpFromBracket}
                                     tooltip="Group under the segment above"
@@ -475,7 +488,10 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                         </td>
 
                         <td style={{ paddingLeft: depth * 20 }}>
-                            <input value={segment.name} onChange={(e) => updateSegmentName(segment.id, e.target.value)} />
+                            <input
+                                value={segment.name}
+                                onChange={(e) => updateSegmentName(segment.id, e.target.value)}
+                            />
                         </td>
 
                         <td>
@@ -503,7 +519,11 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                         </td>
 
                         <td>
-                            <IconButton icon={faTrash} tooltip="Delete segment" onClick={() => deleteSegment(segment.id)} />
+                            <IconButton
+                                icon={faTrash}
+                                tooltip="Delete segment"
+                                onClick={() => deleteSegment(segment.id)}
+                            />
                         </td>
                     </tr>
 
@@ -609,18 +629,18 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                         {segments && segments.length > 0 && (
                             <table cellSpacing={0} className="datagrid" id="tbl-segments">
                                 <thead>
-                                <tr>
-                                    <th style={{ width: "5%" }}>#</th>
-                                    <th style={{ width: "50%" }}>Segment Name</th>
-                                    <th>
-                                        Average Time <small>(HH:MM:SS.ccc)</small>
-                                    </th>
-                                    <th>
-                                        Personal Best <small>(HH:MM:SS.ccc)</small>
-                                    </th>
-                                    <th style={{ width: "5%" }}>Add Subsegment</th>
-                                    <th style={{ width: "5%" }}></th>
-                                </tr>
+                                    <tr>
+                                        <th style={{ width: "5%" }}>#</th>
+                                        <th style={{ width: "50%" }}>Segment Name</th>
+                                        <th>
+                                            Average Time <small>(HH:MM:SS.ccc)</small>
+                                        </th>
+                                        <th>
+                                            Personal Best <small>(HH:MM:SS.ccc)</small>
+                                        </th>
+                                        <th style={{ width: "5%" }}>Add Subsegment</th>
+                                        <th style={{ width: "5%" }}></th>
+                                    </tr>
                                 </thead>
                                 <tbody>{renderRows(segments, 0, null, false)}</tbody>
                             </table>

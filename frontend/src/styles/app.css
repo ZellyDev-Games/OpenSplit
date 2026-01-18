@@ -66,13 +66,15 @@
     white-space: nowrap;
     padding: 4px 8px;
     border-radius: 4px;
-    background: rgba(0,0,0,0.85);
+    background: rgba(0, 0, 0, 0.85);
     color: #fff;
     font-size: 12px;
     pointer-events: none;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 120ms ease, visibility 120ms ease;
+    transition:
+        opacity 120ms ease,
+        visibility 120ms ease;
     z-index: 9999;
 }
 
@@ -84,9 +86,15 @@
     z-index: 9999;
 }
 
-.group-shade-0 > td { background: rgba(80, 120, 255, 0.08); }
-.group-shade-1 > td { background: rgba(80, 255, 160, 0.08); }
-.group-shade-2 > td { background: rgba(255, 200, 80, 0.10); }
+.group-shade-0 > td {
+    background: rgba(80, 120, 255, 0.08);
+}
+.group-shade-1 > td {
+    background: rgba(80, 255, 160, 0.08);
+}
+.group-shade-2 > td {
+    background: rgba(255, 200, 80, 0.1);
+}
 
 /* Uses the per-row CSS variable set by renderRows */
 .seg-group > td {
