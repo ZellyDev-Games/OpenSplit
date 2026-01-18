@@ -1,4 +1,11 @@
-import { faFolder, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+    faFolder,
+    faTrash,
+    faArrowUp,
+    faArrowDown,
+    faArrowUpFromBracket,
+    faArrowRightFromBracket,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useEffect, useRef, useState } from "react";
 
@@ -10,6 +17,31 @@ import SegmentPayload from "../../models/segmentPayload";
 import SplitFilePayload from "../../models/splitFilePayload";
 import { msToParts, partsToMS, TimeParts } from "../splitter/Timer";
 import TimeRow from "./TimeRow";
+
+type GroupCtx = { bg: string };
+
+function hashStringToInt(s: string): number {
+    let h = 2166136261; // FNV-1a-ish
+    for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+}
+
+function colorFromId(id: string): string {
+    const n = hashStringToInt(id);
+
+    const hue = n % 360;
+
+    // Keep saturation strong but not neon
+    const sat = 45 + (n % 15); // 45–59%
+
+    // Dark background range
+    const light = 18 + (n % 10); // 18–27%
+
+    return `hsl(${hue} ${sat}% ${light}%)`;
+}
 
 type Game = {
     id: string;
@@ -29,7 +61,7 @@ function addChildRecursive(list: SegmentPayload[], parent: SegmentPayload): Segm
             const child = new SegmentPayload();
             return {
                 ...item,
-                children: [...item.children, child],
+                children: [...(item.children ?? []), child],
             };
         }
 
@@ -38,6 +70,97 @@ function addChildRecursive(list: SegmentPayload[], parent: SegmentPayload): Segm
             children: addChildRecursive(item.children ?? [], parent),
         };
     });
+}
+
+// Clone to safely do in-place operations on the copy
+function cloneSegments(list: SegmentPayload[]): SegmentPayload[] {
+    return (list ?? []).map((seg) => {
+        return new SegmentPayload({
+            ...seg,
+            children: cloneSegments(seg.children ?? []),
+        });
+    });
+}
+
+type ParentRef = { node: SegmentPayload; siblings: SegmentPayload[]; index: number };
+
+function findNodeMutable(
+    siblings: SegmentPayload[],
+    id: string,
+    parents: ParentRef[] = [],
+): { siblings: SegmentPayload[]; index: number; parents: ParentRef[] } | null {
+    for (let i = 0; i < siblings.length; i++) {
+        const node = siblings[i];
+        if (node.id === id) {
+            return { siblings, index: i, parents };
+        }
+        const kids = node.children ?? [];
+        if (kids.length > 0) {
+            const nextParents = parents.concat([{ node, siblings, index: i }]);
+            const found = findNodeMutable(kids, id, nextParents);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+/**
+ * Minimal tooltip wrapper:
+ * - No external deps
+ * - Accessible enough: uses title + aria-label + data-tooltip for CSS tooltip
+ */
+function IconButton({
+    icon,
+    onClick,
+    tooltip,
+    show = true,
+}: {
+    icon: any;
+    onClick: () => void;
+    tooltip: string;
+    show?: boolean;
+}) {
+    if (!show) return null;
+
+    return (
+        <button
+            type="button"
+            className="icon-btn has-tooltip"
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClick();
+            }}
+            aria-label={tooltip}
+            title={tooltip} // fallback if CSS isn't loaded
+        >
+            <FontAwesomeIcon icon={icon} />
+            <span role="tooltip" className="tooltip-bubble">
+                {tooltip}
+            </span>
+        </button>
+    );
+}
+
+/**
+ * Group shading rules requested:
+ * - A top-level segment with NO children: no shading.
+ * - A segment with children: it AND its *direct children rows* share a color for that depth.
+ * - If a depth-1 segment has children: it AND its direct children use a *different* color than the depth-0 groups.
+ *
+ * Implementation:
+ * - When rendering children of a parent that has children, we pass a `groupShadeDepth` that applies to:
+ *   - the parent row
+ *   - all first-level children rows
+ * - Deeper grandchildren are only shaded if their parent has children (as another “group”).
+ */
+type ShadeDepth = 0 | 1 | 2 | null;
+
+function shadeClass(depth: ShadeDepth): string {
+    if (depth === 0) return "group-shade-0";
+    if (depth === 1) return "group-shade-1";
+    if (depth === 2) return "group-shade-2";
+    return "";
 }
 
 export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: SplitEditorParams) {
@@ -116,10 +239,10 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                     return { ...item, name };
                 }
 
-                if (item.children.length > 0) {
+                if ((item.children ?? []).length > 0) {
                     return {
                         ...item,
-                        children: updateRecursive(item.children),
+                        children: updateRecursive(item.children ?? []),
                     };
                 }
 
@@ -188,10 +311,10 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                     });
                 }
 
-                if (seg.children.length > 0) {
+                if ((seg.children ?? []).length > 0) {
                     return new SegmentPayload({
                         ...seg,
-                        children: updateRecursive(seg.children),
+                        children: updateRecursive(seg.children ?? []),
                     });
                 }
 
@@ -202,43 +325,213 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
         setSegments((prev) => updateRecursive(prev));
     };
 
-    function renderRows(list: SegmentPayload[], depth: number) {
-        return list.map((segment) => (
-            <React.Fragment key={segment.id}>
-                <tr>
-                    <td></td>
-                    <td style={{ paddingLeft: depth * 20 }}>
-                        <input value={segment.name} onChange={(e) => updateSegmentName(segment.id, e.target.value)} />
-                    </td>
+    // 1) Move up/down among siblings
+    const moveSegmentUp = (id: string) => {
+        setSegments((prev) => {
+            const root = cloneSegments(prev);
+            const found = findNodeMutable(root, id);
+            if (!found) return prev;
 
-                    <td>
-                        <TimeRow
-                            id={segment.id}
-                            time={segment.average ? msToParts(segment.average) : null}
-                            onChangeCallback={(id, ts) => handleTimeChange(id, ts, false)}
-                        />
-                    </td>
+            const { siblings, index } = found;
+            if (index <= 0) return prev;
 
-                    <td>
-                        <TimeRow
-                            id={segment.id}
-                            time={segment.pb ? msToParts(segment.pb) : null}
-                            onChangeCallback={(id, ts) => handleTimeChange(id, ts, true)}
-                        />
-                    </td>
+            const tmp = siblings[index - 1];
+            siblings[index - 1] = siblings[index];
+            siblings[index] = tmp;
 
-                    <td onClick={() => addSegment(segment)}>
-                        <FontAwesomeIcon icon={faFolder} />
-                    </td>
+            return root;
+        });
+    };
 
-                    <td onClick={() => deleteSegment(segment.id)}>
-                        <FontAwesomeIcon icon={faTrash} />
-                    </td>
-                </tr>
+    const moveSegmentDown = (id: string) => {
+        setSegments((prev) => {
+            const root = cloneSegments(prev);
+            const found = findNodeMutable(root, id);
+            if (!found) return prev;
 
-                {segment.children.length > 0 && renderRows(segment.children, depth + 1)}
-            </React.Fragment>
-        ));
+            const { siblings, index } = found;
+            if (index >= siblings.length - 1) return prev;
+
+            const tmp = siblings[index + 1];
+            siblings[index + 1] = siblings[index];
+            siblings[index] = tmp;
+
+            return root;
+        });
+    };
+
+    // 2) Group into previous sibling
+    const groupIntoPreviousSibling = (id: string) => {
+        setSegments((prev) => {
+            const root = cloneSegments(prev);
+            const found = findNodeMutable(root, id);
+            if (!found) return prev;
+
+            const { siblings, index } = found;
+            if (index <= 0) return prev;
+
+            const node = siblings[index];
+            const prevNode = siblings[index - 1];
+
+            siblings.splice(index, 1);
+
+            const prevChildren = prevNode.children ?? [];
+            prevNode.children = [...prevChildren, node];
+
+            return root;
+        });
+    };
+
+    // 3) Ungroup to top-level
+    const ungroupToTopLevel = (id: string) => {
+        setSegments((prev) => {
+            const root = cloneSegments(prev);
+            const found = findNodeMutable(root, id);
+            if (!found) return prev;
+
+            const { siblings, index, parents } = found;
+            if (parents.length === 0) return prev;
+
+            const node = siblings[index];
+            siblings.splice(index, 1);
+
+            const topAncestor = parents[0].node;
+            const topIndex = root.findIndex((s) => s.id === topAncestor.id);
+            const insertAt = topIndex >= 0 ? topIndex + 1 : root.length;
+
+            root.splice(insertAt, 0, node);
+
+            return root;
+        });
+    };
+
+    /**
+     * renderRows arguments:
+     * - depth: indent depth
+     * - inheritedGroupShade: shading applied because this row is a direct child of a grouped parent
+     */
+    function renderRows(
+        list: SegmentPayload[],
+        depth: number,
+        inheritedGroup: GroupCtx | null,
+        isDirectChild: boolean,
+    ) {
+        return list.map((segment, i) => {
+            const hasChildren = (segment.children ?? []).length > 0;
+
+            // If THIS row is a group parent, it defines a new group color for itself + its direct children
+            const ownGroup: GroupCtx | null = hasChildren ? { bg: colorFromId(segment.id) } : null;
+
+            // Row styling:
+            // - Group parent row: use its own group color
+            // - Direct children of a group parent: use inherited group color
+            // - Otherwise: no group styling
+            const rowGroup: GroupCtx | null = ownGroup ?? (isDirectChild ? inheritedGroup : null);
+
+            const rowStyle: React.CSSProperties | undefined = rowGroup
+                ? ({ ["--group-bg" as any]: rowGroup.bg } as React.CSSProperties)
+                : undefined;
+
+            const inGroup = !!rowGroup;
+            const isGroupParentRow = !!ownGroup;
+            const isGroupChildRow = !ownGroup && isDirectChild && !!inheritedGroup;
+
+            // Border box behavior:
+            // - parent row: top border
+            // - all rows in group: left/right
+            // - last direct child row: bottom border
+            const childIsLastInDirectGroup = isGroupChildRow && i === list.length - 1;
+
+            const rowClassName = [
+                inGroup ? "seg-group" : "",
+                isGroupParentRow ? "seg-group-parent" : "",
+                isGroupChildRow ? "seg-group-child" : "",
+                childIsLastInDirectGroup ? "seg-group-bottom" : "",
+            ]
+                .filter(Boolean)
+                .join(" ");
+
+            // Only pass group context ONE level down:
+            // - if segment is a group parent => its direct children inherit its group color
+            // - otherwise => children do NOT inherit (unless they themselves become group parents)
+            const nextInheritedGroup = ownGroup ?? null;
+            const nextIsDirectChild = !!ownGroup;
+
+            return (
+                <React.Fragment key={segment.id}>
+                    <tr className={rowClassName} style={rowStyle}>
+                        <td>
+                            <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                <IconButton
+                                    icon={faArrowUp}
+                                    tooltip="Move segment up"
+                                    onClick={() => moveSegmentUp(segment.id)}
+                                />
+                                <IconButton
+                                    icon={faArrowDown}
+                                    tooltip="Move segment down"
+                                    onClick={() => moveSegmentDown(segment.id)}
+                                />
+                                <IconButton
+                                    icon={faArrowUpFromBracket}
+                                    tooltip="Group under the segment above"
+                                    show={i !== 0}
+                                    onClick={() => groupIntoPreviousSibling(segment.id)}
+                                />
+                                <IconButton
+                                    icon={faArrowRightFromBracket}
+                                    tooltip="Remove from group (move to top level)"
+                                    show={depth > 0}
+                                    onClick={() => ungroupToTopLevel(segment.id)}
+                                />
+                            </div>
+                        </td>
+
+                        <td style={{ paddingLeft: depth * 20 }}>
+                            <input
+                                value={segment.name}
+                                onChange={(e) => updateSegmentName(segment.id, e.target.value)}
+                            />
+                        </td>
+
+                        <td>
+                            {!hasChildren && (
+                                <TimeRow
+                                    id={segment.id}
+                                    time={segment.average ? msToParts(segment.average) : null}
+                                    onChangeCallback={(id, ts) => handleTimeChange(id, ts, false)}
+                                />
+                            )}
+                        </td>
+
+                        <td>
+                            {!hasChildren && (
+                                <TimeRow
+                                    id={segment.id}
+                                    time={segment.pb ? msToParts(segment.pb) : null}
+                                    onChangeCallback={(id, ts) => handleTimeChange(id, ts, true)}
+                                />
+                            )}
+                        </td>
+
+                        <td>
+                            <IconButton icon={faFolder} tooltip="Add subsegment" onClick={() => addSegment(segment)} />
+                        </td>
+
+                        <td>
+                            <IconButton
+                                icon={faTrash}
+                                tooltip="Delete segment"
+                                onClick={() => deleteSegment(segment.id)}
+                            />
+                        </td>
+                    </tr>
+
+                    {(segment.children ?? []).length > 0 &&
+                        renderRows(segment.children ?? [], depth + 1, nextInheritedGroup, nextIsDirectChild)}
+                </React.Fragment>
+            );
+        });
     }
 
     return (
@@ -330,6 +623,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                         </button>
                     </div>
                 </div>
+
                 <div className="datagrid-container">
                     <div className="datagrid">
                         {segments && segments.length > 0 && (
@@ -348,12 +642,14 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                                         <th style={{ width: "5%" }}></th>
                                     </tr>
                                 </thead>
-                                <tbody>{renderRows(segments, 0)}</tbody>
+                                <tbody>{renderRows(segments, 0, null, false)}</tbody>
                             </table>
                         )}
                     </div>
                 </div>
+
                 <hr />
+
                 <div className="actions">
                     <button onClick={saveSplitFile} type="submit" className="primary">
                         Save
