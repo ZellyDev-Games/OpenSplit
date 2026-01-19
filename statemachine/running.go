@@ -22,6 +22,10 @@ func (r *Running) OnEnter() error {
 	sessionDto := adapters.DomainToDTO(machine.sessionService)
 	if machine.hotkeyProvider != nil {
 		err := machine.hotkeyProvider.StartHook(func(data keyinfo.KeyData) {
+			if !machine.configService.GlobalHotkeysActive && !machine.windowHasFocus {
+				return
+			}
+
 			for command, keyData := range machine.configService.KeyConfig {
 				if keyData.KeyCode != data.KeyCode {
 					continue

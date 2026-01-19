@@ -8,6 +8,7 @@ import Welcome from "./components/splitter/Welcome";
 import { ConfigPayload } from "./models/configPayload";
 import SessionPayload from "./models/sessionPayload";
 import SplitFilePayload from "./models/splitFilePayload";
+import { Dispatch } from "../wailsjs/go/dispatcher/Service";
 
 export enum Command {
     QUIT,
@@ -23,6 +24,8 @@ export enum Command {
     UNDO,
     SKIP,
     PAUSE,
+    TOGGLEGLOBAL,
+    FOCUS
 }
 
 export enum AppView {
@@ -64,30 +67,8 @@ function ViewRouter({ model }: ViewRouterProps) {
 export default function App() {
     const [viewModel, setViewModel] = React.useState<AppViewModel>({ view: AppView.Welcome });
     useDetectWindowChange();
-    useEffect(() => {
-        const unsubViewModel = EventsOn("ui:model", (nextModel: AppViewModel) => {
-            console.log("[UI MODEL]", nextModel.view, nextModel);
-            setViewModel(nextModel);
-        });
-
-        const unsubSession = EventsOn("session:update", (updatedSession: SessionPayload) => {
-            setViewModel((prev) => {
-                if (prev.view == AppView.Running) {
-                    return {
-                        ...prev,
-                        session: updatedSession,
-                    };
-                }
-
-                return prev;
-            });
-        });
-
-        return () => {
-            unsubViewModel();
-            unsubSession();
-        };
-    }, []);
+    useAppEventBindings(setViewModel);
+    useWindowFocus();
 
     return (
         <div id="App" className="app">
@@ -134,5 +115,51 @@ function useDetectWindowChange() {
         return () => {
             clearInterval(interval);
         };
+    }, []);
+}
+
+function useAppEventBindings(
+    setViewModel: React.Dispatch<React.SetStateAction<AppViewModel>>
+) {
+    useEffect(() => {
+        const unsubViewModel = EventsOn(
+            "ui:model",
+            (nextModel: AppViewModel) => {
+                console.log("[UI MODEL]", nextModel.view, nextModel);
+                setViewModel(nextModel);
+            }
+        );
+
+        const unsubSession = EventsOn(
+            "session:update",
+            (updatedSession: SessionPayload) => {
+                setViewModel((prev) => {
+                    if (prev.view === AppView.Running) {
+                        return {
+                            ...prev,
+                            session: updatedSession,
+                        };
+                    }
+                    return prev;
+                });
+            }
+        );
+
+        return () => {
+            unsubViewModel();
+            unsubSession();
+        };
+    }, [setViewModel]);
+}
+
+function useWindowFocus() {
+    useEffect(() => {
+        window.addEventListener("focus", () => {
+            Dispatch(Command.FOCUS, "true").then(r => {})
+        });
+
+        window.addEventListener("blur", () => {
+            Dispatch(Command.FOCUS, "false").then(r => {})
+        });
     }, []);
 }

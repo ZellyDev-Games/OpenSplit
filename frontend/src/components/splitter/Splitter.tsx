@@ -24,11 +24,16 @@ export default function Splitter({ sessionPayload }: SplitterParams) {
     const contextMenu = useContextMenu();
     const [contextMenuItems, setContextMenuItems] = React.useState<MenuItem[]>([]);
     const [comparison, setComparison] = React.useState<Comparison>(CompareAgainst.Average);
+    const [globalHotkeys, setGlobalHotkeys] = React.useState<boolean>(false)
 
     useEffect(() => {
         (async () => {
             setContextMenuItems(await buildContextMenu());
+        })();
+    }, [globalHotkeys]);
 
+    useEffect(() => {
+        (async () => {
             if (sessionPayload.loaded_split_file) {
                 WindowSetSize(
                     sessionPayload.loaded_split_file.window_width,
@@ -42,6 +47,17 @@ export default function Splitter({ sessionPayload }: SplitterParams) {
 
     const buildContextMenu = async (): Promise<MenuItem[]> => {
         const contextMenuItems: MenuItem[] = [];
+        contextMenuItems.push({
+            label: (globalHotkeys ? "✓ " : "") + "Global Hotkeys",
+            onClick: async () => {
+                Dispatch(Command.TOGGLEGLOBAL, null).then(r => {
+                    if (r.code == 0) {
+                        setGlobalHotkeys(r.message === "true");
+                    }
+                });
+            },
+        });
+
         contextMenuItems.push({
             label: "Edit Split File",
             onClick: async () => {

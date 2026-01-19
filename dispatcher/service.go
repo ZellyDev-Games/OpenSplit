@@ -25,6 +25,8 @@ const (
 	UNDO
 	SKIP
 	PAUSE
+	TOGGLEGLOBAL
+	FOCUS
 )
 
 // DispatchReply is sent in response to Dispatch
@@ -40,8 +42,9 @@ type DispatchReceiver interface {
 }
 
 type Service struct {
-	mu       sync.Mutex
-	receiver DispatchReceiver
+	mu             sync.Mutex
+	receiver       DispatchReceiver
+	windowHasFocus bool
 }
 
 func NewService(receiver DispatchReceiver) *Service {

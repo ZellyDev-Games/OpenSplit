@@ -16,6 +16,7 @@ type Service struct {
 	mu                   sync.Mutex
 	SpeedRunAPIBase      string                                 `json:"speed_run_API_base"`
 	KeyConfig            map[dispatcher.Command]keyinfo.KeyData `json:"key_config"`
+	GlobalHotkeysActive  bool
 	configUpdatedChannel chan<- *Service
 }
 

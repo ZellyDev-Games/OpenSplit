@@ -3,6 +3,7 @@ package statemachine
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -71,6 +72,7 @@ type Service struct {
 	configService                         *config.Service
 	saveOnWindowDimensionChanges          bool
 	unsubscribeFromWindowDimensionChanges func()
+	windowHasFocus                        bool
 }
 
 // InitMachine sets the global singleton, and gives it a friendly default state
@@ -110,6 +112,29 @@ func (s *Service) ReceiveDispatch(command dispatcher.Command, payload *string) (
 			s.unsubscribeFromWindowDimensionChanges()
 		}
 		s.runtimeProvider.Quit()
+		return dispatcher.DispatchReply{}, nil
+	}
+
+	if command == dispatcher.TOGGLEGLOBAL {
+		logger.Debug(logModule, "TOGGLEGLOBAL command dispatched from frontend")
+		s.configService.GlobalHotkeysActive = !s.configService.GlobalHotkeysActive
+		err := machine.repoService.SaveConfig(machine.configService)
+		if err != nil {
+			message := fmt.Sprintf("error saving config to repo %s", err)
+			return dispatcher.DispatchReply{Code: 1, Message: message}, errors.New(message)
+		}
+
+		return dispatcher.DispatchReply{
+			Message: fmt.Sprintf("%t", s.configService.GlobalHotkeysActive),
+		}, nil
+	}
+
+	if command == dispatcher.FOCUS {
+		if payload == nil {
+			return dispatcher.DispatchReply{Code: 1, Message: "focus requires payload of \"true\" or \"false\""}, nil
+		}
+
+		s.windowHasFocus = *payload == "true"
 		return dispatcher.DispatchReply{}, nil
 	}
 
