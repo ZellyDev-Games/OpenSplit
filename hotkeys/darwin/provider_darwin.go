@@ -20,6 +20,8 @@ import (
 	"github.com/zellydev-games/opensplit/logger"
 )
 
+const logModule = "hotkeys"
+
 type Event struct {
 	KeyCode uint16
 	Name    string
