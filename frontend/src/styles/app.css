@@ -37,3 +37,82 @@
         user-select: none;
     }
 }
+
+.icon-btn {
+    background: transparent;
+    border: 0;
+    padding: 2px 4px;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-btn:focus {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.has-tooltip {
+    position: relative;
+}
+
+.tooltip-bubble {
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translate(8px, -50%);
+    white-space: nowrap;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.85);
+    color: #fff;
+    font-size: 12px;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+        opacity 120ms ease,
+        visibility 120ms ease;
+    z-index: 9999;
+}
+
+.has-tooltip:hover .tooltip-bubble,
+.has-tooltip:focus .tooltip-bubble,
+.has-tooltip:focus-within .tooltip-bubble {
+    opacity: 1;
+    visibility: visible;
+    z-index: 9999;
+}
+
+.group-shade-0 > td {
+    background: rgba(80, 120, 255, 0.08);
+}
+.group-shade-1 > td {
+    background: rgba(80, 255, 160, 0.08);
+}
+.group-shade-2 > td {
+    background: rgba(255, 200, 80, 0.1);
+}
+
+/* Uses the per-row CSS variable set by renderRows */
+.seg-group > td {
+    background: var(--group-bg);
+}
+
+/* Thicker left/right borders for all rows in the group */
+.seg-group > td {
+    border-left: 3px solid rgba(0, 0, 0, 0.25);
+    border-right: 3px solid rgba(0, 0, 0, 0.25);
+}
+
+/* Top border on the group parent row */
+.seg-group-parent > td {
+    border-top: 3px solid rgba(0, 0, 0, 0.25);
+}
+
+/* Bottom border on the last direct child row */
+.seg-group-bottom > td {
+    border-bottom: 3px solid rgba(0, 0, 0, 0.25);
+}

@@ -25,6 +25,8 @@ const (
 	UNDO
 	SKIP
 	PAUSE
+	TOGGLEGLOBAL
+	FOCUS
 )
 
 // DispatchReply is sent in response to Dispatch

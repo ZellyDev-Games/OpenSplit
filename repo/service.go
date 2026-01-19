@@ -153,6 +153,7 @@ func (s *Service) LoadConfig(c *config.Service) error {
 	s.configLock.Lock()
 	c.SpeedRunAPIBase = newConfig.SpeedRunAPIBase
 	c.KeyConfig = newConfig.KeyConfig
+	c.GlobalHotkeysActive = newConfig.GlobalHotkeysActive
 	s.configLock.Unlock()
 	logger.Info(logModule, "repo loaded config")
 	return nil
