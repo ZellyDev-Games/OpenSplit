@@ -3,22 +3,23 @@
         display: flex;
         flex: 1;
         flex-direction: column;
+        min-height: 0;
     }
 
     div.splitList {
         display: flex;
         flex-direction: column;
         flex: 1;
+        min-height: 0;
     }
 
     .gameInfo {
+        flex: 0 0 auto; /* takes as much height as needed */
         background: linear-gradient(to bottom, #640199, #5b0190);
         text-align: center;
     }
 
     .gameTitle {
-        margin: 0;
-        padding-top: 5px;
         font-size: 20px;
         font-weight: normal;
     }
@@ -31,8 +32,30 @@
         font-weight: normal;
     }
 
+    .splitBody {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+    }
+
     .splitContainer {
         flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    .finalSegment {
+        flex: 0 0 auto; /* do not shrink; stays at bottom of splitBody */
+        background: linear-gradient(to bottom, #640199, #5b0190);
+    }
+
+    .timer-container {
+        flex: 0 0 auto; /* do not shrink; stays at bottom of splitter */
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+        padding: 10px;
     }
 
     .splitList table {
@@ -63,14 +86,20 @@
         font-family: "Monofonto", sans-serif;
     }
 
-    .timer-container {
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-end;
-        padding: 10px;
+    .splitContainer::-webkit-scrollbar {
+        width: 0;
     }
 
-    .finalSegment {
-        background: linear-gradient(to bottom, #640199, #5b0190);
+    .splitContainer:hover::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    .splitContainer::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.4);
+        border-radius: 6px;
+    }
+
+    .splitContainer::-webkit-scrollbar-track {
+        background: transparent;
     }
 }

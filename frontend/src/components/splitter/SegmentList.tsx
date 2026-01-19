@@ -1,4 +1,4 @@
-import { JSX, useEffect, useMemo, useState } from "react";
+import React, { JSX, useEffect, useMemo, useRef, useState } from "react";
 
 import { EventsOn } from "../../../wailsjs/runtime";
 import SegmentPayload from "../../models/segmentPayload";
@@ -97,6 +97,7 @@ function segmentRow(
     individualTarget: number | null,
     activeRow: boolean = false,
     time: number | null = null,
+    activeRowRef?: React.RefObject<HTMLTableRowElement | null>,
 ) {
     let delta: number | null = null;
 
@@ -107,7 +108,11 @@ function segmentRow(
     }
 
     return (
-        <tr className={activeRow ? "selected" : ""} key={segmentData.Segment.id}>
+        <tr
+            ref={activeRow ? (activeRowRef ?? null) : null}
+            className={activeRow ? "selected" : ""}
+            key={segmentData.Segment.id}
+        >
             <td className="splitName" style={{ paddingLeft: segmentData.Depth * 16 }}>
                 {segmentData.Segment.name}
             </td>
@@ -125,10 +130,10 @@ type ActiveRowProps = {
     segmentData: FlatSegment;
     cTarget: number;
     iTarget: number;
+    activeRowRef: React.RefObject<HTMLTableRowElement | null>;
 };
 
-function ActiveRow({ segmentData, cTarget, iTarget }: ActiveRowProps) {
-    console.log("SegmentList render");
+function ActiveRow({ segmentData, cTarget, iTarget, activeRowRef }: ActiveRowProps) {
     const [time, setTime] = useState(0);
 
     useEffect(() => {
@@ -137,10 +142,27 @@ function ActiveRow({ segmentData, cTarget, iTarget }: ActiveRowProps) {
         });
     }, []);
 
-    return segmentRow(segmentData, null, cTarget, iTarget, true, time);
+    return segmentRow(segmentData, null, cTarget, iTarget, true, time, activeRowRef);
 }
 
 export default function SegmentList({ sessionPayload, comparison }: SplitListParameters) {
+    const activeRowRef = useRef<HTMLTableRowElement | null>(null);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        const row = activeRowRef.current;
+        const container = containerRef.current;
+
+        if (!row || !container) return;
+
+        if (!isElementFullyVisible(row, container)) {
+            row.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+            });
+        }
+    }, [sessionPayload.current_segment_index]);
+
     const targets = useMemo<Targets>(() => {
         let cumulative = 0;
         const results: Targets = { cumulative: {}, individual: {} };
@@ -215,7 +237,13 @@ export default function SegmentList({ sessionPayload, comparison }: SplitListPar
             const split = sessionPayload.current_run?.splits[segmentData.Segment.id] ?? null;
 
             const rowEl = isSelected ? (
-                <ActiveRow key={segmentData.Segment.id} segmentData={segmentData} cTarget={cTarget} iTarget={iTarget} />
+                <ActiveRow
+                    activeRowRef={activeRowRef}
+                    key={segmentData.Segment.id}
+                    segmentData={segmentData}
+                    cTarget={cTarget}
+                    iTarget={iTarget}
+                />
             ) : (
                 segmentRow(segmentData, split, cTarget, iTarget)
             );
@@ -251,17 +279,26 @@ export default function SegmentList({ sessionPayload, comparison }: SplitListPar
                 </h2>
             </div>
 
-            <div className="splitContainer">
-                <table cellSpacing="0">
-                    <tbody>{mainRows}</tbody>
-                </table>
-            </div>
+            <div className="splitBody">
+                <div ref={containerRef} className="splitContainer">
+                    <table cellSpacing="0">
+                        <tbody>{mainRows}</tbody>
+                    </table>
+                </div>
 
-            <div className="finalSegment">
-                <table>
-                    <tbody>{finalRow}</tbody>
-                </table>
+                <div className="finalSegment">
+                    <table>
+                        <tbody>{finalRow}</tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );
+}
+
+function isElementFullyVisible(element: HTMLElement, container: HTMLElement): boolean {
+    const elRect = element.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+
+    return elRect.top >= containerRect.top && elRect.bottom <= containerRect.bottom;
 }
