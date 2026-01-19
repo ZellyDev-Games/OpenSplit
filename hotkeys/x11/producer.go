@@ -54,7 +54,7 @@ func (x *Manager) StartHook(callback func(data keyinfo.KeyData)) error {
 
 		if rc := C.xi2_open((*C.char)(unsafe.Pointer(&ebuf[0])), C.int(len(ebuf))); rc != 0 {
 			message := C.GoString((*C.char)(unsafe.Pointer(&ebuf[0])))
-			logger.Error(message)
+			logger.Error(logModule, message)
 			x.mu.Lock()
 			x.started = false
 			x.mu.Unlock()
