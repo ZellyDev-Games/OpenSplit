@@ -1,10 +1,11 @@
 import {
+    faArrowDown,
+    faArrowRightFromBracket,
+    faArrowUp,
+    faArrowUpFromBracket,
     faFolder,
     faTrash,
-    faArrowUp,
-    faArrowDown,
-    faArrowUpFromBracket,
-    faArrowRightFromBracket,
+    IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useEffect, useRef, useState } from "react";
@@ -115,7 +116,7 @@ function IconButton({
     tooltip,
     show = true,
 }: {
-    icon: any;
+    icon: IconDefinition;
     onClick: () => void;
     tooltip: string;
     show?: boolean;
@@ -140,27 +141,6 @@ function IconButton({
             </span>
         </button>
     );
-}
-
-/**
- * Group shading rules requested:
- * - A top-level segment with NO children: no shading.
- * - A segment with children: it AND its *direct children rows* share a color for that depth.
- * - If a depth-1 segment has children: it AND its direct children use a *different* color than the depth-0 groups.
- *
- * Implementation:
- * - When rendering children of a parent that has children, we pass a `groupShadeDepth` that applies to:
- *   - the parent row
- *   - all first-level children rows
- * - Deeper grandchildren are only shaded if their parent has children (as another “group”).
- */
-type ShadeDepth = 0 | 1 | 2 | null;
-
-function shadeClass(depth: ShadeDepth): string {
-    if (depth === 0) return "group-shade-0";
-    if (depth === 1) return "group-shade-1";
-    if (depth === 2) return "group-shade-2";
-    return "";
 }
 
 export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: SplitEditorParams) {
@@ -429,7 +409,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
             const rowGroup: GroupCtx | null = ownGroup ?? (isDirectChild ? inheritedGroup : null);
 
             const rowStyle: React.CSSProperties | undefined = rowGroup
-                ? ({ ["--group-bg" as any]: rowGroup.bg } as React.CSSProperties)
+                ? ({ ["--group-bg"]: rowGroup.bg } as React.CSSProperties)
                 : undefined;
 
             const inGroup = !!rowGroup;
