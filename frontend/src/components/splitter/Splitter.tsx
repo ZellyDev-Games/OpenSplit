@@ -24,7 +24,7 @@ export default function Splitter({ sessionPayload }: SplitterParams) {
     const contextMenu = useContextMenu();
     const [contextMenuItems, setContextMenuItems] = React.useState<MenuItem[]>([]);
     const [comparison, setComparison] = React.useState<Comparison>(CompareAgainst.Average);
-    const [globalHotkeys, setGlobalHotkeys] = React.useState<boolean>(false)
+    const [globalHotkeys, setGlobalHotkeys] = React.useState<boolean>(false);
 
     useEffect(() => {
         (async () => {
@@ -50,7 +50,7 @@ export default function Splitter({ sessionPayload }: SplitterParams) {
         contextMenuItems.push({
             label: (globalHotkeys ? "✓ " : "") + "Global Hotkeys",
             onClick: async () => {
-                Dispatch(Command.TOGGLEGLOBAL, null).then(r => {
+                Dispatch(Command.TOGGLEGLOBAL, null).then((r) => {
                     if (r.code == 0) {
                         setGlobalHotkeys(r.message === "true");
                     }

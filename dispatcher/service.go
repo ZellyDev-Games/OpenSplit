@@ -42,9 +42,8 @@ type DispatchReceiver interface {
 }
 
 type Service struct {
-	mu             sync.Mutex
-	receiver       DispatchReceiver
-	windowHasFocus bool
+	mu       sync.Mutex
+	receiver DispatchReceiver
 }
 
 func NewService(receiver DispatchReceiver) *Service {

@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 
+import { Dispatch } from "../wailsjs/go/dispatcher/Service";
 import { EventsEmit, EventsOn, WindowGetPosition, WindowGetSize } from "../wailsjs/runtime";
 import Config from "./components/Config";
 import SplitEditor from "./components/editor/SplitEditor";
@@ -8,7 +9,6 @@ import Welcome from "./components/splitter/Welcome";
 import { ConfigPayload } from "./models/configPayload";
 import SessionPayload from "./models/sessionPayload";
 import SplitFilePayload from "./models/splitFilePayload";
-import { Dispatch } from "../wailsjs/go/dispatcher/Service";
 
 export enum Command {
     QUIT,
@@ -25,7 +25,7 @@ export enum Command {
     SKIP,
     PAUSE,
     TOGGLEGLOBAL,
-    FOCUS
+    FOCUS,
 }
 
 export enum AppView {
@@ -118,32 +118,24 @@ function useDetectWindowChange() {
     }, []);
 }
 
-function useAppEventBindings(
-    setViewModel: React.Dispatch<React.SetStateAction<AppViewModel>>
-) {
+function useAppEventBindings(setViewModel: React.Dispatch<React.SetStateAction<AppViewModel>>) {
     useEffect(() => {
-        const unsubViewModel = EventsOn(
-            "ui:model",
-            (nextModel: AppViewModel) => {
-                console.log("[UI MODEL]", nextModel.view, nextModel);
-                setViewModel(nextModel);
-            }
-        );
+        const unsubViewModel = EventsOn("ui:model", (nextModel: AppViewModel) => {
+            console.log("[UI MODEL]", nextModel.view, nextModel);
+            setViewModel(nextModel);
+        });
 
-        const unsubSession = EventsOn(
-            "session:update",
-            (updatedSession: SessionPayload) => {
-                setViewModel((prev) => {
-                    if (prev.view === AppView.Running) {
-                        return {
-                            ...prev,
-                            session: updatedSession,
-                        };
-                    }
-                    return prev;
-                });
-            }
-        );
+        const unsubSession = EventsOn("session:update", (updatedSession: SessionPayload) => {
+            setViewModel((prev) => {
+                if (prev.view === AppView.Running) {
+                    return {
+                        ...prev,
+                        session: updatedSession,
+                    };
+                }
+                return prev;
+            });
+        });
 
         return () => {
             unsubViewModel();
@@ -153,13 +145,23 @@ function useAppEventBindings(
 }
 
 function useWindowFocus() {
-    useEffect(() => {
-        window.addEventListener("focus", () => {
-            Dispatch(Command.FOCUS, "true").then(r => {})
-        });
+    const f = async () => {
+        await Dispatch(Command.FOCUS, "true");
+    }
 
-        window.addEventListener("blur", () => {
-            Dispatch(Command.FOCUS, "false").then(r => {})
-        });
+    const uf = async () => {
+        await Dispatch(Command.FOCUS, "false");
+    }
+
+    useEffect(() => {
+        (async () => {
+            window.addEventListener("focus", f);
+            window.addEventListener("blur", uf);
+        })()
+
+        return () => {
+            window.removeEventListener("focus", f);
+            window.removeEventListener("blur", uf);
+        }
     }, []);
 }
