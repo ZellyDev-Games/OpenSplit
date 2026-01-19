@@ -18,6 +18,9 @@ import (
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/zellydev-games/opensplit/autosplitters"
+	nwa "github.com/zellydev-games/opensplit/autosplitters/NWA"
+	qusb2snes "github.com/zellydev-games/opensplit/autosplitters/QUSB2SNES"
 	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dispatcher"
@@ -69,6 +72,30 @@ func main() {
 	// Build dispatcher that can receive commands from frontend or backend and dispatch them to the state machine
 	commandDispatcher := dispatcher.NewService(machine)
 
+	// UseAutoSplitter and Type should come from the splits config file
+	// ResetTimerOnGameReset, ResetGameOnTimerReset, Addr, Port should come from the autosplitter config file
+	// NWA
+	AutoSplitterService := autosplitters.Splitters{
+		NWAAutoSplitter:       new(nwa.NWASplitter),
+		QUSB2SNESAutoSplitter: new(qusb2snes.SyncClient),
+		UseAutosplitter:       true,
+		ResetTimerOnGameReset: true,
+		ResetGameOnTimerReset: false,
+		Addr:                  "0.0.0.0",
+		Port:                  48879,
+		Type:                  autosplitters.NWA}
+
+	// // QUSB2SNES
+	// AutoSplitterService := autosplitters.Splitters{
+	// 	NWAAutoSplitter:       new(nwa.NWASplitter),
+	// 	QUSB2SNESAutoSplitter: new(qusb2snes.SyncClient),
+	// 	UseAutosplitter:       true,
+	// 	ResetTimerOnGameReset: true,
+	// 	ResetGameOnTimerReset: false,
+	// 	Addr:                  "0.0.0.0",
+	// 	Port:                  23074,
+	// 	Type:                  autosplitters.QUSB2SNES}
+
 	var hotkeyProvider statemachine.HotkeyProvider
 
 	err := wails.Run(&options.App{
@@ -98,6 +125,9 @@ func main() {
 			sessionUIBridge.StartUIPump()
 			timerUIBridge.StartUIPump()
 			configUIBridge.StartUIPump()
+
+			//Start autosplitter
+			AutoSplitterService.Run(commandDispatcher)
 
 			startInterruptListener(ctx, hotkeyProvider)
 			runtime.WindowSetAlwaysOnTop(ctx, true)
