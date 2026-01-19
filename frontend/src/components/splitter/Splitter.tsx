@@ -4,6 +4,7 @@ import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
 import { WindowSetPosition, WindowSetSize } from "../../../wailsjs/runtime";
 import { Command } from "../../App";
 import { MenuItem, useContextMenu } from "../../hooks/useContextMenu";
+import { ConfigPayload } from "../../models/configPayload";
 import SessionPayload from "../../models/sessionPayload";
 import { ContextMenu } from "../ContextMenu";
 import SegmentList from "./SegmentList";
@@ -18,13 +19,14 @@ export type Comparison = CompareAgainst.Best | CompareAgainst.Average;
 
 type SplitterParams = {
     sessionPayload: SessionPayload;
+    configPayload: ConfigPayload;
 };
 
-export default function Splitter({ sessionPayload }: SplitterParams) {
+export default function Splitter({ sessionPayload, configPayload }: SplitterParams) {
     const contextMenu = useContextMenu();
     const [contextMenuItems, setContextMenuItems] = React.useState<MenuItem[]>([]);
     const [comparison, setComparison] = React.useState<Comparison>(CompareAgainst.Average);
-    const [globalHotkeys, setGlobalHotkeys] = React.useState<boolean>(false);
+    const [globalHotkeys, setGlobalHotkeys] = React.useState<boolean>(configPayload.global_hotkeys_active);
 
     useEffect(() => {
         (async () => {

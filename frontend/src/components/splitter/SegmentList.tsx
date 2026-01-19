@@ -146,7 +146,6 @@ export default function SegmentList({ sessionPayload, comparison }: SplitListPar
         const results: Targets = { cumulative: {}, individual: {} };
 
         sessionPayload.leaf_segments?.forEach((segment) => {
-            console.log(segment);
             if (segment.average !== 0) {
                 switch (comparison) {
                     case CompareAgainst.Average:

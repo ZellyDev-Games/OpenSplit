@@ -40,7 +40,7 @@ export type AppViewModel =
     | { view: AppView.Welcome }
     | { view: AppView.NewSplitFile; speedrunApiBaseUrl: string }
     | { view: AppView.EditSplitFile; splitFile: SplitFilePayload | null; speedrunApiBaseUrl: string }
-    | { view: AppView.Running; session: SessionPayload }
+    | { view: AppView.Running; session: SessionPayload; config: ConfigPayload }
     | { view: AppView.Settings; config: ConfigPayload };
 
 type ViewRouterProps = { model: AppViewModel };
@@ -57,7 +57,7 @@ function ViewRouter({ model }: ViewRouterProps) {
             return <SplitEditor splitFilePayload={model.splitFile} speedRunAPIBase={model.speedrunApiBaseUrl} />;
 
         case AppView.Running:
-            return <Splitter sessionPayload={model.session} />;
+            return <Splitter sessionPayload={model.session} configPayload={model.config} />;
 
         case AppView.Settings:
             return <Config configPayload={model.config} />;
@@ -147,21 +147,21 @@ function useAppEventBindings(setViewModel: React.Dispatch<React.SetStateAction<A
 function useWindowFocus() {
     const f = async () => {
         await Dispatch(Command.FOCUS, "true");
-    }
+    };
 
     const uf = async () => {
         await Dispatch(Command.FOCUS, "false");
-    }
+    };
 
     useEffect(() => {
         (async () => {
             window.addEventListener("focus", f);
             window.addEventListener("blur", uf);
-        })()
+        })();
 
         return () => {
             window.removeEventListener("focus", f);
             window.removeEventListener("blur", uf);
-        }
+        };
     }, []);
 }
