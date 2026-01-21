@@ -2,7 +2,6 @@ package qusb2snes
 
 import (
 	"errors"
-	"fmt"
 	"net/url"
 	"sync"
 	"time"
@@ -25,7 +24,7 @@ type WebsocketClient struct {
 	reconnectCh chan struct{}
 	doneCh      chan struct{}
 	closeOnce   sync.Once
-	startOnce   sync.Once // ADDED
+	startOnce   sync.Once
 }
 
 // NewWebsocketClient returns an unconnected client with a preset URL
@@ -55,7 +54,7 @@ func (w *WebsocketClient) WriteMessage(data []byte) error {
 
 	err := conn.WriteMessage(websocket.TextMessage, data)
 	if err != nil {
-		logger.Error(fmt.Sprintf("WriteMessage error: %v", err))
+		logger.Errorf(logModule, "WriteMessage error: %v", err)
 		w.signalReconnect()
 		return err
 	}
@@ -74,7 +73,7 @@ func (w *WebsocketClient) ReadMessage() (p []byte, err error) {
 
 	_, message, err := conn.ReadMessage()
 	if err != nil {
-		logger.Error(fmt.Sprintf("ReadMessage error: %v", err))
+		logger.Errorf(logModule, "ReadMessage error: %v", err)
 		w.signalReconnect()
 	}
 	return message, err
@@ -83,7 +82,7 @@ func (w *WebsocketClient) ReadMessage() (p []byte, err error) {
 // Connect attempts to establish a websocket connection to the configured URL
 // and manages the state, and retry logic in a goroutine
 func (w *WebsocketClient) Connect() {
-	w.startOnce.Do(func() { // ADDED
+	w.startOnce.Do(func() {
 		go func() {
 			for {
 				conn, err := w.safeConnect()
@@ -96,12 +95,13 @@ func (w *WebsocketClient) Connect() {
 
 					// retry branch (i.e. a transient network error occurred, and we might be able to reconnect
 					if conn == nil && err == nil {
-						logger.Error(
-							fmt.Sprintf(
-								"safeConnect returned nil connection: retying in %f seconds", RetryWait.Seconds()))
+						logger.Errorf(
+							logModule,
+							"safeConnect returned nil connection: retying in %f seconds",
+							RetryWait.Seconds())
 					} else if err != nil {
-						logger.Error(
-							fmt.Sprintf("safeConnect error: %v; retying in %f seconds", err, RetryWait.Seconds()))
+						logger.Errorf(
+							logModule, "safeConnect error: %v; retying in %f seconds", err, RetryWait.Seconds())
 					}
 
 					timer := time.NewTimer(RetryWait)
@@ -128,7 +128,7 @@ func (w *WebsocketClient) Connect() {
 					w.closeConnection()
 					return
 				case <-w.reconnectCh:
-					logger.Info(fmt.Sprintf("Reconnecting to %v", w.url))
+					logger.Infof(logModule, "Reconnecting to %v", w.url)
 					w.closeConnection()
 				}
 			}
@@ -159,7 +159,7 @@ func (w *WebsocketClient) safeConnect() (*websocket.Conn, error) {
 		return nil, ErrClosed
 	default:
 	}
-	logger.Info(fmt.Sprintf("Connecting to %v", w.url))
+	logger.Infof(logModule, "Connecting to %v", w.url)
 	conn, _, err := websocket.DefaultDialer.Dial(w.url.String(), nil)
 	return conn, err
 }

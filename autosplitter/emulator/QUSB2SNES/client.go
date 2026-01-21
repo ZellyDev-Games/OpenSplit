@@ -3,16 +3,18 @@ package qusb2snes
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"strings"
 
 	"github.com/zellydev-games/opensplit/logger"
 )
 
+const logModule = "qusb2snes"
+
 type MessageReaderWriter interface {
 	WriteMessage(data []byte) error
 	ReadMessage() (p []byte, err error)
-	Connect(url.URL) (bool, error)
+	Connect()
+	Connected() bool
 }
 
 type Command int
@@ -99,15 +101,12 @@ func NewSyncClient(messageReaderWriter MessageReaderWriter, devel bool) *SyncCli
 	}
 }
 
-func (c *SyncClient) Connect(host string, port uint16) error {
-	targetURL := url.URL{
-		Scheme: "ws",
-		Host:   fmt.Sprintf("%s:%d", host, port),
-		Path:   "/",
-	}
+func (c *SyncClient) Connect() {
+	c.messageReaderWriter.Connect()
+}
 
-	_, err := c.messageReaderWriter.Connect(targetURL)
-	return err
+func (c *SyncClient) Connected() bool {
+	return c.messageReaderWriter.Connected()
 }
 
 func (c *SyncClient) SetName(name string) error {
@@ -218,9 +217,7 @@ func (c *SyncClient) GetAddresses(pairs [][2]int) ([][]byte, error) {
 
 func (c *SyncClient) sendCommand(command Command, space Space, args ...string) error {
 	if c.devel {
-		logger.Debug(
-			fmt.Sprintf(
-				"Send command : %s %s\n", command.String(), strings.Join(args, " ")))
+		logger.Debugf("Send command : %s %s\n", command.String(), strings.Join(args, " "))
 	}
 
 	query := USB2SnesQuery{

@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/url"
 	"time"
 
-	qusb2snes "github.com/zellydev-games/opensplit/autosplitter/QUSB2SNES"
+	qusb2snes2 "github.com/zellydev-games/opensplit/autosplitter/emulator/QUSB2SNES"
 )
 
 type FactFinder string
@@ -26,11 +27,20 @@ func main() {
 		return
 	}
 
-	websocketClient := &qusb2snes.WebsocketClient{}
-	c := qusb2snes.NewSyncClient(websocketClient, false)
-	err := c.Connect("localhost", 23074)
-	if err != nil {
-		return
+	websocketClient := qusb2snes2.NewWebsocketClient(
+		url.URL{
+			Scheme: "ws",
+			Host:   "localhost:23074",
+		})
+
+	c := qusb2snes2.NewSyncClient(websocketClient, false)
+	c.Connect()
+	for {
+		if !c.Connected() {
+			time.Sleep(1 * time.Second)
+		} else {
+			break
+		}
 	}
 	fmt.Println("FactFinder connected")
 	d, err := c.ListDevice()

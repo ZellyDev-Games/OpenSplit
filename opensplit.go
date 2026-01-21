@@ -19,8 +19,6 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/autosplitter"
-	nwa "github.com/zellydev-games/opensplit/autosplitter/NWA"
-	qusb2snes "github.com/zellydev-games/opensplit/autosplitter/QUSB2SNES"
 	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dispatcher"
@@ -37,7 +35,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
 
-//go:embed all:../frontend/dist
+//go:embed all:frontend/dist
 var assets embed.FS
 
 const logModule = "main"
@@ -72,33 +70,27 @@ func main() {
 	// Build dispatcher that can receive commands from frontend or backend and dispatch them to the state machine
 	commandDispatcher := dispatcher.NewService(machine)
 
-	// UseAutoSplitter and Type should come from the splits config file
-	// ResetTimerOnGameReset, ResetGameOnTimerReset, Addr, Port should come from the autosplitter config file
-	// // NWA
-	AutoSplitterService := autosplitter.Splitters{
-		NWAAutoSplitter:       new(nwa.NWASplitter),
-		QUSB2SNESAutoSplitter: new(qusb2snes.SyncClient),
-		UseAutosplitter:       true,
-		ResetTimerOnGameReset: true,
-		ResetGameOnTimerReset: false,
-		Addr:                  "0.0.0.0",
-		Port:                  48879,
-		Type:                  autosplitter.NWA}
-
-	// // QUSB2SNES
-	// AutoSplitterService := autosplitter.Splitters{
-	// 	NWAAutoSplitter:       new(nwa.NWASplitter),
-	// 	QUSB2SNESAutoSplitter: new(qusb2snes.SyncClient),
-	// 	UseAutosplitter:       true,
-	// 	ResetTimerOnGameReset: true,
-	// 	ResetGameOnTimerReset: false,
-	// 	Addr:                  "0.0.0.0",
-	// 	Port:                  23074,
-	// 	Type:                  autosplitter.QUSB2SNES}
-
 	var hotkeyProvider statemachine.HotkeyProvider
 
-	err := wails.Run(&options.App{
+	// build an autosplitter value table and start listening
+	engine := autosplitter.NewEngine()
+	defer engine.Close()
+
+	err := engine.LoadFile("c:\\Users\\Jers\\test.lua")
+	if err != nil {
+		panic(err)
+	}
+
+	valueTable := autosplitter.NewValueTable(engine)
+	go func() {
+		err = valueTable.Listen()
+
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	err = wails.Run(&options.App{
 		Title:     "OpenSplit",
 		Width:     1024,
 		Height:    768,
@@ -125,9 +117,6 @@ func main() {
 			sessionUIBridge.StartUIPump()
 			timerUIBridge.StartUIPump()
 			configUIBridge.StartUIPump()
-
-			//Start autosplitter
-			AutoSplitterService.Run(commandDispatcher)
 
 			startInterruptListener(ctx, hotkeyProvider)
 			runtime.WindowSetAlwaysOnTop(ctx, true)

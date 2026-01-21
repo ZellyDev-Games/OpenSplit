@@ -42,7 +42,7 @@ func (s *SplitFile) BuildStats() {
 	leafSegments := getLeafSegments(s.Segments, nil)
 	logger.Infof("stats", "building stats for %d segments", len(leafSegments))
 
-	// Edge case: no leaf segments
+	// edge case: no leaf segments
 	if len(leafSegments) == 0 {
 		s.SOB = 0
 		s.PB = nil
