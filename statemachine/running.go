@@ -69,6 +69,14 @@ func (r *Running) OnEnter() error {
 		}
 	}
 
+	sf, ok := machine.sessionService.SplitFile()
+	if ok && sf.AutosplitterFile != "" {
+		go func() {
+			_ = machine.luaEngine.LoadFile(sf.AutosplitterFile)
+			_ = machine.valueTable.Listen()
+		}()
+	}
+
 	bridge.EmitUIEvent(machine.runtimeProvider, bridge.AppViewModel{
 		View:    bridge.AppViewRunning,
 		Session: sessionDto,
@@ -85,6 +93,12 @@ func (r *Running) OnExit() error {
 			return err
 		}
 	}
+
+	sf, ok := machine.sessionService.SplitFile()
+	if ok && sf.AutosplitterFile != "" {
+		machine.valueTable.Close()
+	}
+
 	return nil
 }
 

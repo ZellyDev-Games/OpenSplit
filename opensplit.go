@@ -49,7 +49,7 @@ func main() {
 	runtimeProvider := platform.NewWailsRuntime()
 	fileProvider := platform.NewFileRuntime()
 
-	_, logDir, _, _, _ := setupPaths(fileProvider)
+	_, logDir, _, _, autoSplittersDir := setupPaths(fileProvider)
 	setupLogging(logDir)
 	logger.Info(logModule, "logging initialized, starting opensplit")
 
@@ -68,29 +68,14 @@ func main() {
 	configUIBridge := bridge.NewConfig(configUpdateChannel, runtimeProvider)
 
 	// Build dispatcher that can receive commands from frontend or backend and dispatch them to the state machine
-	commandDispatcher := dispatcher.NewService(machine)
+	commandDispatcher := dispatcher.NewService(machine, runtimeProvider, autoSplittersDir)
+	luaEngine := autosplitter.NewEngine(commandDispatcher)
+	valueTable := autosplitter.NewValueTable(luaEngine)
+	machine.SetValueTable(luaEngine, valueTable)
 
 	var hotkeyProvider statemachine.HotkeyProvider
 
-	// build an autosplitter value table and start listening
-	engine := autosplitter.NewEngine()
-	defer engine.Close()
-
-	err := engine.LoadFile("c:\\Users\\Jers\\test.lua")
-	if err != nil {
-		panic(err)
-	}
-
-	valueTable := autosplitter.NewValueTable(engine)
-	go func() {
-		err = valueTable.Listen()
-
-		if err != nil {
-			panic(err)
-		}
-	}()
-
-	err = wails.Run(&options.App{
+	err := wails.Run(&options.App{
 		Title:     "OpenSplit",
 		Width:     1024,
 		Height:    768,

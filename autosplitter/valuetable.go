@@ -3,9 +3,12 @@ package autosplitter
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"hash/crc32"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/zellydev-games/opensplit/logger"
 )
@@ -74,6 +77,7 @@ type ValueTable struct {
 	signedValues   map[RecordID]int64
 	unsignedValues map[RecordID]uint64
 	booleanValues  map[RecordID]bool
+	closeRequested bool
 }
 
 func NewValueTable(engine RulesEngine) *ValueTable {
@@ -83,6 +87,11 @@ func NewValueTable(engine RulesEngine) *ValueTable {
 		booleanValues:  map[RecordID]bool{},
 		engine:         engine,
 	}
+}
+
+func (t *ValueTable) Close() {
+	t.closeRequested = true
+	_ = t.conn.Close()
 }
 
 func (t *ValueTable) Listen() error {
@@ -98,8 +107,18 @@ func (t *ValueTable) Listen() error {
 
 	buf := make([]byte, 1024)
 	for {
+		if t.closeRequested {
+			return nil
+		}
+		_ = t.conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 		n, addr, err := t.conn.ReadFrom(buf)
 		if err != nil {
+			var ne net.Error
+			if errors.As(err, &ne) && ne.Timeout() {
+				fmt.Println("read timed out")
+				continue
+			}
+
 			logger.Errorf("read error: %s", err.Error())
 			continue
 		}

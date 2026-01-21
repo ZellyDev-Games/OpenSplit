@@ -444,20 +444,21 @@ func deepCopySplitFile(inFile *SplitFile) SplitFile {
 	}
 
 	return SplitFile{
-		ID:           inFile.ID,
-		GameName:     inFile.GameName,
-		GameCategory: inFile.GameCategory,
-		Version:      inFile.Version,
-		Attempts:     inFile.Attempts,
-		Offset:       inFile.Offset,
-		Segments:     segments,
-		WindowX:      inFile.WindowX,
-		WindowY:      inFile.WindowY,
-		WindowHeight: inFile.WindowHeight,
-		WindowWidth:  inFile.WindowWidth,
-		SOB:          inFile.SOB,
-		Runs:         runs,
-		PB:           pbRun,
+		ID:               inFile.ID,
+		GameName:         inFile.GameName,
+		GameCategory:     inFile.GameCategory,
+		Version:          inFile.Version,
+		Attempts:         inFile.Attempts,
+		Offset:           inFile.Offset,
+		Segments:         segments,
+		WindowX:          inFile.WindowX,
+		WindowY:          inFile.WindowY,
+		WindowHeight:     inFile.WindowHeight,
+		WindowWidth:      inFile.WindowWidth,
+		SOB:              inFile.SOB,
+		Runs:             runs,
+		PB:               pbRun,
+		AutosplitterFile: inFile.AutosplitterFile,
 	}
 }
 

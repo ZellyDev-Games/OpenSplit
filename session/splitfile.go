@@ -9,20 +9,21 @@ import (
 )
 
 type SplitFile struct {
-	ID           uuid.UUID
-	GameName     string
-	GameCategory string
-	Version      int
-	Attempts     int
-	Segments     []Segment
-	WindowX      int
-	WindowY      int
-	WindowHeight int
-	WindowWidth  int
-	SOB          time.Duration
-	Runs         []Run
-	PB           *Run
-	Offset       time.Duration
+	ID               uuid.UUID
+	GameName         string
+	GameCategory     string
+	Version          int
+	Attempts         int
+	Segments         []Segment
+	WindowX          int
+	WindowY          int
+	WindowHeight     int
+	WindowWidth      int
+	SOB              time.Duration
+	Runs             []Run
+	PB               *Run
+	Offset           time.Duration
+	AutosplitterFile string
 }
 
 func (s *SplitFile) DeepCopyLeafSegments() []Segment {

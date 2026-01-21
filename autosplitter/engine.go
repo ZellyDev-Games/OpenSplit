@@ -1,9 +1,13 @@
 package autosplitter
 
-import lua "github.com/yuin/gopher-lua"
+import (
+	lua "github.com/yuin/gopher-lua"
+	"github.com/zellydev-games/opensplit/dispatcher"
+)
 
 type Engine struct {
 	L               *lua.LState
+	dispatcher      *dispatcher.Service
 	risingSigned    *lua.LFunction
 	fallingSigned   *lua.LFunction
 	risingUnsigned  *lua.LFunction
@@ -11,9 +15,29 @@ type Engine struct {
 	edge            *lua.LFunction
 }
 
-func NewEngine() *Engine {
+func NewEngine(d *dispatcher.Service) *Engine {
 	L := lua.NewState()
-	return &Engine{L: L}
+	e := &Engine{
+		L:          L,
+		dispatcher: d,
+	}
+
+	e.L.SetGlobal("split", e.L.NewFunction(func(L *lua.LState) int {
+		d.Dispatch(dispatcher.SPLIT, nil)
+		return 0
+	}))
+
+	e.L.SetGlobal("reset", e.L.NewFunction(func(L *lua.LState) int {
+		d.Dispatch(dispatcher.RESET, nil)
+		return 0
+	}))
+
+	e.L.SetGlobal("pause", e.L.NewFunction(func(L *lua.LState) int {
+		d.Dispatch(dispatcher.PAUSE, nil)
+		return 0
+	}))
+
+	return e
 }
 
 func (e *Engine) Close() {

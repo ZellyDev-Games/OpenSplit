@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/zellydev-games/opensplit/autosplitter"
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/keyinfo"
@@ -73,6 +74,8 @@ type Service struct {
 	saveOnWindowDimensionChanges          bool
 	unsubscribeFromWindowDimensionChanges func()
 	windowHasFocus                        bool
+	valueTable                            *autosplitter.ValueTable
+	luaEngine                             *autosplitter.Engine
 }
 
 // InitMachine sets the global singleton, and gives it a friendly default state
@@ -84,6 +87,11 @@ func InitMachine(runtimeProvider RuntimeProvider, repoService *repo.Service, ses
 		configService:   configService,
 	}
 	return machine
+}
+
+func (s *Service) SetValueTable(engine *autosplitter.Engine, table *autosplitter.ValueTable) {
+	s.valueTable = table
+	s.luaEngine = engine
 }
 
 // Startup is called by Wails.Run to pass in a context to use against Wails.platform
