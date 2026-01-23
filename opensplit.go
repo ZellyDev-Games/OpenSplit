@@ -69,9 +69,8 @@ func main() {
 
 	// Build dispatcher that can receive commands from frontend or backend and dispatch them to the state machine
 	commandDispatcher := dispatcher.NewService(machine, runtimeProvider, autoSplittersDir)
-	luaEngine := autosplitter.NewEngine(commandDispatcher)
-	valueTable := autosplitter.NewValueTable(luaEngine)
-	machine.SetValueTable(luaEngine, valueTable)
+	remoteControl := autosplitter.NewSocket(commandDispatcher, 6767)
+	go remoteControl.Listen()
 
 	var hotkeyProvider statemachine.HotkeyProvider
 

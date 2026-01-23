@@ -33,6 +33,7 @@ const (
 	PAUSE
 	TOGGLEGLOBAL
 	FOCUS
+	HELLO
 )
 
 // DispatchReply is sent in response to Dispatch
