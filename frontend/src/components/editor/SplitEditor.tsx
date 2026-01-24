@@ -16,9 +16,9 @@ import { Command } from "../../App";
 import { useClickOutside } from "../../hooks/useClickOutside";
 import SegmentPayload from "../../models/segmentPayload";
 import SplitFilePayload from "../../models/splitFilePayload";
+import { FilePicker } from "../FilePicker";
 import { msToParts, partsToMS, TimeParts } from "../splitter/Timer";
 import TimeRow from "./TimeRow";
-import {FilePicker} from "../FilePicker";
 
 type GroupCtx = { bg: string };
 
@@ -158,8 +158,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
     const [attempts, setAttempts] = React.useState<number>(splitFilePayload?.attempts ?? 0);
     const [segments, setSegments] = useState<SegmentPayload[]>(splitFilePayload?.segments ?? []);
     const [offsetMS, setOffsetMS] = React.useState(0);
-    const [autosplitterFile, setAutosplitterFile] =
-        React.useState<string>(splitFilePayload?.autosplitter_file ?? "");
+    const [autosplitterFile, setAutosplitterFile] = React.useState<string>(splitFilePayload?.autosplitter_file ?? "");
 
     // Speedrun search
     const [gameResults, setGameResults] = React.useState<Game[]>([]);
