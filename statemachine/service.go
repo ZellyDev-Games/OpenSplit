@@ -115,6 +115,13 @@ func (s *Service) ReceiveDispatch(command dispatcher.Command, payload *string) (
 		return dispatcher.DispatchReply{}, nil
 	}
 
+	if command == dispatcher.HELLO {
+		return dispatcher.DispatchReply{
+			Code:    0,
+			Message: "HELLO",
+		}, nil
+	}
+
 	if command == dispatcher.TOGGLEGLOBAL {
 		logger.Debug(logModule, "TOGGLEGLOBAL command dispatched from frontend")
 		s.configService.GlobalHotkeysActive = !s.configService.GlobalHotkeysActive

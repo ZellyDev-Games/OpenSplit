@@ -9,20 +9,21 @@ import (
 )
 
 type SplitFile struct {
-	ID           uuid.UUID
-	GameName     string
-	GameCategory string
-	Version      int
-	Attempts     int
-	Segments     []Segment
-	WindowX      int
-	WindowY      int
-	WindowHeight int
-	WindowWidth  int
-	SOB          time.Duration
-	Runs         []Run
-	PB           *Run
-	Offset       time.Duration
+	ID               uuid.UUID
+	GameName         string
+	GameCategory     string
+	Version          int
+	Attempts         int
+	Segments         []Segment
+	WindowX          int
+	WindowY          int
+	WindowHeight     int
+	WindowWidth      int
+	SOB              time.Duration
+	Runs             []Run
+	PB               *Run
+	Offset           time.Duration
+	AutosplitterFile string
 }
 
 func (s *SplitFile) DeepCopyLeafSegments() []Segment {
@@ -42,7 +43,7 @@ func (s *SplitFile) BuildStats() {
 	leafSegments := getLeafSegments(s.Segments, nil)
 	logger.Infof("stats", "building stats for %d segments", len(leafSegments))
 
-	// Edge case: no leaf segments
+	// edge case: no leaf segments
 	if len(leafSegments) == 0 {
 		s.SOB = 0
 		s.PB = nil

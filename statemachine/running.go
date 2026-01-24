@@ -85,6 +85,7 @@ func (r *Running) OnExit() error {
 			return err
 		}
 	}
+
 	return nil
 }
 

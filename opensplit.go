@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/zellydev-games/opensplit/autosplitter"
 	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dispatcher"
@@ -48,7 +49,7 @@ func main() {
 	runtimeProvider := platform.NewWailsRuntime()
 	fileProvider := platform.NewFileRuntime()
 
-	_, logDir, _, _, _ := setupPaths(fileProvider)
+	_, logDir, _, _, autoSplittersDir := setupPaths(fileProvider)
 	setupLogging(logDir)
 	logger.Info(logModule, "logging initialized, starting opensplit")
 
@@ -67,7 +68,9 @@ func main() {
 	configUIBridge := bridge.NewConfig(configUpdateChannel, runtimeProvider)
 
 	// Build dispatcher that can receive commands from frontend or backend and dispatch them to the state machine
-	commandDispatcher := dispatcher.NewService(machine)
+	commandDispatcher := dispatcher.NewService(machine, runtimeProvider, autoSplittersDir)
+	remoteControl := autosplitter.NewSocket(commandDispatcher, 6767)
+	go remoteControl.Listen()
 
 	var hotkeyProvider statemachine.HotkeyProvider
 
