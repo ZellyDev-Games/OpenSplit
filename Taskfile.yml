@@ -122,7 +122,7 @@ tasks:
                     echo 1
 
             # If env WAILS_TAGS is set (e.g. by GHA), use it.
-            # Otherwise compute tags dynamically for local dev.
+            # Otherwise, compute tags dynamically for local dev.
             WAILS_TAGS:
                 sh: |
                     set -euo pipefail
@@ -191,3 +191,25 @@ tasks:
         platforms: [windows]
         cmds:
             - wails build -clean
+
+    package-default-skin:
+        desc: Zip folder into ./skin/default-skin.zip
+        vars:
+            SRC_DIR: '{{.SRC_DIR}}'
+            ZIP_PATH: "./skin/default-skin.zip"
+
+        cmds:
+            -   cmd: |
+                    set -e
+                    mkdir -p "$(dirname "{{.ZIP_PATH}}")"
+                    parent="$(cd "$(dirname "{{.SRC_DIR}}")" && pwd)"
+                    base="$(basename "{{.SRC_DIR}}")"
+                    (cd "$parent" && zip -r "$OLDPWD/{{.ZIP_PATH}}" "$base")
+                platforms: [ linux, darwin ]
+
+            -   cmd: >
+                    powershell -NoProfile -Command
+                    "New-Item -ItemType Directory -Force -Path (Split-Path -Parent '{{.ZIP_PATH}}') | Out-Null;
+                     if (Test-Path -LiteralPath '{{.ZIP_PATH}}') { Remove-Item '{{.ZIP_PATH}}' -Force };
+                     Compress-Archive -LiteralPath '{{.SRC_DIR}}' -DestinationPath '{{.ZIP_PATH}}' -Force"
+                platforms: [ windows ]

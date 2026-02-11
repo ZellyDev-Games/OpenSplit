@@ -5,7 +5,7 @@ import {dispatcher} from '../models';
 
 export function Dispatch(arg1:command.Command,arg2:any):Promise<dispatcher.DispatchReply>;
 
-export function ExportSplitFile():Promise<void>;
+export function ExportSplitFile(arg1:string):Promise<void>;
 
 export function OpenSkinsFolder():Promise<void>;
 

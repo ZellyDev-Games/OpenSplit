@@ -8,7 +8,6 @@ import (
 	"github.com/zellydev-games/opensplit/dto"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo/adapters"
-	"github.com/zellydev-games/opensplit/session"
 )
 
 const logModule = "repo"
@@ -38,18 +37,18 @@ func NewService(repository Repository) *Service {
 }
 
 // LoadSplitFile reads splitfile bytes from a repo and returns it as a session.SplitFile
-func (s *Service) LoadSplitFile() (session.SplitFile, error) {
+func (s *Service) LoadSplitFile() (dto.SplitFile, error) {
 	logger.Debug(logModule, "loading split file")
 	s.splitFileLock.RLock()
 	splitFile, err := s.repository.LoadSplitFile()
 	if err != nil {
 		s.splitFileLock.RUnlock()
-		return session.SplitFile{}, err
+		return dto.SplitFile{}, err
 	}
 	s.splitFileLock.RUnlock()
 	splitFileDTO, _ := adapters.JSONSplitFileToDTO(string(splitFile))
 	logger.Infof(logModule, "loaded split file: %s-%s", splitFileDTO.GameName, splitFileDTO.GameCategory)
-	return adapters.DTOSplitFileToDomain(splitFileDTO)
+	return splitFileDTO, nil
 }
 
 // SaveSplitFileWindowDimensions loads the active filename in the repository service,

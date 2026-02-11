@@ -384,6 +384,9 @@ export default function SegmentList({ sessionPayload, comparison }: SplitListPar
                 <h2 id="gameCategory">
                     <small>{sessionPayload.loaded_split_file?.game_category}</small>
                 </h2>
+                <div id="attempts">
+                    {sessionPayload.loaded_split_file?.attempts}
+                </div>
             </div>
 
             <div id="splitBody">

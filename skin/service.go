@@ -80,14 +80,14 @@ func (s *Service) Startup() error {
 		return errors.New(msg)
 	}
 
-	target := filepath.Join(s.skinDir, "default")
+	target := s.skinDir
 	if !strings.Contains(target, "OpenSplit") {
 		msg := fmt.Sprintf("refusing to delete outside OpenSplit directory: %s", target)
 		logger.Error(logModule, msg)
 		return errors.New(msg)
 	}
 
-	if err := os.RemoveAll(target); err != nil {
+	if err := os.RemoveAll(filepath.Join(target, "default")); err != nil {
 		return err
 	}
 

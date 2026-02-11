@@ -7,6 +7,7 @@ import (
 	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/logger"
+	"github.com/zellydev-games/opensplit/repo/adapters"
 )
 
 // Welcome greets the user by indicating the frontend should display the Welcome screen
@@ -42,7 +43,11 @@ func (w *Welcome) Receive(c command.Command, _ *string) (dispatcher.DispatchRepl
 		if err != nil {
 			return dispatcher.DispatchReply{Code: 1, Message: "failed to load dto: " + err.Error()}, err
 		}
-		machine.sessionService.SetLoadedSplitFile(sf)
+		domainSF, err := adapters.DTOSplitFileToDomain(sf)
+		if err != nil {
+			return dispatcher.DispatchReply{Code: 2, Message: "failed to convert dto: " + err.Error()}, err
+		}
+		machine.sessionService.SetLoadedSplitFile(domainSF)
 		machine.changeState(RUNNING)
 		return dispatcher.DispatchReply{}, nil
 	case command.NEW:

@@ -6,8 +6,8 @@ export function Dispatch(arg1, arg2) {
   return window['go']['dispatcher']['Service']['Dispatch'](arg1, arg2);
 }
 
-export function ExportSplitFile() {
-  return window['go']['dispatcher']['Service']['ExportSplitFile']();
+export function ExportSplitFile(arg1) {
+  return window['go']['dispatcher']['Service']['ExportSplitFile'](arg1);
 }
 
 export function OpenSkinsFolder() {

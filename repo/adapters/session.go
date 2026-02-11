@@ -29,8 +29,13 @@ func DomainToDTO(svc *session.Service) *dto.Session {
 	}
 }
 
-func ExportSessionSplitfile(splitFile *session.SplitFile) {
-	sf := session.DeepCopySplitFile(splitFile)
+func CleanSplitFile(dtoSplitFile dto.SplitFile) (dto.SplitFile, error) {
+	splitFile, err := DTOSplitFileToDomain(dtoSplitFile)
+	if err != nil {
+		return dto.SplitFile{}, err
+	}
+
+	sf := session.DeepCopySplitFile(&splitFile)
 	sf.WindowY = 100
 	sf.WindowX = 100
 	sf.Attempts = 0
@@ -41,6 +46,8 @@ func ExportSessionSplitfile(splitFile *session.SplitFile) {
 	for i := 0; i < len(sf.Segments); i++ {
 		clearSegmentRecursive(&sf.Segments[i])
 	}
+
+	return DomainSplitFileToDTO(sf), nil
 }
 
 func clearSegmentRecursive(segment *session.Segment) {

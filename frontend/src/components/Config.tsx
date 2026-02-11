@@ -27,6 +27,7 @@ export default function Config({ configPayload }: ConfigParams) {
     useEffect(() => {
         (async () => {
             const as = await GetAvailableSkins();
+            console.log(as);
             setAvailableSkins(as);
         })();
     }, []);

@@ -5,7 +5,9 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/command"
+	"github.com/zellydev-games/opensplit/dto"
 	"github.com/zellydev-games/opensplit/logger"
+	"github.com/zellydev-games/opensplit/repo/adapters"
 )
 
 const logModule = "dispatcher"
@@ -20,8 +22,9 @@ type FolderProvider interface {
 	OpenSkinsDir()
 }
 
-type FileProvider interface {
-	LoadSplitFile() ([]byte, error)
+type RepoProvider interface {
+	LoadSplitFile() (dto.SplitFile, error)
+	SaveSplitFile(dto.SplitFile) error
 }
 
 // DispatchReply is sent in response to Dispatch
@@ -41,19 +44,19 @@ type Service struct {
 	receiver       DispatchReceiver
 	runtime        RuntimeProvider
 	folderProvider FolderProvider
-	fileProvider   FileProvider
+	repo           RepoProvider
 }
 
 func NewService(receiver DispatchReceiver,
 	runtime RuntimeProvider,
 	folderProvider FolderProvider,
-	fileProvider FileProvider,
+	repo RepoProvider,
 ) *Service {
 	return &Service{
 		runtime:        runtime,
 		receiver:       receiver,
 		folderProvider: folderProvider,
-		fileProvider:   fileProvider,
+		repo:           repo,
 	}
 }
 
@@ -72,11 +75,29 @@ func (s *Service) OpenSkinsFolder() {
 	s.folderProvider.OpenSkinsDir()
 }
 
-func (s *Service) ExportSplitFile() error {
-	_, err := s.fileProvider.LoadSplitFile()
+func (s *Service) ExportSplitFile(platform string) error {
+	sf, err := s.repo.LoadSplitFile()
 	if err != nil {
 		return err
 	}
+
+	_, err = adapters.CleanSplitFile(sf)
+	if err != nil {
+		return err
+	}
+
+	//fileName, err := s.runtime.OpenFileDialog(runtime.OpenDialogOptions{
+	//	DefaultFilename: fmt.Sprintf("%s-%s-%s.osf", file.GameName, file.GameCategory, platform),
+	//	Title:           "Save Exported File",
+	//	Filters: []runtime.FileFilter{{
+	//		DisplayName: "OpenSplit File",
+	//		Pattern:     "*.osf",
+	//	}},
+	//	CanCreateDirectories: true,
+	//})
+	//if err != nil {
+	//	return err
+	//}
 
 	return nil
 }

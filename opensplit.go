@@ -76,7 +76,7 @@ func main() {
 
 	// Build dispatcher that can receive commands from frontend or backend and dispatch them to the state machine
 	folderProvider := platform.NewFolderProvider(configService)
-	commandDispatcher := dispatcher.NewService(machine, runtimeProvider, folderProvider, jsonRepo)
+	commandDispatcher := dispatcher.NewService(machine, runtimeProvider, folderProvider, repoService)
 
 	var hotkeyProvider statemachine.HotkeyProvider
 
