@@ -1,0 +1,23 @@
+package command
+
+// Command bytes are sent to the Service.Dispatch method receiver to indicate the state machine should take some action.
+type Command byte
+
+const (
+	QUIT Command = iota
+	NEW
+	LOAD
+	EDIT
+	CANCEL
+	SUBMIT
+	CLOSE
+	RESET
+	SAVE
+	SPLIT
+	UNDO
+	SKIP
+	PAUSE
+	TOGGLEGLOBAL
+	FOCUS
+	HELLO
+)

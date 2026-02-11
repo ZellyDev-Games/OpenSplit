@@ -6,6 +6,10 @@ export function Dispatch(arg1, arg2) {
   return window['go']['dispatcher']['Service']['Dispatch'](arg1, arg2);
 }
 
+export function ExportSplitFile() {
+  return window['go']['dispatcher']['Service']['ExportSplitFile']();
+}
+
 export function OpenSkinsFolder() {
   return window['go']['dispatcher']['Service']['OpenSkinsFolder']();
 }

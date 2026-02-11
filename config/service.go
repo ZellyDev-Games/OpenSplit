@@ -4,7 +4,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/zellydev-games/opensplit/dispatcher"
+	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/keyinfo"
 	"github.com/zellydev-games/opensplit/logger"
 )
@@ -14,12 +14,12 @@ const logModule = "config"
 // Service holds configuration options so that Service.GetEnvironment can work for both backend and frontend.
 type Service struct {
 	mu                   sync.Mutex
-	SpeedRunAPIBase      string                                 `json:"speed_run_API_base"`
-	KeyConfig            map[dispatcher.Command]keyinfo.KeyData `json:"key_config"`
-	GlobalHotkeysActive  bool                                   `json:"global_hotkeys_active"`
-	SplitFileDir         string                                 `json:"splitfile_dir"`
-	SkinsDir             string                                 `json:"skins_dir"`
-	SelectedSkin         string                                 `json:"selected_skin"`
+	SpeedRunAPIBase      string                              `json:"speed_run_API_base"`
+	KeyConfig            map[command.Command]keyinfo.KeyData `json:"key_config"`
+	GlobalHotkeysActive  bool                                `json:"global_hotkeys_active"`
+	SplitFileDir         string                              `json:"splitfile_dir"`
+	SkinsDir             string                              `json:"skins_dir"`
+	SelectedSkin         string                              `json:"selected_skin"`
 	configUpdatedChannel chan<- *Service
 }
 
@@ -29,7 +29,7 @@ func NewService(splitFileFir string, skinsDir string) (*Service, chan *Service) 
 		SplitFileDir:         splitFileFir,
 		SkinsDir:             skinsDir,
 		SpeedRunAPIBase:      "",
-		KeyConfig:            map[dispatcher.Command]keyinfo.KeyData{},
+		KeyConfig:            map[command.Command]keyinfo.KeyData{},
 		configUpdatedChannel: updateChannel,
 	}, updateChannel
 }
@@ -48,24 +48,24 @@ func (s *Service) GetEnvironment() *Service {
 }
 
 // UpdateKeyBinding changes the ConfigPayload for the given command.
-func (s *Service) UpdateKeyBinding(command dispatcher.Command, data keyinfo.KeyData) {
+func (s *Service) UpdateKeyBinding(c command.Command, data keyinfo.KeyData) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.KeyConfig[command] = data
+	s.KeyConfig[c] = data
 	s.sendUIBridgeUpdate()
-	logger.Infof(logModule, "updated key binding for command %v to %s", command, data.LocaleName)
+	logger.Infof(logModule, "updated key binding for c %v to %s", c, data.LocaleName)
 }
 
 // CreateDefaultConfig sets the service's options to reasonable defaults.
 //
 // Useful if the config file hasn't been created yet (first run)
 func (s *Service) CreateDefaultConfig() {
-	s.KeyConfig = map[dispatcher.Command]keyinfo.KeyData{}
-	s.KeyConfig[dispatcher.SPLIT] = keyinfo.KeyData{}
-	s.KeyConfig[dispatcher.UNDO] = keyinfo.KeyData{}
-	s.KeyConfig[dispatcher.SKIP] = keyinfo.KeyData{}
-	s.KeyConfig[dispatcher.PAUSE] = keyinfo.KeyData{}
-	s.KeyConfig[dispatcher.RESET] = keyinfo.KeyData{}
+	s.KeyConfig = map[command.Command]keyinfo.KeyData{}
+	s.KeyConfig[command.SPLIT] = keyinfo.KeyData{}
+	s.KeyConfig[command.UNDO] = keyinfo.KeyData{}
+	s.KeyConfig[command.SKIP] = keyinfo.KeyData{}
+	s.KeyConfig[command.PAUSE] = keyinfo.KeyData{}
+	s.KeyConfig[command.RESET] = keyinfo.KeyData{}
 	s.sendUIBridgeUpdate()
 	logger.Infof(logModule, "created default config")
 }

@@ -6,6 +6,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/logger"
 )
@@ -95,7 +96,7 @@ func (s *Socket) Listen() {
 
 		version := int(packet[4])
 		ackRequested := int(packet[5]) == 1
-		command := dispatcher.Command(packet[6])
+		c := command.Command(packet[6])
 
 		if version != 1 {
 			logger.Errorf(logModule, "invalid version: %d", version)
@@ -105,7 +106,7 @@ func (s *Socket) Listen() {
 			continue
 		}
 
-		_, err = s.dispatcher.Dispatch(command, nil)
+		_, err = s.dispatcher.Dispatch(c, nil)
 		if err != nil {
 			if ackRequested {
 				sendAck(conn, addr, 2)

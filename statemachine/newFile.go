@@ -2,6 +2,7 @@ package statemachine
 
 import (
 	"github.com/zellydev-games/opensplit/bridge"
+	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo/adapters"
@@ -32,11 +33,11 @@ func (n *NewFile) OnEnter() error {
 	return nil
 }
 func (n *NewFile) OnExit() error { return nil }
-func (n *NewFile) Receive(command dispatcher.Command, payload *string) (dispatcher.DispatchReply, error) {
-	switch command {
-	case dispatcher.CANCEL:
+func (n *NewFile) Receive(c command.Command, payload *string) (dispatcher.DispatchReply, error) {
+	switch c {
+	case command.CANCEL:
 		machine.changeState(WELCOME)
-	case dispatcher.SUBMIT:
+	case command.SUBMIT:
 		if payload == nil {
 			return dispatcher.DispatchReply{
 				Code:    1,

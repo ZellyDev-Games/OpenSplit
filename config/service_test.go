@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zellydev-games/opensplit/dispatcher"
+	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/keyinfo"
 )
 
@@ -62,11 +62,11 @@ func TestUpdateKeyBinding(t *testing.T) {
 	ch := make(chan *Service, 1)
 
 	s := &Service{
-		KeyConfig:            make(map[dispatcher.Command]keyinfo.KeyData),
+		KeyConfig:            make(map[command.Command]keyinfo.KeyData),
 		configUpdatedChannel: ch,
 	}
 
-	cmd := dispatcher.SPLIT
+	cmd := command.SPLIT
 	data := keyinfo.KeyData{
 		KeyCode:    32,
 		LocaleName: "SPACE",
@@ -107,12 +107,12 @@ func TestCreateDefaultConfig(t *testing.T) {
 	}
 
 	// Required commands should always be present
-	required := []dispatcher.Command{
-		dispatcher.SPLIT,
-		dispatcher.UNDO,
-		dispatcher.SKIP,
-		dispatcher.PAUSE,
-		dispatcher.RESET,
+	required := []command.Command{
+		command.SPLIT,
+		command.UNDO,
+		command.SKIP,
+		command.PAUSE,
+		command.RESET,
 	}
 
 	for _, cmd := range required {

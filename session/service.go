@@ -280,7 +280,7 @@ func (s *Service) SplitFile() (SplitFile, bool) {
 	if s.loadedSplitFile == nil {
 		return sf, false
 	}
-	return deepCopySplitFile(s.loadedSplitFile), true
+	return DeepCopySplitFile(s.loadedSplitFile), true
 }
 
 // Dirty returns the unsaved changes status of the session
@@ -431,81 +431,4 @@ func (s *Service) sendUpdate() {
 	case s.sessionUpdateChannel <- s:
 	default:
 	}
-}
-
-func deepCopySplitFile(inFile *SplitFile) SplitFile {
-	segments := deepCopySegments(inFile.Segments)
-	runs := deepCopyRuns(inFile.Runs)
-
-	var pbRun *Run
-	if inFile.PB != nil {
-		pbCopy := deepCopyRun(*inFile.PB)
-		pbRun = &pbCopy
-	}
-
-	return SplitFile{
-		ID:           inFile.ID,
-		GameName:     inFile.GameName,
-		GameCategory: inFile.GameCategory,
-		Version:      inFile.Version,
-		Attempts:     inFile.Attempts,
-		Offset:       inFile.Offset,
-		Segments:     segments,
-		WindowX:      inFile.WindowX,
-		WindowY:      inFile.WindowY,
-		WindowHeight: inFile.WindowHeight,
-		WindowWidth:  inFile.WindowWidth,
-		SOB:          inFile.SOB,
-		Runs:         runs,
-		PB:           pbRun,
-	}
-}
-
-func deepCopyRuns(inRuns []Run) []Run {
-	runs := make([]Run, len(inRuns))
-	for i := range inRuns {
-		runs[i] = deepCopyRun(inRuns[i])
-	}
-	return runs
-}
-
-func deepCopyRun(run Run) Run {
-	segments := deepCopySegments(run.LeafSegments)
-	splits := deepCopySplits(run.Splits)
-
-	return Run{
-		ID:               run.ID,
-		SplitFileVersion: run.SplitFileVersion,
-		TotalTime:        run.TotalTime,
-		Splits:           splits,
-		Completed:        run.Completed,
-		LeafSegments:     segments,
-	}
-}
-
-func deepCopySplits(inSplits map[uuid.UUID]Split) map[uuid.UUID]Split {
-	splits := map[uuid.UUID]Split{}
-	for segmentID, split := range inSplits {
-		splits[segmentID] = Split{
-			SplitSegmentID:    split.SplitSegmentID,
-			CurrentCumulative: split.CurrentCumulative,
-			CurrentDuration:   split.CurrentDuration,
-		}
-	}
-	return splits
-}
-
-func deepCopySegments(list []Segment) []Segment {
-	out := make([]Segment, len(list))
-	for i, s := range list {
-		out[i] = Segment{
-			ID:       s.ID,
-			Name:     s.Name,
-			Gold:     s.Gold,
-			Average:  s.Average,
-			PB:       s.PB,
-			Children: deepCopySegments(s.Children),
-		}
-	}
-	return out
 }

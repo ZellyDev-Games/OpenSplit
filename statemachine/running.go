@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/zellydev-games/opensplit/bridge"
+	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/keyinfo"
 	"github.com/zellydev-games/opensplit/logger"
@@ -26,7 +27,7 @@ func (r *Running) OnEnter() error {
 				return
 			}
 
-			for command, keyData := range machine.configService.KeyConfig {
+			for c, keyData := range machine.configService.KeyConfig {
 				if keyData.KeyCode != data.KeyCode {
 					continue
 				}
@@ -54,10 +55,10 @@ func (r *Running) OnEnter() error {
 					if !match {
 						continue
 					}
-					_, _ = machine.ReceiveDispatch(command, nil)
+					_, _ = machine.ReceiveDispatch(c, nil)
 					return
 				} else {
-					_, _ = machine.ReceiveDispatch(command, nil)
+					_, _ = machine.ReceiveDispatch(c, nil)
 					return
 				}
 			}
@@ -89,10 +90,10 @@ func (r *Running) OnExit() error {
 	return nil
 }
 
-func (r *Running) Receive(command dispatcher.Command, _ *string) (dispatcher.DispatchReply, error) {
-	switch command {
-	case dispatcher.CLOSE:
-		logger.Debug(logModule, "Running received CLOSE command")
+func (r *Running) Receive(c command.Command, _ *string) (dispatcher.DispatchReply, error) {
+	switch c {
+	case command.CLOSE:
+		logger.Debug(logModule, "Running received CLOSE c")
 		err := machine.promptDirtySave()
 		if err != nil {
 			return dispatcher.DispatchReply{}, err
@@ -100,37 +101,37 @@ func (r *Running) Receive(command dispatcher.Command, _ *string) (dispatcher.Dis
 		machine.sessionService.CloseRun()
 		machine.repoService.Close()
 		machine.changeState(WELCOME, nil)
-	case dispatcher.EDIT:
-		logger.Debug(logModule, "Running received EDIT command")
+	case command.EDIT:
+		logger.Debug(logModule, "Running received EDIT c")
 		if _, ok := machine.sessionService.Run(); ok {
 			return dispatcher.DispatchReply{Code: 1, Message: "can't edit splitfile mid run"}, nil
 		}
 		machine.changeState(EDITING, nil)
-	case dispatcher.SAVE:
-		logger.Debug(logModule, "Running received SAVE command")
+	case command.SAVE:
+		logger.Debug(logModule, "Running received SAVE c")
 		err := machine.saveSplitFile()
 		if err != nil {
 			msg := fmt.Sprintf("failed to save split file to session: %s", err)
 			logger.Error(logModule, msg)
 			return dispatcher.DispatchReply{Code: 2, Message: msg}, err
 		}
-	case dispatcher.SPLIT:
-		logger.Debug(logModule, "Running received SPLIT command")
+	case command.SPLIT:
+		logger.Debug(logModule, "Running received SPLIT c")
 		machine.sessionService.Split()
-	case dispatcher.UNDO:
+	case command.UNDO:
 		machine.sessionService.Undo()
-	case dispatcher.SKIP:
+	case command.SKIP:
 		machine.sessionService.Skip()
-	case dispatcher.PAUSE:
+	case command.PAUSE:
 		machine.sessionService.Pause()
-	case dispatcher.RESET:
+	case command.RESET:
 		_ = machine.promptPartialRun()
 
 		// note: promptPartialRun only adds the partial run to the session's loadedSplitFile's Runs slice.
 		// Nothing has been saved to disk at this point, so keep the file dirty if needs be.
 		machine.sessionService.Reset()
 	default:
-		logger.Warnf(logModule, "unhandled default case in Running: %d", command)
+		logger.Warnf(logModule, "unhandled default case in Running: %d", c)
 	}
 
 	return dispatcher.DispatchReply{}, nil

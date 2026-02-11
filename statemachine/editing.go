@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/zellydev-games/opensplit/bridge"
+	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/repo/adapters"
 )
@@ -34,11 +35,11 @@ func (e *Editing) OnEnter() error {
 }
 
 func (e *Editing) OnExit() error { return nil }
-func (e *Editing) Receive(command dispatcher.Command, payload *string) (dispatcher.DispatchReply, error) {
-	switch command {
-	case dispatcher.CANCEL:
+func (e *Editing) Receive(c command.Command, payload *string) (dispatcher.DispatchReply, error) {
+	switch c {
+	case command.CANCEL:
 		machine.changeState(RUNNING)
-	case dispatcher.SUBMIT:
+	case command.SUBMIT:
 		if payload == nil {
 			return dispatcher.DispatchReply{
 				Code:    1,

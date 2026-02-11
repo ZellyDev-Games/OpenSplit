@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/zellydev-games/opensplit/bridge"
+	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/keyinfo"
 	"github.com/zellydev-games/opensplit/logger"
@@ -15,7 +16,7 @@ const RecordingArmed = 10
 
 type Config struct {
 	mu             sync.Mutex
-	listeningFor   dispatcher.Command
+	listeningFor   command.Command
 	recordingArmed bool
 	previousState  StateID
 }
@@ -38,26 +39,26 @@ func (c *Config) OnExit() error {
 	return nil
 }
 
-func (c *Config) Receive(command dispatcher.Command, payload *string) (dispatcher.DispatchReply, error) {
+func (c *Config) Receive(cmd command.Command, _ *string) (dispatcher.DispatchReply, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	switch command {
-	case dispatcher.SPLIT:
+	switch cmd {
+	case command.SPLIT:
 		fallthrough
-	case dispatcher.UNDO:
+	case command.UNDO:
 		fallthrough
-	case dispatcher.SKIP:
+	case command.SKIP:
 		fallthrough
-	case dispatcher.PAUSE:
+	case command.PAUSE:
 		fallthrough
-	case dispatcher.RESET:
+	case command.RESET:
 		c.recordingArmed = true
-		c.listeningFor = command
-		logger.Infof(logModule, "recording armed for command: %d", c.listeningFor)
+		c.listeningFor = cmd
+		logger.Infof(logModule, "recording armed for cmd: %d", c.listeningFor)
 		err := machine.hotkeyProvider.StartHook(func(data keyinfo.KeyData) {
 			c.handleHotkey(data)
 			c.recordingArmed = false
-			logger.Infof(logModule, "updated command %v with hotkey %s (%d)",
+			logger.Infof(logModule, "updated cmd %v with hotkey %s (%d)",
 				c.listeningFor, data.LocaleName, data.KeyCode)
 			err := machine.hotkeyProvider.Unhook()
 			if err != nil {
@@ -70,10 +71,10 @@ func (c *Config) Receive(command dispatcher.Command, payload *string) (dispatche
 			return dispatcher.DispatchReply{Code: 6}, err
 		}
 		return dispatcher.DispatchReply{Code: RecordingArmed}, nil
-	case dispatcher.CANCEL:
+	case command.CANCEL:
 		machine.changeState(c.previousState)
 		return dispatcher.DispatchReply{}, nil
-	case dispatcher.SUBMIT:
+	case command.SUBMIT:
 		err := machine.repoService.SaveConfig(machine.configService)
 		if err != nil {
 			message := fmt.Sprintf("error saving config to repo %s", err)
@@ -83,7 +84,7 @@ func (c *Config) Receive(command dispatcher.Command, payload *string) (dispatche
 		machine.changeState(c.previousState)
 		return dispatcher.DispatchReply{}, nil
 	default:
-		message := fmt.Sprintf("unknown command sent to config service: %v", command)
+		message := fmt.Sprintf("unknown cmd sent to config service: %v", cmd)
 		return dispatcher.DispatchReply{Code: 5, Message: message}, errors.New(message)
 	}
 }

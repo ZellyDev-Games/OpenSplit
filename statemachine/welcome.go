@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/zellydev-games/opensplit/bridge"
+	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/logger"
 )
@@ -33,10 +34,10 @@ func (w *Welcome) OnEnter() error {
 	return nil
 }
 func (w *Welcome) OnExit() error { return nil }
-func (w *Welcome) Receive(command dispatcher.Command, _ *string) (dispatcher.DispatchReply, error) {
-	switch command {
-	case dispatcher.LOAD:
-		logger.Debug(logModule, "Welcome received command LOAD")
+func (w *Welcome) Receive(c command.Command, _ *string) (dispatcher.DispatchReply, error) {
+	switch c {
+	case command.LOAD:
+		logger.Debug(logModule, "Welcome received c LOAD")
 		sf, err := machine.repoService.LoadSplitFile()
 		if err != nil {
 			return dispatcher.DispatchReply{Code: 1, Message: "failed to load dto: " + err.Error()}, err
@@ -44,15 +45,15 @@ func (w *Welcome) Receive(command dispatcher.Command, _ *string) (dispatcher.Dis
 		machine.sessionService.SetLoadedSplitFile(sf)
 		machine.changeState(RUNNING)
 		return dispatcher.DispatchReply{}, nil
-	case dispatcher.NEW:
-		logger.Debug(logModule, "Welcome received command NEW")
+	case command.NEW:
+		logger.Debug(logModule, "Welcome received c NEW")
 		machine.changeState(NEWFILE)
 		return dispatcher.DispatchReply{}, nil
-	case dispatcher.EDIT:
-		logger.Debug(logModule, "Welcome received command EDIT")
+	case command.EDIT:
+		logger.Debug(logModule, "Welcome received c EDIT")
 		machine.changeState(CONFIG)
 		return dispatcher.DispatchReply{}, nil
 	default:
-		return dispatcher.DispatchReply{}, fmt.Errorf("invalid command %d for state Welcome", command)
+		return dispatcher.DispatchReply{}, fmt.Errorf("invalid c %d for state Welcome", c)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/keyinfo"
@@ -55,7 +56,7 @@ type HotkeyProvider interface {
 type state interface {
 	OnEnter() error
 	OnExit() error
-	Receive(command dispatcher.Command, payload *string) (dispatcher.DispatchReply, error)
+	Receive(c command.Command, payload *string) (dispatcher.DispatchReply, error)
 	String() string
 	ID() StateID
 }
@@ -99,14 +100,14 @@ func (s *Service) AttachHotkeyProvider(provider HotkeyProvider) {
 }
 
 // ReceiveDispatch allows external facing code to send Command bytes to the state machine
-func (s *Service) ReceiveDispatch(command dispatcher.Command, payload *string) (dispatcher.DispatchReply, error) {
+func (s *Service) ReceiveDispatch(c command.Command, payload *string) (dispatcher.DispatchReply, error) {
 	if s.currentState == nil {
-		logger.Error(logModule, "command sent to state machine without a loaded state")
-		return dispatcher.DispatchReply{}, errors.New("command sent to state machine without a loaded state")
+		logger.Error(logModule, "c sent to state machine without a loaded state")
+		return dispatcher.DispatchReply{}, errors.New("c sent to state machine without a loaded state")
 	}
 
-	if command == dispatcher.QUIT {
-		logger.Debug(logModule, "QUIT command dispatched from front end")
+	if c == command.QUIT {
+		logger.Debug(logModule, "QUIT c dispatched from front end")
 		_ = s.promptDirtySave()
 		if s.unsubscribeFromWindowDimensionChanges != nil {
 			s.unsubscribeFromWindowDimensionChanges()
@@ -115,15 +116,15 @@ func (s *Service) ReceiveDispatch(command dispatcher.Command, payload *string) (
 		return dispatcher.DispatchReply{}, nil
 	}
 
-	if command == dispatcher.HELLO {
+	if c == command.HELLO {
 		return dispatcher.DispatchReply{
 			Code:    0,
 			Message: "HELLO",
 		}, nil
 	}
 
-	if command == dispatcher.TOGGLEGLOBAL {
-		logger.Debug(logModule, "TOGGLEGLOBAL command dispatched from frontend")
+	if c == command.TOGGLEGLOBAL {
+		logger.Debug(logModule, "TOGGLEGLOBAL c dispatched from frontend")
 		s.configService.GlobalHotkeysActive = !s.configService.GlobalHotkeysActive
 		err := machine.repoService.SaveConfig(machine.configService)
 		if err != nil {
@@ -136,7 +137,7 @@ func (s *Service) ReceiveDispatch(command dispatcher.Command, payload *string) (
 		}, nil
 	}
 
-	if command == dispatcher.FOCUS {
+	if c == command.FOCUS {
 		if payload == nil {
 			return dispatcher.DispatchReply{Code: 1, Message: "focus requires payload of \"true\" or \"false\""}, nil
 		}
@@ -145,8 +146,8 @@ func (s *Service) ReceiveDispatch(command dispatcher.Command, payload *string) (
 		return dispatcher.DispatchReply{}, nil
 	}
 
-	logger.Debugf(logModule, "command %d dispatched to state %s", command, s.currentState.String())
-	return s.currentState.Receive(command, payload)
+	logger.Debugf(logModule, "c %d dispatched to state %s", c, s.currentState.String())
+	return s.currentState.Receive(c, payload)
 }
 
 // changeState provides a structured way to change the current state, calling appropriate lifecycle methods along the way
