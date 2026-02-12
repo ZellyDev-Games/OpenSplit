@@ -2,6 +2,7 @@ package repo
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/zellydev-games/opensplit/config"
@@ -19,8 +20,9 @@ var ErrConfigMissing = errors.New("config missing")
 type Repository interface {
 	LoadSplitFile() ([]byte, error)
 	GetLoadedSplitFile() ([]byte, error)
-	SaveSplitFile([]byte, string) error
+	SaveSplitFile([]byte, string, bool) error
 	SaveAs([]byte, string) error
+	Export([]byte, string) error
 	ClearCachedFileName()
 	SaveConfig([]byte) error
 	LoadConfig() ([]byte, error)
@@ -95,7 +97,7 @@ func (s *Service) SaveSplitFile(splitFile dto.SplitFile) error {
 
 	logger.Debugf(logModule, "repository saving split file: %s", identifier)
 	s.splitFileLock.Lock()
-	err = s.repository.SaveSplitFile(payload, identifier)
+	err = s.repository.SaveSplitFile(payload, identifier, false)
 	s.splitFileLock.Unlock()
 	if err != nil {
 		logger.Errorf(logModule, "repo failed to save splitfile: %s", err)
@@ -104,6 +106,28 @@ func (s *Service) SaveSplitFile(splitFile dto.SplitFile) error {
 
 	logger.Infof(logModule, "repository saved split file: %s", identifier)
 	return nil
+}
+
+func (s *Service) Export() error {
+	sfBytes, err := s.repository.GetLoadedSplitFile()
+	if err != nil {
+		return err
+	}
+
+	sf, err := adapters.JSONSplitFileToDTO(string(sfBytes))
+	if err != nil {
+		return err
+	}
+
+	cleanDTO, err := adapters.CleanSplitFile(sf)
+	if err != nil {
+		return err
+	}
+
+	cleanBytes, err := adapters.SplitFileToFrontEnd(cleanDTO)
+
+	defaultFileName := fmt.Sprintf("%s-%s-%s.osf", sf.Platform, sf.GameName, sf.GameCategory)
+	return s.repository.Export(cleanBytes, defaultFileName)
 }
 
 func (s *Service) Close() {

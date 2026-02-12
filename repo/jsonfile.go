@@ -65,19 +65,24 @@ func (j *JsonFile) ClearCachedFileName() {
 }
 
 func (j *JsonFile) SaveAs(payload []byte, defaultFileName string) error {
-	return j.SaveSplitFile(payload, defaultFileName)
+	return j.SaveSplitFile(payload, defaultFileName, false)
+}
+
+func (j *JsonFile) Export(payload []byte, fileName string) error {
+	return j.SaveSplitFile(payload, fileName, true)
 }
 
 // SaveSplitFile takes a payload marshalled as bytes and saves it to disk
-func (j *JsonFile) SaveSplitFile(payload []byte, identifier string) error {
+func (j *JsonFile) SaveSplitFile(payload []byte, identifier string, export bool) error {
+	workingFileName := j.fileName
 	defaultDirectory, err := j.getDefaultDirectory()
 	if err != nil {
 		logger.Errorf(logModule, "save failed: %s", err.Error())
 		return err
 	}
 
-	if j.fileName == "" {
-		filename, err := j.runtimeProvider.SaveFileDialog(runtime.SaveDialogOptions{
+	if export || workingFileName == "" {
+		workingFileName, err = j.runtimeProvider.SaveFileDialog(runtime.SaveDialogOptions{
 			Title:            "Save OpenSplit File",
 			DefaultDirectory: defaultDirectory,
 			DefaultFilename:  identifier,
@@ -92,20 +97,29 @@ func (j *JsonFile) SaveSplitFile(payload []byte, identifier string) error {
 			return err
 		}
 
-		if filename == "" {
+		if workingFileName == "" {
 			logger.Debug(logModule, "user cancelled save")
 			return ErrUserCancelledSave
 		}
 
-		j.fileName = filename
+		if !export {
+			// if this is just an export, don't save the filename state
+			j.fileName = workingFileName
+		}
 	}
 
-	if !strings.HasSuffix(strings.ToLower(j.fileName), ".osf") {
-		j.fileName += ".osf"
+	if !strings.HasSuffix(strings.ToLower(workingFileName), ".osf") {
+		workingFileName += ".osf"
+		if !export {
+			j.fileName = workingFileName
+		}
 	}
 
-	j.lastUsedDirectory = filepath.Dir(j.fileName)
-	err = j.fileProvider.WriteFile(j.fileName, payload, 0644)
+	if !export {
+		j.lastUsedDirectory = filepath.Dir(j.fileName)
+	}
+
+	err = j.fileProvider.WriteFile(workingFileName, payload, 0644)
 	if err != nil {
 		logger.Errorf(logModule, "failed to save split file: %s", err.Error())
 		return err

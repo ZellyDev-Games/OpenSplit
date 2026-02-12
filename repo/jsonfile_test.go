@@ -68,7 +68,7 @@ func TestSave(t *testing.T) {
 	m := &MockRuntimeProvider{}
 	f := &MockFileProvider{}
 	j := NewJsonFile(m, f)
-	err := j.SaveSplitFile([]byte(""), "testfile.osf")
+	err := j.SaveSplitFile([]byte(""), "testfile.osf", false)
 	if err != nil {
 		t.Error(err)
 	}

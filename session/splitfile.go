@@ -23,6 +23,7 @@ type SplitFile struct {
 	Runs         []Run
 	PB           *Run
 	Offset       time.Duration
+	Platform     string
 }
 
 func (s *SplitFile) DeepCopyLeafSegments() []Segment {
@@ -144,6 +145,7 @@ func DeepCopySplitFile(inFile *SplitFile) SplitFile {
 		SOB:          inFile.SOB,
 		Runs:         runs,
 		PB:           pbRun,
+		Platform:     inFile.Platform,
 	}
 }
 

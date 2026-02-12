@@ -10,7 +10,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useEffect, useRef, useState } from "react";
 
-import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
+import {Dispatch, ExportSplitFile} from "../../../wailsjs/go/dispatcher/Service";
 import { WindowCenter, WindowSetSize } from "../../../wailsjs/runtime";
 import { Command } from "../../App";
 import { useClickOutside } from "../../hooks/useClickOutside";
@@ -150,6 +150,9 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
         setGameResults([]);
     });
 
+    // Is this a new file or are we editing?
+    const editing = splitFilePayload != null;
+
     // Segment stats
     const [splitFileLoaded] = useState<boolean>(false);
     const [gameName, setGameName] = React.useState<string>(splitFilePayload?.game_name ?? "");
@@ -161,6 +164,9 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
     // Speedrun search
     const [gameResults, setGameResults] = React.useState<Game[]>([]);
     const timeoutID = useRef<number>(0);
+
+    // Exporter
+    const [platform, setPlatform] = React.useState<string>(splitFilePayload?.platform ?? "SNES");
 
     // Position and size the edit window
     useEffect(() => {
@@ -272,6 +278,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
             pb: splitFilePayload?.pb ?? null,
             sob: splitFilePayload?.sob ?? 0,
             offset: offsetMS,
+            platform: platform,
         });
 
         const payload = JSON.stringify(newSplitFilePayload);
@@ -516,7 +523,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
 
     return (
         <div className="container form-container">
-            <h2>{splitFileLoaded ? "Editing Split File" : "New Split File"}</h2>
+            <h2>{editing ? "Editing Split File" : "New Split File"}</h2>
             <form id="split-form" noValidate>
                 <div className="row">
                     <label htmlFor="game_name">Game Name</label>
@@ -571,6 +578,64 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                         autoComplete="off"
                         value={gameCategory}
                     />
+                </div>
+
+                <div className="row" style={{ marginTop: 10, marginBottom: 10 }}>
+                    <label htmlFor="platform">Platform</label>
+                    <select
+                        style={{marginLeft: 10}}
+                        id="platform"
+                        value={platform}
+                        onChange={(e) => setPlatform(e.target.value)}
+                    >
+                        <option value={"NES"}>NES</option>
+                        <option value={"SNES"}>SNES</option>
+                        <option value={"Nintendo64"}>Nintendo 64</option>
+                        <option value={"GameCube"}>GameCube</option>
+                        <option value={"Wii"}>Wii</option>
+                        <option value={"WiiU"}>Wii U</option>
+                        <option value={"Switch"}>Nintendo Switch</option>
+
+                        <option value={"MegaDrive"}>Mega Drive</option>
+                        <option value={"Genesis"}>Sega Genesis</option>
+                        <option value={"SegaCD"}>Sega CD</option>
+                        <option value={"32X"}>Sega 32X</option>
+                        <option value={"Saturn"}>Sega Saturn</option>
+                        <option value={"Dreamcast"}>Dreamcast</option>
+
+                        <option value={"PlayStation"}>PlayStation</option>
+                        <option value={"PS2"}>PlayStation 2</option>
+                        <option value={"PS3"}>PlayStation 3</option>
+                        <option value={"PS4"}>PlayStation 4</option>
+                        <option value={"PS5"}>PlayStation 5</option>
+
+                        <option value={"Xbox"}>Xbox</option>
+                        <option value={"Xbox360"}>Xbox 360</option>
+                        <option value={"XboxOne"}>Xbox One</option>
+                        <option value={"XboxSeries"}>Xbox Series X|S</option>
+
+                        <option value={"PC"}>PC</option>
+                        <option value={"Mac"}>Mac</option>
+                        <option value={"Linux"}>Linux</option>
+
+                        {/* Handhelds */}
+
+                        <option value={"GameBoy"}>Game Boy</option>
+                        <option value={"GameBoyColor"}>Game Boy Color</option>
+                        <option value={"GameBoyAdvance"}>Game Boy Advance</option>
+                        <option value={"NintendoDS"}>Nintendo DS</option>
+                        <option value={"Nintendo3DS"}>Nintendo 3DS</option>
+                        <option value={"SwitchLite"}>Switch Lite</option>
+
+                        <option value={"GameGear"}>Game Gear</option>
+                        <option value={"NeoGeoPocket"}>Neo Geo Pocket</option>
+
+                        <option value={"PSP"}>PlayStation Portable (PSP)</option>
+                        <option value={"PSVita"}>PlayStation Vita</option>
+
+                        <option value={"iOS"}>iOS</option>
+                        <option value={"Android"}>Android</option>
+                    </select>
                 </div>
 
                 <div className="row">
@@ -629,6 +694,13 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                 </div>
 
                 <hr />
+
+                <div id="expoter"
+                style={{ display: (editing) ? "block" : "none"}}>
+                    <button onClick={async (e) => {
+                        e.preventDefault();
+                        await ExportSplitFile(platform) }}>Export Splitfile</button>
+                </div>
 
                 <div className="actions">
                     <button onClick={saveSplitFile} type="submit" className="primary">

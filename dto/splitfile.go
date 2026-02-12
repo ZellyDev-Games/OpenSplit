@@ -31,4 +31,5 @@ type SplitFile struct {
 	SOB          int64     `json:"sob"`
 	PB           *Run      `json:"pb"`
 	Offset       int64     `json:"offset"`
+	Platform     string    `json:"platform"`
 }

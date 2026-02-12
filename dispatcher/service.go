@@ -7,7 +7,6 @@ import (
 	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/dto"
 	"github.com/zellydev-games/opensplit/logger"
-	"github.com/zellydev-games/opensplit/repo/adapters"
 )
 
 const logModule = "dispatcher"
@@ -25,6 +24,7 @@ type FolderProvider interface {
 type RepoProvider interface {
 	LoadSplitFile() (dto.SplitFile, error)
 	SaveSplitFile(dto.SplitFile) error
+	Export() error
 }
 
 // DispatchReply is sent in response to Dispatch
@@ -76,28 +76,5 @@ func (s *Service) OpenSkinsFolder() {
 }
 
 func (s *Service) ExportSplitFile(platform string) error {
-	sf, err := s.repo.LoadSplitFile()
-	if err != nil {
-		return err
-	}
-
-	_, err = adapters.CleanSplitFile(sf)
-	if err != nil {
-		return err
-	}
-
-	//fileName, err := s.runtime.OpenFileDialog(runtime.OpenDialogOptions{
-	//	DefaultFilename: fmt.Sprintf("%s-%s-%s.osf", file.GameName, file.GameCategory, platform),
-	//	Title:           "Save Exported File",
-	//	Filters: []runtime.FileFilter{{
-	//		DisplayName: "OpenSplit File",
-	//		Pattern:     "*.osf",
-	//	}},
-	//	CanCreateDirectories: true,
-	//})
-	//if err != nil {
-	//	return err
-	//}
-
-	return nil
+	return s.repo.Export()
 }
