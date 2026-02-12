@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import {Dispatch, ExportSplitFile, OpenSkinsFolder, OpenSplitFileFolder} from "../../wailsjs/go/dispatcher/Service";
+import { Dispatch, OpenSkinsFolder, OpenSplitFileFolder } from "../../wailsjs/go/dispatcher/Service";
 import { GetAvailableSkins, SetSkin } from "../../wailsjs/go/skin/Service";
 import { EventsOn, WindowSetSize } from "../../wailsjs/runtime";
 import { Command } from "../App";

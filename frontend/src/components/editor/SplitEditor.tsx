@@ -10,7 +10,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useEffect, useRef, useState } from "react";
 
-import {Dispatch, ExportSplitFile} from "../../../wailsjs/go/dispatcher/Service";
+import { Dispatch, ExportSplitFile } from "../../../wailsjs/go/dispatcher/Service";
 import { WindowCenter, WindowSetSize } from "../../../wailsjs/runtime";
 import { Command } from "../../App";
 import { useClickOutside } from "../../hooks/useClickOutside";
@@ -154,7 +154,6 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
     const editing = splitFilePayload != null;
 
     // Segment stats
-    const [splitFileLoaded] = useState<boolean>(false);
     const [gameName, setGameName] = React.useState<string>(splitFilePayload?.game_name ?? "");
     const [gameCategory, setGameCategory] = React.useState<string>(splitFilePayload?.game_category ?? "");
     const [attempts, setAttempts] = React.useState<number>(splitFilePayload?.attempts ?? 0);
@@ -583,7 +582,7 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
                 <div className="row" style={{ marginTop: 10, marginBottom: 10 }}>
                     <label htmlFor="platform">Platform</label>
                     <select
-                        style={{marginLeft: 10}}
+                        style={{ marginLeft: 10 }}
                         id="platform"
                         value={platform}
                         onChange={(e) => setPlatform(e.target.value)}
@@ -695,11 +694,15 @@ export default function SplitEditor({ splitFilePayload, speedRunAPIBase }: Split
 
                 <hr />
 
-                <div id="expoter"
-                style={{ display: (editing) ? "block" : "none"}}>
-                    <button onClick={async (e) => {
-                        e.preventDefault();
-                        await ExportSplitFile(platform) }}>Export Splitfile</button>
+                <div id="expoter" style={{ display: editing ? "block" : "none" }}>
+                    <button
+                        onClick={async (e) => {
+                            e.preventDefault();
+                            await ExportSplitFile(platform);
+                        }}
+                    >
+                        Export Splitfile
+                    </button>
                 </div>
 
                 <div className="actions">

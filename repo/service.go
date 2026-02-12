@@ -125,6 +125,9 @@ func (s *Service) Export() error {
 	}
 
 	cleanBytes, err := adapters.SplitFileToFrontEnd(cleanDTO)
+	if err != nil {
+		return err
+	}
 
 	defaultFileName := fmt.Sprintf("%s-%s-%s.osf", sf.Platform, sf.GameName, sf.GameCategory)
 	return s.repository.Export(cleanBytes, defaultFileName)
