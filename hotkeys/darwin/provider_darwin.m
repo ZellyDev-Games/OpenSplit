@@ -123,7 +123,7 @@ static void* tapThread(void* _) {
 
     CGEventMask mask = (CGEventMaskBit(kCGEventKeyDown));
     gEventTap = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap,
-                                 kCGEventTapOptionDefault, mask, tapCallback, NULL);
+                                 kCGEventTapOptionListenOnly, mask, tapCallback, NULL);
     if (!gEventTap) {
         pthread_mutex_lock(&gMu);
         gRunning = false;
