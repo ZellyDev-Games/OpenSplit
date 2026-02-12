@@ -193,23 +193,9 @@ tasks:
             - wails build -clean
 
     package-default-skin:
-        desc: Zip folder into ./skin/default-skin.zip
+        desc: "Zips all files in SRC_DIR (excluding the folder itself) using Compress-Archive"
         vars:
-            SRC_DIR: '{{.SRC_DIR}}'
-            ZIP_PATH: "./skin/default-skin.zip"
-
+            SRC_DIR: '{{.SRC_DIR | default ""}}'
         cmds:
-            -   cmd: |
-                    set -e
-                    mkdir -p "$(dirname "{{.ZIP_PATH}}")"
-                    parent="$(cd "$(dirname "{{.SRC_DIR}}")" && pwd)"
-                    base="$(basename "{{.SRC_DIR}}")"
-                    (cd "$parent" && zip -r "$OLDPWD/{{.ZIP_PATH}}" "$base")
-                platforms: [ linux, darwin ]
+          - powershell -Command "Compress-Archive -Path '{{.SRC_DIR}}\\*' -DestinationPath '.\skin\default-skin.zip' -Force"
 
-            -   cmd: >
-                    powershell -NoProfile -Command
-                    "New-Item -ItemType Directory -Force -Path (Split-Path -Parent '{{.ZIP_PATH}}') | Out-Null;
-                     if (Test-Path -LiteralPath '{{.ZIP_PATH}}') { Remove-Item '{{.ZIP_PATH}}' -Force };
-                     Compress-Archive -LiteralPath '{{.SRC_DIR}}' -DestinationPath '{{.ZIP_PATH}}' -Force"
-                platforms: [ windows ]

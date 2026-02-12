@@ -91,7 +91,7 @@ func (s *Service) Startup() error {
 		return err
 	}
 
-	err := os.MkdirAll(target, 0o755)
+	err := os.MkdirAll(filepath.Join(target, "default"), 0o755)
 	if err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func (s *Service) Startup() error {
 	}
 
 	for _, f := range r.File {
-		p := filepath.Join(target, f.Name)
+		p := filepath.Join(target, "default", f.Name)
 
 		// Prevent ZipSlip
 		if !strings.HasPrefix(filepath.Clean(p)+string(os.PathSeparator), filepath.Clean(target)+string(os.PathSeparator)) {
