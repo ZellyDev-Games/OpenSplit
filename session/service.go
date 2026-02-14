@@ -131,6 +131,7 @@ func (s *Service) SetLoadedSplitFile(sf SplitFile) {
 	s.currentSegmentIndex = -1
 	s.sessionState = Idle
 	s.dirty = false
+	s.loadedSplitFile.BuildStats()
 	logger.Infof(logModule, "%s loaded in session (segments total/leaf %d/%d)",
 		sf.GameName, len(sf.Segments), len(s.leafSegments))
 }
@@ -151,6 +152,7 @@ func (s *Service) Split() SplitResult {
 	case Running:
 		return s.advanceRun()
 	case Finished:
+		s.loadedSplitFile.BuildStats()
 		s.resetLocked()
 		return SplitReset
 	case Paused:
@@ -326,7 +328,6 @@ func (s *Service) resetLocked() {
 func (s *Service) PersistRunToSession() {
 	if s.currentRun != nil {
 		s.loadedSplitFile.Runs = append(s.loadedSplitFile.Runs, *s.currentRun)
-		s.loadedSplitFile.BuildStats()
 		logger.Info(logModule, "run persisted to session, new stats built")
 	} else {
 		logger.Warn(logModule, "persist requested on nil current run")

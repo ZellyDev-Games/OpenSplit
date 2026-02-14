@@ -446,11 +446,11 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
                 </div>
 
                 <div className="row">
-                    <label htmlFor="attempts">Attempts</label>
+                    <label htmlFor="runattempts">Attempts</label>
                     <input
                         onChange={(e) => setAttempts(Number(e.target.value))}
                         value={attempts ?? 0}
-                        id="attempts"
+                        id="runattempts"
                         name="attempts"
                         inputMode="numeric"
                     />

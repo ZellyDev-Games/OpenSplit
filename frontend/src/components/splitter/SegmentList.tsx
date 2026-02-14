@@ -188,8 +188,38 @@ function isVisible(id: string, parentById: Map<string, string | null>, expandedP
 }
 
 export default function SegmentList({ sessionPayload, comparison }: SplitListParameters) {
+    const [completeClassName, setCompleteClassName] = React.useState<string>("");
     const activeRowRef = useRef<HTMLTableRowElement | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        let className = "";
+        if (sessionPayload.loaded_split_file &&
+            sessionPayload.current_run &&
+            sessionPayload.leaf_segments) {
+            if(Object.keys(sessionPayload.current_run.splits).length
+                == sessionPayload.leaf_segments.length) {
+                className = "complete";
+
+                const pb = sessionPayload.loaded_split_file.pb;
+                console.log(sessionPayload.loaded_split_file)
+                if (pb) {
+                    const segments = sessionPayload.leaf_segments;
+                    if (segments) {
+                        const finalSplit = segments[segments.length - 1].id;
+                        const finalTime = sessionPayload.current_run.splits[finalSplit].current_cumulative;
+                        if (finalTime < pb.total_time) {
+                            className += " pb";
+                        }
+                    }
+                }
+            }
+            setCompleteClassName(className);
+        } else {
+            setCompleteClassName("");
+        }
+
+    }, [sessionPayload]);
 
     const targets = useMemo<Targets>(() => {
         let cumulative = 0;
@@ -353,7 +383,7 @@ export default function SegmentList({ sessionPayload, comparison }: SplitListPar
                 // Delta pulled from last leaf vs its cumulative target
                 let parentDelta: JSX.Element | null = null;
 
-                if (lastLeafId && lastLeafSplit) {
+                if (lastLeafId) {
                     const leafSeg = segmentById.get(lastLeafId);
                     const cTarget = targets.cumulative[lastLeafId] ?? null;
                     const iTarget = targets.individual[lastLeafId] ?? null;
@@ -363,19 +393,21 @@ export default function SegmentList({ sessionPayload, comparison }: SplitListPar
                     }
 
                     if (cTarget != null) {
-                        const delta = lastLeafSplit.current_cumulative - cTarget;
-                        parentDelta = getDeltaDisplayTime(delta);
+                        if (lastLeafSplit != null) {
+                            const delta = lastLeafSplit.current_cumulative - cTarget;
+                            parentDelta = getDeltaDisplayTime(delta);
+                        }
                     }
                 }
 
                 main.push(
                     <tr key={segmentData.Segment.id} className="parentRow">
-                        <td className="splitName" style={{ paddingLeft: segmentData.Depth * 16 }}>
+                        <td className={"splitName " + completeClassName} style={{ paddingLeft: segmentData.Depth * 16 }}>
                             {toggle}
                             <strong>{segmentData.Segment.name}</strong>
                         </td>
-                        <td className="splitDelta">{parentDelta}</td>
-                        <td className="splitComparison">{parentComparison}</td>
+                        <td className={"splitDelta " + completeClassName}>{parentDelta}</td>
+                        <td className={"splitComparison "+ completeClassName}>{parentComparison}</td>
                     </tr>,
                 );
                 continue;
@@ -423,26 +455,26 @@ export default function SegmentList({ sessionPayload, comparison }: SplitListPar
     ]);
 
     return (
-        <div id="splitList">
-            <div id="gameInfo">
-                <h1 id="gameTitle">
+        <div id="splitList" className={completeClassName}>
+            <div id="gameInfo" className={completeClassName}>
+                <h1 id="gameTitle" className={completeClassName}>
                     <strong>{sessionPayload.loaded_split_file?.game_name}</strong>
                 </h1>
-                <h2 id="gameCategory">
+                <h2 id="gameCategory" className={completeClassName}>
                     <small>{sessionPayload.loaded_split_file?.game_category}</small>
                 </h2>
-                <div id="attempts">{sessionPayload.loaded_split_file?.attempts}</div>
+                <div id="attempts" className={completeClassName}>{sessionPayload.loaded_split_file?.attempts}</div>
             </div>
 
-            <div id="splitBody">
-                <div ref={containerRef} id="splitContainer">
-                    <table cellSpacing="0">
+            <div id="splitBody" className={completeClassName}>
+                <div ref={containerRef} id="splitContainer" className={completeClassName}>
+                    <table cellSpacing="0" className={completeClassName}>
                         <tbody>{mainRows}</tbody>
                     </table>
                 </div>
 
-                <div id="finalSegment">
-                    <table>
+                <div id="finalSegment" className={completeClassName}>
+                    <table className={completeClassName}>
                         <tbody>{finalRow}</tbody>
                     </table>
                 </div>
