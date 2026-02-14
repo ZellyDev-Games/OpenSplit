@@ -41,16 +41,6 @@ export default function Welcome() {
                 Exit OpenSplit
             </button>
 
-            <button
-                style={{ marginTop: 30 }}
-                onClick={async () => {
-                    localStorage.clear();
-                    await Dispatch(Command.RESET, null);
-                }}
-            >
-                <small>Reset All Preferences</small>
-            </button>
-
             <div id="cw">
                 <p>Copyright ZellyDev LLC - ZellyDev Games {new Date().getFullYear()}</p>
             </div>
