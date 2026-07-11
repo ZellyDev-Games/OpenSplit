@@ -181,6 +181,14 @@ func (r *Running) Receive(c command.Command, payload *string) (dispatcher.Dispat
 		machine.runtimeProvider.EventsEmit("comparison:left")
 	case command.COMPARISON_RIGHT:
 		machine.runtimeProvider.EventsEmit("comparison:right")
+
+	case command.TOGGLEWR:
+		machine.sessionService.ToggleWorldRecordDisplay()
+
+		machine.runtimeProvider.EventsEmit(
+			"session:update",
+			adapters.DomainToDTO(machine.sessionService),
+		)
 	default:
 		logger.Warnf(logModule, "unhandled default case in Running: %d", c)
 	}

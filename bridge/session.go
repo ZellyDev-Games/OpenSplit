@@ -49,8 +49,7 @@ type AppViewModel struct {
 	View View `json:"view"`
 
 	// Only set for editor screens
-	SpeedrunAPIBaseURL string         `json:"speedrunApiBaseUrl,omitempty"`
-	SplitFile          *dto.SplitFile `json:"splitFile,omitempty"`
+	SplitFile *dto.SplitFile `json:"splitFile,omitempty"`
 
 	// Only set for running
 	Session *dto.Session `json:"session,omitempty"`

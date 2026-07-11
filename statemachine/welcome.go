@@ -57,6 +57,7 @@ func (w *Welcome) Receive(c command.Command, _ *string) (dispatcher.DispatchRepl
 			return dispatcher.DispatchReply{Code: 2, Message: "failed to convert dto: " + err.Error()}, err
 		}
 		machine.sessionService.SetLoadedSplitFile(domainSF)
+		go machine.updateWorldRecord()
 		machine.changeState(RUNNING)
 		return dispatcher.DispatchReply{}, nil
 	case command.NEW:

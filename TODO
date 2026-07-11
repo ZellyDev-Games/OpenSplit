@@ -1,5 +1,1 @@
 get split file versioning working (this will fix modifying the split times)
-add comparison type indicator
-display current world record
-add segment time to displayed data
-fix speedrun api integration
