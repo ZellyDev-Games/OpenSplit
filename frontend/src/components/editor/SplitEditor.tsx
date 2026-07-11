@@ -10,10 +10,12 @@ import React, { useEffect, useState } from "react";
 
 import { Dispatch, ExportSplitFile } from "../../../wailsjs/go/dispatcher/Service";
 import { GetAvailableSkins } from "../../../wailsjs/go/skin/Service";
-import { WindowCenter, WindowSetSize } from "../../../wailsjs/runtime";
-import { Command } from "../../App";
 import addIcon from "../../assets/images/add.png";
 import removeIcon from "../../assets/images/remove.png";
+import { Platforms, SearchCategories, SearchGames } from "../../../wailsjs/go/speedrun/Service";
+import { WindowCenter, WindowSetSize } from "../../../wailsjs/runtime";
+import { Command } from "../../App";
+import { useClickOutside } from "../../hooks/useClickOutside";
 import SegmentPayload from "../../models/segmentPayload";
 import SplitFilePayload from "../../models/splitFilePayload";
 import { IconButton } from "../Tooltip";
@@ -22,7 +24,6 @@ import { TimeRow } from "./TimeRow";
 
 type SplitEditorParams = {
     splitFilePayload: SplitFilePayload | null;
-    speedRunAPIBase: string;
 };
 
 function addChildRecursive(list: SegmentPayload[], parent: SegmentPayload): SegmentPayload[] {
@@ -74,13 +75,37 @@ function findNodeMutable(
     return null;
 }
 
+type GameMatch = {
+    id: string;
+    name: string;
+    platforms: Platform[];
+};
+
+type Platform = {
+    id: string;
+    name: string;
+};
+
+type Category = {
+    id: string;
+    name: string;
+};
+
 export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
     // Is this a new file or are we editing?
     const editing = splitFilePayload != null;
 
     const [platform, setPlatform] = React.useState<string>(splitFilePayload?.platform ?? "SNES");
+    const [platforms, setPlatforms] = useState<Platform[]>([]);
+
     const [gameName, setGameName] = React.useState<string>(splitFilePayload?.game_name ?? "");
-    const [gameCategory, setGameCategory] = React.useState<string>(splitFilePayload?.game_category ?? "");
+    const [gameID, setGameID] = useState(splitFilePayload?.speedrun_game_id ?? "");
+    const [games, setGames] = useState<GameMatch[]>([]);
+
+    const [categoryName, setCategoryName] = React.useState<string>(splitFilePayload?.game_category ?? "");
+    const [CategoryID, setCategoryID] = useState(splitFilePayload?.speedrun_game_category_id ?? "");
+    const [categories, setCategories] = useState<Category[]>([]);
+
     const [attempts, setAttempts] = React.useState<number>(splitFilePayload?.attempts ?? 0);
     const [segments, setSegments] = useState<SegmentPayload[]>(splitFilePayload?.segments ?? []);
     const [offsetMS, setOffsetMS] = useState(splitFilePayload?.offset ?? 0);
@@ -88,8 +113,69 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
     const [availableSkins, setAvailableSkins] = useState<string[]>([]);
     const [selectedSkin, setSelectedSkin] = useState(splitFilePayload?.selected_skin ?? "");
 
+    const [showCumulativeTimes, setShowCumulativeTimes] = useState(false);
+    const [gameActive, setGameActive] = useState(false);
+    const [categoryActive, setCategoryActive] = useState(false);
+    const selectingGame = React.useRef(false);
+
     useEffect(() => {
-        setOffsetText(String(splitFilePayload?.offset ?? 0));
+        if (selectingGame.current) {
+            selectingGame.current = false;
+            return;
+        }
+
+        const query = gameName.trim();
+
+        const timeout = setTimeout(async () => {
+            if (query.length === 0) {
+                setGames([]);
+                // setShowGames(false);
+                return;
+            }
+
+            const games = await SearchGames(query);
+
+            setGames(
+                games.data.map((g) => ({
+                    id: g.id,
+                    name: g.names.international,
+                    platforms: g.platforms,
+                })),
+            );
+
+            // setShowGames(gameInputFocused && query.length > 0);
+        }, 200);
+
+        return () => clearTimeout(timeout);
+    }, [gameName]);
+
+    useEffect(() => {
+        console.log("gameID changed:", gameID);
+
+        if (!gameID) {
+            setCategories([]);
+            // setShowCategories(false);
+            return;
+        }
+
+        SearchCategories(gameID).then((result) => {
+            console.log("categories", result);
+
+            setCategories(result.data);
+            // setShowCategories(gameInputFocused && result.data.length > 0);
+        });
+    }, [gameID]);
+
+    useEffect(() => {
+        Platforms().then((p) => {
+            setPlatforms(p);
+        });
+    }, []);
+
+    useEffect(() => {
+        const offset = splitFilePayload?.offset ?? 0;
+        setOffsetMS(offset);
+        setOffsetText(String(offset));
     }, [splitFilePayload]);
 
     const handleOffsetChange = (v: string) => {
@@ -98,10 +184,6 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
             setOffsetText(v);
         }
     };
-
-    useEffect(() => {
-        setOffsetMS(splitFilePayload?.offset ?? 0);
-    }, [splitFilePayload]);
 
     useEffect(() => {
         GetAvailableSkins().then((skins) => {
@@ -208,13 +290,23 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
         setSegments((prev) => deleteRecursive(prev));
     };
 
+    const emptyWR = {
+        show: false,
+        run_id: "",
+        players: [],
+        real_time: 0,
+        in_game_time: 0,
+    };
+
     const saveSplitFile = async (e: React.MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
 
         const newSplitFilePayload = SplitFilePayload.createFrom({
             id: splitFilePayload?.id ?? "",
             game_name: gameName,
-            game_category: gameCategory,
+            speedrun_game_id: gameID,
+            game_category: categoryName,
+            speedrun_game_category_id: CategoryID,
             version: splitFilePayload?.version ?? 0,
 
             selected_skin: selectedSkin,
@@ -227,6 +319,8 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
             attempts: Number(attempts),
             offset: offsetText === "" || offsetText === "-" ? 0 : parseInt(offsetText, 10),
             platform: platform,
+
+            wr: splitFilePayload?.wr ?? emptyWR,
 
             window_x: splitFilePayload?.window_x ?? 100,
             window_y: splitFilePayload?.window_y ?? 100,
@@ -314,6 +408,53 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
             return root;
         });
     };
+  
+    function updateSegmentTimes(id: string, average: number, pb: number) {
+        function update(list: SegmentPayload[]): SegmentPayload[] {
+            return list.map((seg) => {
+                if (seg.id === id) {
+                    return {
+                        ...seg,
+                        average,
+                        pb,
+                    };
+                }
+
+                return {
+                    ...seg,
+                    children: update(seg.children ?? []),
+                };
+            });
+        }
+
+        setSegments((prev) => update(prev));
+    }
+
+    const gameAutocompleteRef = React.useRef<HTMLDivElement>(null);
+    const categoryAutocompleteRef = React.useRef<HTMLDivElement>(null);
+
+    useClickOutside(gameAutocompleteRef, () => setGameActive(false));
+    useClickOutside(categoryAutocompleteRef, () => setCategoryActive(false));
+
+    const longestGameWidth = React.useMemo(() => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return 250;
+
+        ctx.font = getComputedStyle(document.body).font;
+
+        return Math.max(150, ...games.map((m) => ctx.measureText(m.name).width + 10));
+    }, [games]);
+
+    const longestCategoryWidth = React.useMemo(() => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return 150;
+
+        ctx.font = getComputedStyle(document.body).font;
+
+        return Math.max(150, ...categories.map((c) => ctx.measureText(c.name).width + 10));
+    }, [categories]);
 
     /**
      * renderRows arguments:
@@ -325,11 +466,17 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
         depth: number,
         inheritedGroup: GroupCtx | null,
         isDirectChild: boolean,
-    ) {
-        let totalAvg = 0;
-        let totalBest = 0;
+        totalAvg: number,
+        totalPB: number,
+    ): {
+        rows: React.ReactElement[];
+        totalAvg: number;
+        totalPB: number;
+    } {
+        const rows: React.ReactElement[] = [];
 
-        return list.map((segment, i) => {
+        for (let i = 0; i < list.length; i++) {
+            const segment = list[i];
             const hasChildren = (segment.children ?? []).length > 0;
 
             // If THIS row is a group parent, it defines a new group color for itself + its direct children
@@ -357,13 +504,11 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
                 .filter(Boolean)
                 .join(" ");
 
-            // Only pass group context ONE level down:
-            // - if segment is a group parent => its direct children inherit its group color
-            // - otherwise => children do NOT inherit (unless they themselves become group parents)
-            const nextInheritedGroup = ownGroup ?? null;
-            const nextIsDirectChild = !!ownGroup;
+            const displayAverage = showCumulativeTimes ? totalAvg + segment.average : segment.average;
 
-            const frag = (
+            const displayPB = showCumulativeTimes ? totalPB + segment.pb : segment.pb;
+
+            rows.push(
                 <React.Fragment key={segment.id}>
                     <tr className={rowClassName} style={rowStyle}>
                         <td>
@@ -479,10 +624,34 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
                         </td>
 
                         <td>
-                            {!hasChildren && <TimeRow time={segment.average ? segment.average + totalAvg : null} />}
+                            {!hasChildren && (
+                                <TimeRow
+                                    time={displayAverage}
+                                    onChange={(newAverage) => {
+                                        updateSegmentTimes(
+                                            segment.id,
+                                            showCumulativeTimes ? newAverage - totalAvg : newAverage,
+                                            segment.pb,
+                                        );
+                                    }}
+                                />
+                            )}
                         </td>
 
-                        <td>{!hasChildren && <TimeRow time={segment.pb ? segment.pb + totalBest : null} />}</td>
+                        <td>
+                            {!hasChildren && (
+                                <TimeRow
+                                    time={displayPB}
+                                    onChange={(newPB) => {
+                                        updateSegmentTimes(
+                                            segment.id,
+                                            segment.average,
+                                            showCumulativeTimes ? newPB - totalPB : newPB,
+                                        );
+                                    }}
+                                />
+                            )}
+                        </td>
 
                         <td>
                             <IconButton icon={faFolder} tooltip="Add subsegment" onClick={() => addSegment(segment)} />
@@ -496,18 +665,31 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
                             />
                         </td>
                     </tr>
-
-                    {(segment.children ?? []).length > 0 &&
-                        renderRows(segment.children ?? [], depth + 1, nextInheritedGroup, nextIsDirectChild)}
-                </React.Fragment>
+                </React.Fragment>,
             );
 
+            // Leaf segments contribute to running totals
             if (!hasChildren) {
                 totalAvg += segment.average;
-                totalBest += segment.pb;
+                totalPB += segment.pb;
             }
-            return frag;
-        });
+
+            // Children continue from current totals instead of restarting
+            if (hasChildren) {
+                const childResult = renderRows(segment.children, depth + 1, ownGroup, true, totalAvg, totalPB);
+
+                rows.push(...childResult.rows);
+
+                totalAvg = childResult.totalAvg;
+                totalPB = childResult.totalPB;
+            }
+        }
+
+        return {
+            rows,
+            totalAvg,
+            totalPB,
+        };
     }
 
     return (
@@ -516,26 +698,81 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
             <form id="split-form" noValidate>
                 <div className="row">
                     <label htmlFor="game_name">Game Name</label>
-                    <input
-                        value={gameName}
-                        onChange={(e) => setGameName(e.target.value)}
-                        id="game_name"
-                        name="game_name"
-                        type="text"
-                        autoComplete="off"
-                    />
+                    <div className="autocomplete" ref={gameAutocompleteRef}>
+                        <input
+                            value={gameName}
+                            onFocus={() => setGameActive(true)}
+                            onClick={() => setGameActive(true)}
+                            onChange={(e) => {
+                                setGameName(e.target.value);
+
+                                // User is no longer using the selected speedrun.com game.
+                                setGameID("");
+                                setCategoryName("");
+                                setCategoryID("");
+                                setCategories([]);
+                            }}
+                            autoComplete="off"
+                        />
+                        {gameActive && games.length > 0 && (
+                            <ul className="autocomplete-list" style={{ width: `${Math.ceil(longestGameWidth)}px` }}>
+                                {games.map((game) => (
+                                    <li
+                                        key={game.id}
+                                        onMouseDown={() => {
+                                            selectingGame.current = true;
+                                            console.log("Selected gameID: ", game.id);
+                                            console.log("Selected game: ", game.name);
+                                            setGameName(game.name);
+                                            setGameID(game.id);
+
+                                            if (game.platforms.length > 0) {
+                                                setPlatforms(game.platforms);
+                                            }
+
+                                            setCategoryName("");
+                                            setCategoryID("");
+
+                                            setGameActive(false);
+                                            // setShowGames(false);
+                                        }}
+                                    >
+                                        {game.name}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
                 </div>
 
                 <div className="row">
                     <label htmlFor="game_category">Category</label>
-                    <input
-                        onChange={(e) => setGameCategory(e.target.value)}
-                        id="game_category"
-                        name="game_category"
-                        type="text"
-                        autoComplete="off"
-                        value={gameCategory}
-                    />
+                    <div className="autocomplete" ref={categoryAutocompleteRef}>
+                        <input
+                            value={categoryName}
+                            onFocus={() => setCategoryActive(true)}
+                            onClick={() => setCategoryActive(true)}
+                            onChange={(e) => setCategoryName(e.target.value)}
+                            autoComplete="off"
+                        />
+                        {categoryActive && categories.length > 0 && (
+                            <ul className="autocomplete-list" style={{ width: `${Math.ceil(longestCategoryWidth)}px` }}>
+                                {categories.map((category) => (
+                                    <li
+                                        key={category.id}
+                                        onMouseDown={() => {
+                                            setCategoryName(category.name);
+                                            setCategoryID(category.id);
+                                            setCategoryActive(false);
+                                            // setShowCategories(false);
+                                        }}
+                                    >
+                                        {category.name}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
                 </div>
 
                 <div className="row" style={{ marginTop: 10, marginBottom: 10 }}>
@@ -546,53 +783,11 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
                         value={platform}
                         onChange={(e) => setPlatform(e.target.value)}
                     >
-                        <option value={"NES"}>NES</option>
-                        <option value={"SNES"}>SNES</option>
-                        <option value={"Nintendo64"}>Nintendo 64</option>
-                        <option value={"GameCube"}>GameCube</option>
-                        <option value={"Wii"}>Wii</option>
-                        <option value={"WiiU"}>Wii U</option>
-                        <option value={"Switch"}>Nintendo Switch</option>
-
-                        <option value={"MegaDrive"}>Mega Drive</option>
-                        <option value={"Genesis"}>Sega Genesis</option>
-                        <option value={"SegaCD"}>Sega CD</option>
-                        <option value={"32X"}>Sega 32X</option>
-                        <option value={"Saturn"}>Sega Saturn</option>
-                        <option value={"Dreamcast"}>Dreamcast</option>
-
-                        <option value={"PlayStation"}>PlayStation</option>
-                        <option value={"PS2"}>PlayStation 2</option>
-                        <option value={"PS3"}>PlayStation 3</option>
-                        <option value={"PS4"}>PlayStation 4</option>
-                        <option value={"PS5"}>PlayStation 5</option>
-
-                        <option value={"Xbox"}>Xbox</option>
-                        <option value={"Xbox360"}>Xbox 360</option>
-                        <option value={"XboxOne"}>Xbox One</option>
-                        <option value={"XboxSeries"}>Xbox Series X|S</option>
-
-                        <option value={"PC"}>PC</option>
-                        <option value={"Mac"}>Mac</option>
-                        <option value={"Linux"}>Linux</option>
-
-                        {/* Handhelds */}
-
-                        <option value={"GameBoy"}>Game Boy</option>
-                        <option value={"GameBoyColor"}>Game Boy Color</option>
-                        <option value={"GameBoyAdvance"}>Game Boy Advance</option>
-                        <option value={"NintendoDS"}>Nintendo DS</option>
-                        <option value={"Nintendo3DS"}>Nintendo 3DS</option>
-                        <option value={"SwitchLite"}>Switch Lite</option>
-
-                        <option value={"GameGear"}>Game Gear</option>
-                        <option value={"NeoGeoPocket"}>Neo Geo Pocket</option>
-
-                        <option value={"PSP"}>PlayStation Portable (PSP)</option>
-                        <option value={"PSVita"}>PlayStation Vita</option>
-
-                        <option value={"iOS"}>iOS</option>
-                        <option value={"Android"}>Android</option>
+                        {platforms.map((p) => (
+                            <option key={p.id} value={p.name}>
+                                {p.name}
+                            </option>
+                        ))}
                     </select>
                     <div className="row">
                         <label htmlFor="skin">Skin</label>
@@ -635,12 +830,22 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
                     />
                 </div>
 
-                <div style={{ marginTop: 20, marginBottom: 20 }} className="row">
-                    <div>
-                        <button onClick={() => addSegment(null)} type="button">
-                            Add Segment
-                        </button>
-                    </div>
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginTop: 20,
+                        marginBottom: 20,
+                    }}
+                >
+                    <button onClick={() => addSegment(null)} type="button">
+                        Add Segment
+                    </button>
+
+                    <button type="button" onClick={() => setShowCumulativeTimes((v) => !v)}>
+                        {showCumulativeTimes ? "Cumulative Times" : "Segment Times"}
+                    </button>
                 </div>
 
                 <div className="datagrid-container">
@@ -662,7 +867,7 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
                                         <th style={{ width: "5%" }}></th>
                                     </tr>
                                 </thead>
-                                <tbody>{renderRows(segments, 0, null, false)}</tbody>
+                                <tbody>{renderRows(segments, 0, null, false, 0, 0).rows}</tbody>
                             </table>
                         )}
                     </div>

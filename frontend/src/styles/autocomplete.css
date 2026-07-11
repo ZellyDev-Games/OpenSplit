@@ -1,51 +1,64 @@
 @layer components {
-    div.autocomplete {
+    .autocomplete {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+    }
+
+    .autocomplete-list {
         position: absolute;
-        background-color: #282828;
-        width: 50%;
-        z-index: 9999;
-        top: 150px;
-    }
+        top: calc(100% + 2px);
+        left: 0;
 
-    .autocomplete ul {
-        height: 200px;
-        overflow-y: scroll;
         margin: 0;
-        padding: 10px;
-    }
+        padding: 0;
 
-    .autocomplete li {
-        background-color: #640199;
-        text-decoration: none;
         list-style: none;
-        border: 3px solid #222;
-        border-collapse: collapse;
-        padding: 5px;
-        margin-bottom: 5px;
+
+        max-height: 300px;
+        overflow-y: auto;
+
+        background: #282828;
+        border: 1px solid #666;
+        border-radius: 4px;
+
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+
+        z-index: 9999;
+    }
+
+    .autocomplete-list li {
+        padding: 6px 10px;
         cursor: pointer;
-        border-radius: 3px;
     }
 
-    .autocomplete li:hover {
-        border-color: #abd5e7;
+    .autocomplete-list li:hover {
+        background: var(--accent);
     }
 
-    div.autocomplete-item {
+    .autocomplete-item {
         display: flex;
         flex-direction: row;
+        align-items: center;
     }
 
-    div.autocomplete-item img {
+    .autocomplete-item img {
         width: 40px;
         height: 40px;
-        border: 2px solid black;
+
+        border: 2px solid #000;
         border-radius: 4px;
+
+        object-fit: contain;
+        background: #000;
     }
 
-    div.autocomplete-item div.game-info {
+    .autocomplete-item .game-info {
         display: flex;
+        flex: 1;
         flex-direction: column;
+
         margin-left: 10px;
-        flex-grow: 1;
+        min-width: 0;
     }
 }

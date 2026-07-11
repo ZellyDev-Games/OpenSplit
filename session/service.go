@@ -148,6 +148,14 @@ func (s *Service) SetLoadedSplitFile(sf SplitFile) {
 		sf.GameName, len(sf.Segments), len(s.leafSegments))
 }
 
+func (s *Service) ToggleWorldRecordDisplay() {
+	if s.loadedSplitFile == nil {
+		return
+	}
+
+	s.loadedSplitFile.WR.Show = !s.loadedSplitFile.WR.Show
+}
+
 // SetRuntimeOffsetOverride replaces the configured splitfile offset
 // for the current session only.
 func (s *Service) SetRuntimeOffsetOverride(offset time.Duration) {
@@ -444,12 +452,15 @@ func (s *Service) resetLocked() {
 }
 
 func (s *Service) PersistRunToSession() {
-	if s.currentRun != nil {
-		s.loadedSplitFile.Runs = append(s.loadedSplitFile.Runs, *s.currentRun)
-		logger.Info(logModule, "run persisted to session, new stats built")
-	} else {
+	if s.currentRun == nil {
 		logger.Warn(logModule, "persist requested on nil current run")
+		return
 	}
+
+	s.loadedSplitFile.Runs = append(s.loadedSplitFile.Runs, *s.currentRun)
+	s.loadedSplitFile.BuildStats()
+
+	logger.Info(logModule, "run persisted to session, new stats built")
 }
 
 func (s *Service) debounced() bool {

@@ -11,7 +11,9 @@ import (
 type SplitFile struct {
 	ID           uuid.UUID
 	GameName     string
+	GameID       string
 	GameCategory string
+	CategoryID   string
 	Version      int
 
 	SelectedSkin string
@@ -25,10 +27,20 @@ type SplitFile struct {
 	Offset   time.Duration
 	Platform string
 
+	WR WorldRecord
+
 	WindowX      int
 	WindowY      int
 	WindowHeight int
 	WindowWidth  int
+}
+
+type WorldRecord struct {
+	Show       bool
+	RunID      string
+	Players    []string
+	RealTime   float64
+	InGameTime float64
 }
 
 func (s *SplitFile) DeepCopyLeafSegments() []Segment {
@@ -138,7 +150,9 @@ func DeepCopySplitFile(inFile *SplitFile) SplitFile {
 	return SplitFile{
 		ID:           inFile.ID,
 		GameName:     inFile.GameName,
+		GameID:       inFile.GameID,
 		GameCategory: inFile.GameCategory,
+		CategoryID:   inFile.CategoryID,
 		Version:      inFile.Version,
 
 		SelectedSkin: inFile.SelectedSkin,
@@ -151,6 +165,8 @@ func DeepCopySplitFile(inFile *SplitFile) SplitFile {
 		Attempts: inFile.Attempts,
 		Offset:   inFile.Offset,
 		Platform: inFile.Platform,
+
+		WR: inFile.WR,
 
 		WindowX:      inFile.WindowX,
 		WindowY:      inFile.WindowY,
