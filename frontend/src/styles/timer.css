@@ -1,0 +1,56 @@
+@layer components {
+    #timer-container {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+            ". timer"
+            "wr wr";
+
+        row-gap: 0.5rem;
+        width: 100%;
+
+        padding-right: 10px;
+        box-sizing: border-box;
+    }
+
+    #time-container {
+        grid-area: timer;
+        justify-self: end;
+
+        display: flex;
+        flex-direction: row;
+        align-items: baseline;
+
+        font-family: "Monofonto", sans-serif;
+        font-size: 50px;
+    }
+
+    #world-record {
+        grid-area: wr;
+
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+
+        width: 100%;
+
+        font-size: 0.8em;
+        line-height: 1.2;
+    }
+
+    #world-record > div {
+        display: flex;
+        justify-content: center;
+        align-items: baseline;
+        gap: 0.35rem;
+
+        width: 100%;
+        white-space: nowrap;
+    }
+
+    /* Remove spacing between seconds and centiseconds */
+    #world-record small {
+        margin-left: -0.5em;
+        font-size: 0.85em;
+    }
+}

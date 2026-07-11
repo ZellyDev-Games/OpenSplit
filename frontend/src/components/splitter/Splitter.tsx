@@ -33,7 +33,7 @@ export default function Splitter({ sessionPayload, configPayload }: SplitterPara
         (async () => {
             setContextMenuItems(await buildContextMenu());
         })();
-    }, [globalHotkeys, comparison]);
+    }, [globalHotkeys, comparison, sessionPayload.loaded_split_file?.wr?.show]);
 
     useEffect(() => {
         (async () => {
@@ -72,6 +72,15 @@ export default function Splitter({ sessionPayload, configPayload }: SplitterPara
             label: "Save",
             onClick: async () => {
                 await Dispatch(Command.SAVE, null);
+            },
+        });
+
+        contextMenuItems.push({ type: "separator" });
+
+        contextMenuItems.push({
+            label: ((sessionPayload.loaded_split_file?.wr?.show ?? false) ? "✓ " : "") + "Display World Record",
+            onClick: async () => {
+                await Dispatch(Command.TOGGLEWR, null);
             },
         });
 
@@ -119,7 +128,7 @@ export default function Splitter({ sessionPayload, configPayload }: SplitterPara
         <div {...contextMenu.bind} id="splitter">
             <ContextMenu state={contextMenu.state} close={contextMenu.close} items={contextMenuItems} />
             <SegmentList sessionPayload={sessionPayload} comparison={comparison} />
-            <Timer offset={sessionPayload.loaded_split_file?.offset || 0} />
+            <Timer offset={sessionPayload.loaded_split_file?.offset ?? 0} wr={sessionPayload.loaded_split_file?.wr} />
         </div>
     );
 }

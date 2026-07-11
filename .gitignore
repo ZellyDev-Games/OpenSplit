@@ -4,7 +4,8 @@ cover.out
 coverage.out
 
 # Editor/IDE
-.vscode/*
+.vscode/
+.zed/
 
 # Ignoring generated stuff
 frontend/node_modules/
@@ -12,3 +13,5 @@ build/
 frontend/dist/
 frontend/wailsjs/
 frontend/package-lock.json
+tools/livesplitImageExtractor/Program.exe
+frontend/src/models/command.ts

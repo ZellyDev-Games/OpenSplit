@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { EventsOn } from "../../../wailsjs/runtime";
+import WorldRecord from "../../models/worldRecord";
 
 export type TimeParts = {
     negative: boolean;
@@ -28,9 +29,10 @@ export type FormattedTimeParts = {
 
 type TimerParams = {
     offset: number | undefined;
+    wr?: WorldRecord;
 };
 
-export default function Timer({ offset }: TimerParams) {
+export default function Timer({ offset, wr }: TimerParams) {
     const [time, setTime] = useState(offset || 0);
 
     useEffect(() => {
@@ -40,6 +42,10 @@ export default function Timer({ offset }: TimerParams) {
     }, []);
 
     const formattedTimeParts = formatDuration(msToParts(time));
+
+    const rt = wr && displayFormattedTimeParts(formatDuration(msToParts(wr.real_time * 1000)));
+    const igt = wr && displayFormattedTimeParts(formatDuration(msToParts(wr.in_game_time * 1000)));
+    const players = wr?.players?.length ? wr.players.join(", ") : "Unknown";
 
     return (
         <div id="timer-container">
@@ -67,6 +73,25 @@ export default function Timer({ offset }: TimerParams) {
                     <small>{formattedTimeParts.centisText}</small>
                 </span>
             </div>
+            {wr?.show && (
+                <div id="world-record">
+                    <div>
+                        <strong>WR</strong> {players}
+                    </div>
+
+                    <div>
+                        RT {rt![0]}
+                        <small>{rt![1]}</small>
+                    </div>
+
+                    {wr.in_game_time > 0 && (
+                        <div>
+                            IGT {igt![0]}
+                            <small>{igt![1]}</small>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

@@ -148,6 +148,23 @@ function segmentRow(
         >
             <td className="splitName" style={{ paddingLeft: 5 + segmentData.Depth * 16 }}>
                 {renderToggle}
+
+                {segmentData.Segment.icon && (
+                    <img
+                        src={segmentData.Segment.icon}
+                        alt=""
+                        draggable={false}
+                        style={{
+                            width: 18,
+                            height: 18,
+                            objectFit: "contain",
+                            marginRight: 6,
+                            verticalAlign: "middle",
+                            borderRadius: 2,
+                        }}
+                    />
+                )}
+
                 {segmentData.Segment.name}
             </td>
 
@@ -459,8 +476,26 @@ export default function SegmentList({ sessionPayload, comparison }: SplitListPar
                             style={{ paddingLeft: segmentData.Depth * 16 }}
                         >
                             {toggle}
+
+                            {segmentData.Segment.icon && (
+                                <img
+                                    src={segmentData.Segment.icon}
+                                    alt=""
+                                    draggable={false}
+                                    style={{
+                                        width: 18,
+                                        height: 18,
+                                        objectFit: "contain",
+                                        marginRight: 6,
+                                        verticalAlign: "middle",
+                                        borderRadius: 2,
+                                    }}
+                                />
+                            )}
+
                             <strong>{segmentData.Segment.name}</strong>
                         </td>
+
                         <td className={"splitDelta " + completeClassName}>{parentDelta}</td>
 
                         <td className={"splitComparison " + completeClassName}>{parentSegmentDelta}</td>

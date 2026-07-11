@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dispatcher"
@@ -16,6 +17,7 @@ import (
 	"github.com/zellydev-games/opensplit/repo/adapters"
 	"github.com/zellydev-games/opensplit/session"
 	"github.com/zellydev-games/opensplit/skin"
+	"github.com/zellydev-games/opensplit/speedrun"
 )
 
 const logModule = "statemachine"
@@ -73,19 +75,21 @@ type Service struct {
 	runtimeProvider                       RuntimeProvider
 	hotkeyProvider                        HotkeyProvider
 	configService                         *config.Service
+	speedrunService                       *speedrun.Service
 	saveOnWindowDimensionChanges          bool
 	unsubscribeFromWindowDimensionChanges func()
 	windowHasFocus                        bool
 }
 
 // NewMachine sets the global singleton, and gives it a friendly default state
-func NewMachine(runtimeProvider RuntimeProvider, repoService *repo.Service, sessionService *session.Service, configService *config.Service, skinProvider skin.SkinProvider) *Service {
+func NewMachine(runtimeProvider RuntimeProvider, repoService *repo.Service, sessionService *session.Service, configService *config.Service, skinProvider skin.SkinProvider, speedrunService *speedrun.Service) *Service {
 	machine = &Service{
 		sessionService:  sessionService,
 		runtimeProvider: runtimeProvider,
 		repoService:     repoService,
 		configService:   configService,
 		skinProvider:    skinProvider,
+		speedrunService: speedrunService,
 	}
 	return machine
 }
@@ -190,6 +194,46 @@ func (s *Service) changeState(newState StateID, _ ...interface{}) {
 			logger.Errorf(logModule, "OnEnter failed: %v", err)
 		}
 	}
+}
+
+func (s *Service) updateWorldRecord() {
+	logger.Debug(logModule, "Updating World Record")
+	sf, ok := s.sessionService.SplitFile()
+
+	logger.Debugf(
+		logModule,
+		"GameID=%q CategoryID=%q",
+		sf.GameID,
+		sf.CategoryID,
+	)
+	if !ok {
+		return
+	}
+
+	fmt.Printf("%#v\n", sf)
+
+	logger.Debug(logModule, "checking categoryID")
+	if sf.CategoryID == "" {
+		return
+	}
+
+	logger.Debug(logModule, "Searching for New World Record")
+	wr, err := s.speedrunService.SearchWR(sf.CategoryID)
+	if err != nil {
+		logger.Error(logModule, err.Error())
+		return
+	}
+
+	sf.WR = s.speedrunService.ToWorldRecord(wr)
+
+	s.sessionService.SetLoadedSplitFile(sf)
+
+	logger.Debug(logModule, "Emiting New World Record")
+	bridge.EmitUIEvent(s.runtimeProvider, bridge.AppViewModel{
+		View:    bridge.AppViewRunning,
+		Session: adapters.DomainToDTO(s.sessionService),
+		Config:  s.configService,
+	})
 }
 
 func (s *Service) saveSplitFile() error {

@@ -4,6 +4,7 @@ export default class SegmentPayload {
     gold: number = 0;
     average: number = 0;
     pb: number = 0;
+    icon = "";
     children: SegmentPayload[] = [];
 
     constructor(init?: Partial<SegmentPayload>) {

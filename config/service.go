@@ -1,7 +1,6 @@
 package config
 
 import (
-	"os"
 	"sync"
 
 	"github.com/zellydev-games/opensplit/command"
@@ -23,10 +22,10 @@ type Service struct {
 	configUpdatedChannel chan<- *Service
 }
 
-func NewService(splitFileFir string, skinsDir string) (*Service, chan *Service) {
+func NewService(splitFileDir string, skinsDir string) (*Service, chan *Service) {
 	updateChannel := make(chan *Service)
 	return &Service{
-		SplitFileDir:         splitFileFir,
+		SplitFileDir:         splitFileDir,
 		SkinsDir:             skinsDir,
 		SpeedRunAPIBase:      "",
 		KeyConfig:            map[command.Command]keyinfo.KeyData{},
@@ -37,15 +36,15 @@ func NewService(splitFileFir string, skinsDir string) (*Service, chan *Service) 
 // GetEnvironment is designed to expose configuration options from the environment or other sources (config files) to the
 // frontend.  Go services can just read the environment, but the frontend has no reliable way to do so, so this func
 // is bound to the app in main which generates a typescript function for the frontend.
-func (s *Service) GetEnvironment() *Service {
-	speedRunBase := os.Getenv("SPEEDRUN_API_BASE")
-	if speedRunBase == "" {
-		speedRunBase = "https://www.speedrun.com/api/v1"
-	}
-	return &Service{
-		SpeedRunAPIBase: speedRunBase,
-	}
-}
+// func (s *Service) GetEnvironment() *Service {
+// 	speedRunBase := os.Getenv("SPEEDRUN_API_BASE")
+// 	if speedRunBase == "" {
+// 		speedRunBase = "https://www.speedrun.com/api/v1"
+// 	}
+// 	return &Service{
+// 		SpeedRunAPIBase: speedRunBase,
+// 	}
+// }
 
 // UpdateKeyBinding changes the ConfigPayload for the given command.
 func (s *Service) UpdateKeyBinding(c command.Command, data keyinfo.KeyData) {

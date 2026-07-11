@@ -1,10 +1,13 @@
 import RunPayload from "./runPayload";
 import SegmentPayload from "./segmentPayload";
+import WorldRecord from "./worldRecord";
 
 export default class SplitFilePayload {
     id: string = "";
     game_name: string = "";
+    speedrun_game_id = "";
     game_category: string = "";
+    speedrun_game_category_id = "";
     version: number = 1;
 
     selected_skin?: string;
@@ -17,6 +20,8 @@ export default class SplitFilePayload {
     attempts: number = 0;
     offset: number = 0;
     platform: string = "SNES";
+
+    wr: WorldRecord = new WorldRecord();
 
     window_x: number = 100;
     window_y: number = 100;
