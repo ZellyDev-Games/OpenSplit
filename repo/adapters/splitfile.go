@@ -23,7 +23,9 @@ func DomainSplitFileToDTO(sf session.SplitFile) dto.SplitFile {
 	return dto.SplitFile{
 		ID:           sf.ID.String(),
 		GameName:     sf.GameName,
+		GameID:       sf.GameID,
 		GameCategory: sf.GameCategory,
+		CategoryID:   sf.CategoryID,
 		Version:      sf.Version,
 
 		SelectedSkin: sf.SelectedSkin,
@@ -36,6 +38,8 @@ func DomainSplitFileToDTO(sf session.SplitFile) dto.SplitFile {
 		Attempts: sf.Attempts,
 		Offset:   sf.Offset.Milliseconds(),
 		Platform: sf.Platform,
+
+		WR: dto.WorldRecord(sf.WR),
 
 		WindowX:      sf.WindowX,
 		WindowY:      sf.WindowY,
@@ -80,7 +84,9 @@ func DTOSplitFileToDomain(payload dto.SplitFile) (session.SplitFile, error) {
 
 	newSplitFile.ID = id
 	newSplitFile.GameName = payload.GameName
+	newSplitFile.GameID = payload.GameID
 	newSplitFile.GameCategory = payload.GameCategory
+	newSplitFile.CategoryID = payload.CategoryID
 	newSplitFile.Version = payload.Version
 
 	newSplitFile.SelectedSkin = payload.SelectedSkin
@@ -94,11 +100,18 @@ func DTOSplitFileToDomain(payload dto.SplitFile) (session.SplitFile, error) {
 	newSplitFile.Offset = time.Duration(payload.Offset) * time.Millisecond
 	newSplitFile.Platform = payload.Platform
 
+	newSplitFile.WR = session.WorldRecord(payload.WR)
+
 	newSplitFile.WindowX = payload.WindowX
 	newSplitFile.WindowY = payload.WindowY
 	newSplitFile.WindowHeight = payload.WindowHeight
 	newSplitFile.WindowWidth = payload.WindowWidth
 
+	logger.Infof(logModule,
+		"DOMAIN GameID=%q CategoryID=%q",
+		newSplitFile.GameID,
+		newSplitFile.CategoryID,
+	)
 	return newSplitFile, nil
 }
 
@@ -109,6 +122,11 @@ func DTOSplitFileToDomain(payload dto.SplitFile) (session.SplitFile, error) {
 func JSONSplitFileToDTO(payload string) (dto.SplitFile, error) {
 	var sf dto.SplitFile
 	err := json.Unmarshal([]byte(payload), &sf)
+	logger.Infof(logModule,
+		"DTO GameID=%q CategoryID=%q",
+		sf.GameID,
+		sf.CategoryID,
+	)
 	if err != nil {
 		return sf, err
 	}

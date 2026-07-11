@@ -178,6 +178,14 @@ func (r *Running) Receive(c command.Command, payload *string) (dispatcher.Dispat
 
 	case command.CLEAR_RUNTIME_OFFSET:
 		machine.sessionService.ClearRuntimeOffsetOverride()
+
+	case command.TOGGLEWR:
+		machine.sessionService.ToggleWorldRecordDisplay()
+
+		machine.runtimeProvider.EventsEmit(
+			"session:update",
+			adapters.DomainToDTO(machine.sessionService),
+		)
 	default:
 		logger.Warnf(logModule, "unhandled default case in Running: %d", c)
 	}

@@ -2,80 +2,81 @@
     @font-face {
         font-family: "Sublima";
         src: url("Sublima-ExtraBold.otf") format("opentype");
-        font-weight: normal;
-        font-style: normal;
     }
 
     @font-face {
         font-family: "Hack";
         src: url("Hack-Bold.ttf") format("truetype");
         font-weight: bold;
-        font-style: normal;
     }
 
     @font-face {
         font-family: "Techna";
         src: url("TechnaSans-Regular.otf") format("opentype");
-        font-weight: normal;
-        font-style: normal;
     }
 
     @font-face {
         font-family: "Monofonto";
         src: url("mf.otf") format("opentype");
-        font-weight: normal;
-        font-style: normal;
     }
 
     :root {
-        background-color: #282828;
-        font-family: Techna, sans-serif;
+        background: #282828;
         color: #d9d9f0;
+        font-family: Techna, sans-serif;
+
         transition:
-            width,
-            height 0.2s ease-in-out;
+            width 0.2s ease,
+            height 0.2s ease;
     }
 
     hr {
         width: 100%;
-        border: none;
         height: 1px;
-        margin-top: 5px;
-        margin-bottom: 5px;
-        background-color: #abd5e7;
+        margin: 5px 0;
+        border: 0;
+        background: #abd5e7;
     }
 
     .container {
         display: flex;
-        flex-grow: 1;
+        flex: 1;
         flex-direction: column;
-        background-color: #333333;
+
         padding: 20px;
+
+        background: #333;
     }
 
     .container-title {
-        background-color: #640199;
+        background: #640199;
     }
 
     button {
-        font-family: Techna, sans-serif;
         --wails-draggable: no-drag;
-        background-color: #1f1f1f;
+
+        min-width: 10px;
+        min-height: 44px;
+
+        padding: 9px 20px 8px;
+
+        border: 1px solid #3f3f3f;
         border-radius: 4px;
-        border-color: #3f3f3f;
-        border-style: solid;
+
+        background: #1f1f1f;
+
         color: #d9d9f0;
+
         cursor: pointer;
+
+        font-family: Techna, sans-serif;
         font-size: 16px;
         font-weight: 600;
-        min-height: 44px;
-        min-width: 10px;
-        padding: 9px 20px 8px;
-        text-align: center;
-        transition: background-color 0.1s ease-in-out;
+
+        transition: background-color 0.1s;
     }
 
     button:hover {
-        background-color: #640199;
+        background: #640199;
     }
 }

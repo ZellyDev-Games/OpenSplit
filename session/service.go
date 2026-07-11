@@ -147,6 +147,14 @@ func (s *Service) SetLoadedSplitFile(sf SplitFile) {
 		sf.GameName, len(sf.Segments), len(s.leafSegments))
 }
 
+func (s *Service) ToggleWorldRecordDisplay() {
+	if s.loadedSplitFile == nil {
+		return
+	}
+
+	s.loadedSplitFile.WR.Show = !s.loadedSplitFile.WR.Show
+}
+
 // SetRuntimeOffsetOverride replaces the configured splitfile offset
 // for the current session only.
 func (s *Service) SetRuntimeOffsetOverride(offset time.Duration) {
