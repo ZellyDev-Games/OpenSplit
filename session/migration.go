@@ -35,8 +35,7 @@ func mergeSegments(newSegments []Segment, old map[uuid.UUID]*Segment) {
 	for i := range newSegments {
 		newSeg := &newSegments[i]
 
-		oldSeg, ok := old[newSeg.ID]
-		if ok {
+		if oldSeg, ok := old[newSeg.ID]; ok {
 			mergeStatistic(&newSeg.Gold, oldSeg.Gold)
 			mergeStatistic(&newSeg.Average, oldSeg.Average)
 			mergeStatistic(&newSeg.PB, oldSeg.PB)
@@ -53,9 +52,14 @@ func mergeSegments(newSegments []Segment, old map[uuid.UUID]*Segment) {
 func UpgradeSplitFile(oldFile, newFile *SplitFile) {
 	MergeStatistics(oldFile, newFile)
 
-	newFile.Runs = oldFile.Runs
+	newFile.Runs = deepCopyRuns(oldFile.Runs)
 	newFile.Attempts = oldFile.Attempts
-	newFile.PB = oldFile.PB
+
+	// PB and SOB are derived.
+	newFile.PB = nil
+	newFile.SOB = 0
+
+	newFile.RebuildStatistics()
 }
 
 // mergeStatistic implements the migration rules.
@@ -71,18 +75,20 @@ func UpgradeSplitFile(oldFile, newFile *SplitFile) {
 // destination > 0
 //
 //	preserve manual value
-func mergeStatistic(dst *time.Duration, src time.Duration) bool {
+func mergeStatistic(dst *time.Duration, src time.Duration) {
 	switch *dst {
+	// Explicitly do not inherit.
 	case -1:
-		return false
+		*dst = 0
 
+	// Inherit previous value.
 	case 0:
 		if src > 0 {
 			*dst = src
 		}
-		return true
 
+	// Manual value.
 	default:
-		return false
+		// Preserve.
 	}
 }
