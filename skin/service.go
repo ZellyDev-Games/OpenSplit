@@ -24,8 +24,10 @@ import (
 	"time"
 
 	"github.com/zellydev-games/opensplit/config"
+	"github.com/zellydev-games/opensplit/dto"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo"
+	"github.com/zellydev-games/opensplit/skin/parser"
 )
 
 //go:embed default-skin.zip
@@ -33,6 +35,33 @@ var DefaultSkinZip []byte
 
 type SkinProvider interface {
 	SetSkin(string, bool) error
+	CreateSkin(name string, base string) error
+
+	// Editor navigation
+	SelectElement(string) error
+	SelectFile(string) error
+	SelectRule(string, string) error
+	ClearElement() error
+
+	// Editor mutation
+	UpdateActiveRule(dto.CSSRuleEditor) error
+	UpdateFileContents(string, string) error
+
+	// Working copy
+	CreateCSSFile(string) error
+	CreateCSSRule(dto.CSSRuleEditor) error
+	DeleteCSSRule(string) error
+
+	// Persistence
+	SaveWorkingCopy() error
+	ReloadEditor() error
+
+	EmitSkinModel() error
+
+	SelectedSkin() string
+	GetAvailableSkins() []string
+
+	SetPreviewElements([]dto.SkinPreviewElement) error
 }
 
 const logModule = "skins"
@@ -60,20 +89,30 @@ type Service struct {
 	repoService   *repo.Service
 	watcher       DirectoryWatcher
 	skinUpdatedCh chan string
+	skinModelCh   chan SkinModel
+	editor        *EditorState
 }
 
-func NewService(skinDir string,
+func NewService(
+	skinDir string,
 	config *config.Service,
 	repoService *repo.Service,
-	watcher DirectoryWatcher) (*Service, chan string) {
-	ch := make(chan string)
+	watcher DirectoryWatcher,
+) (*Service, chan string, chan SkinModel) {
+	updateCh := make(chan string)
+	modelCh := make(chan SkinModel)
+
 	return &Service{
-		skinDir:       skinDir,
+		skinDir: skinDir,
+
 		configService: config,
 		repoService:   repoService,
 		watcher:       watcher,
-		skinUpdatedCh: ch,
-	}, ch
+
+		skinUpdatedCh: updateCh,
+		skinModelCh:   modelCh,
+		editor:        NewEditorState(),
+	}, updateCh, modelCh
 }
 
 // Startup extracts the embedded default skin, restores the previously selected skin,
@@ -226,6 +265,13 @@ func (s *Service) SetSkin(name string, writeConfig bool) error {
 
 			s.watcher.ChangeRoot(filepath.Join(s.skinDir, s.selectedSkin))
 
+			err := s.ReloadEditor()
+			if err != nil {
+				return err
+			}
+
+			s.editor.ClearSelection()
+
 			if writeConfig {
 				s.configService.SelectedSkin = name
 				err := s.repoService.SaveConfig(s.configService)
@@ -249,17 +295,478 @@ func (s *Service) SelectedSkin() string {
 	return s.selectedSkin
 }
 
+func (s *Service) GetSkinPath() string {
+	s.m.RLock()
+	defer s.m.RUnlock()
+
+	if s.selectedSkin == "" {
+		return ""
+	}
+
+	return filepath.Join(
+		s.skinDir,
+		s.selectedSkin,
+	)
+}
+
+func (s *Service) SetPreviewElements(
+	elements []dto.SkinPreviewElement,
+) error {
+
+	s.editor.SetPreviewElements(elements)
+
+	return s.EmitSkinModel()
+}
+
+func (s *Service) GetSkinElements() []dto.SkinElement {
+
+	cssElements :=
+		s.GetSkinSelectors()
+
+	preview :=
+		s.editor.PreviewElements
+
+	seen := map[string]bool{}
+
+	out :=
+		make(
+			[]dto.SkinElement,
+			0,
+			len(cssElements)+len(preview),
+		)
+
+	for _, element := range cssElements {
+
+		out = append(
+			out,
+			element,
+		)
+
+		seen[element.ID] = true
+	}
+
+	for _, element := range preview {
+
+		if seen[element.ID] {
+			continue
+		}
+
+		out = append(
+			out,
+			dto.SkinElement{
+				ID:       element.ID,
+				Label:    element.Label,
+				Selector: element.Selector,
+			},
+		)
+	}
+
+	return out
+}
+
+// // GetSkinElements returns CSS selectors defined by the active skin.
+func (s *Service) GetSkinSelectors() []dto.SkinElement {
+	_, rules, _, _, _, _ := s.editor.Snapshot()
+
+	seen := make(map[string]bool)
+	elements := []dto.SkinElement{}
+
+	collectSelectors(rules, seen, &elements)
+
+	sort.Slice(elements, func(i, j int) bool {
+		return elements[i].Selector < elements[j].Selector
+	})
+
+	return elements
+}
+
 // GetSkinAddress returns the URL to the active skin's stylesheet.
 func (s *Service) GetSkinAddress() string {
 	s.m.RLock()
 	defer s.m.RUnlock()
 
-	u, _ := url.Parse(s.address)
-	u.Path = path.Join(u.Path, s.selectedSkin, EntryPoint)
+	if s.address == "" ||
+		s.selectedSkin == "" {
+		return ""
+	}
+
+	u, err := url.Parse(
+		s.address,
+	)
+
+	if err != nil {
+		return ""
+	}
+
+	u.Path = path.Join(
+		u.Path,
+		s.selectedSkin,
+		EntryPoint,
+	)
+
 	return u.String()
 }
 
 func (s *Service) skinUpdated() {
-	logger.Debug(logModule, "skin changed on disk, notifying frontend")
-	s.skinUpdatedCh <- s.GetSkinAddress() + "?v=" + strconv.FormatInt(time.Now().UnixNano(), 10)
+
+	logger.Debug(
+		logModule,
+		"skin changed on disk, notifying frontend",
+	)
+
+	address := s.GetSkinAddress()
+
+	address += "?v=" +
+		strconv.FormatInt(
+			time.Now().UnixNano(),
+			10,
+		)
+
+	select {
+	case s.skinUpdatedCh <- address:
+	default:
+		logger.Debug(
+			logModule,
+			"skin update already pending",
+		)
+	}
+}
+
+func (s *Service) ClearElement() error {
+
+	s.editor.ClearSelection()
+
+	return s.EmitSkinModel()
+}
+
+func (s *Service) SaveWorkingCopy() error {
+
+	err := s.saveEditor()
+
+	if err != nil {
+		return err
+	}
+
+	err = s.ReloadEditor()
+
+	if err != nil {
+		return err
+	}
+
+	return s.EmitSkinModel()
+}
+
+func (s *Service) saveEditor() error {
+
+	files,
+		rules,
+		_,
+		_,
+		_,
+		_ :=
+		s.editor.Snapshot()
+
+	root :=
+		s.GetSkinPath()
+
+	rulesByFile :=
+		make(map[string][]parser.Rule)
+
+	for _, rule := range rules {
+
+		rulesByFile[rule.File] =
+			append(
+				rulesByFile[rule.File],
+				rule,
+			)
+	}
+
+	for _, file := range files {
+
+		if !file.Text {
+			continue
+		}
+
+		contents :=
+			file.Contents
+
+		if filepath.Ext(file.Path) == ".css" {
+
+			contents =
+				parser.FormatCSS(
+					rulesByFile[file.Path],
+				)
+		}
+
+		filename :=
+			filepath.Join(
+				root,
+				file.Path,
+			)
+
+		if err := os.WriteFile(
+			filename,
+			[]byte(contents),
+			0644,
+		); err != nil {
+
+			return err
+		}
+
+		s.editor.UpdateFileContents(
+			file.Path,
+			contents,
+		)
+	}
+
+	s.editor.ClearDirty()
+
+	s.skinUpdated()
+
+	return nil
+}
+
+func (s *Service) CreateCSSRule(
+	rule dto.CSSRuleEditor,
+) error {
+
+	files,
+		rules,
+		_,
+		_,
+		_,
+		_ :=
+		s.editor.Snapshot()
+
+	if rule.File == "" {
+		return errors.New(
+			"css rule requires file",
+		)
+	}
+
+	if rule.Selector == "" {
+		return errors.New(
+			"css rule requires selector",
+		)
+	}
+
+	id :=
+		rule.ID
+
+	if id == "" {
+
+		id =
+			fmt.Sprintf(
+				"%s:%s",
+				rule.File,
+				rule.Selector,
+			)
+	}
+
+	parsedDeclarations :=
+		parser.Parse(
+			"editor",
+			".temporary {\n"+
+				rule.Body+
+				"\n}",
+		)
+
+	var declarations []parser.Declaration
+
+	if len(parsedDeclarations) > 0 {
+
+		declarations =
+			parsedDeclarations[0].Declarations
+	}
+
+	cssRule :=
+		parser.Rule{
+
+			ID: id,
+
+			File: rule.File,
+
+			Selector: rule.Selector,
+
+			Layer: rule.Layer,
+
+			Declarations: declarations,
+		}
+
+	editorRule :=
+		rule
+
+	editorRule.ID =
+		id
+
+	rules =
+		append(
+			rules,
+			cssRule,
+		)
+
+	s.editor.ReplaceWorkingCopy(
+		files,
+		rules,
+	)
+
+	s.editor.SetActiveRule(
+		&editorRule,
+	)
+
+	target :=
+		s.editor.GetTarget()
+
+	target.File =
+		rule.File
+
+	target.RuleID =
+		id
+
+	target.Selector =
+		rule.Selector
+
+	target.Mode =
+		"existing"
+
+	s.editor.SetTarget(
+		target,
+	)
+
+	return s.EmitSkinModel()
+}
+
+func (s *Service) DeleteCSSRule(
+	id string,
+) error {
+
+	files,
+		rules,
+		_,
+		_,
+		_,
+		_ :=
+		s.editor.Snapshot()
+
+	found :=
+		false
+
+	out :=
+		make(
+			[]parser.Rule,
+			0,
+			len(rules),
+		)
+
+	for _, rule := range rules {
+
+		if rule.ID == id {
+			found = true
+			continue
+		}
+
+		out = append(
+			out,
+			rule,
+		)
+	}
+
+	if !found {
+		return fmt.Errorf(
+			"rule %s not found",
+			id,
+		)
+	}
+
+	s.editor.ReplaceWorkingCopy(
+		files,
+		out,
+	)
+
+	s.editor.SetActiveRule(nil)
+
+	return s.EmitSkinModel()
+}
+
+func (s *Service) UpdateFileContents(
+	file string,
+	contents string,
+) error {
+
+	files,
+		rules,
+		_,
+		_,
+		_,
+		_ :=
+		s.editor.Snapshot()
+
+	found := false
+
+	for i := range files {
+
+		if files[i].Path != file {
+			continue
+		}
+
+		files[i].Contents = contents
+
+		found = true
+
+		break
+	}
+
+	if !found {
+		return fmt.Errorf(
+			"file %s not found",
+			file,
+		)
+	}
+
+	s.editor.ReplaceWorkingCopy(
+		files,
+		rules,
+	)
+
+	return s.EmitSkinModel()
+}
+
+func collectSelectors(
+	rules []parser.Rule,
+	seen map[string]bool,
+	elements *[]dto.SkinElement,
+) {
+
+	for _, rule := range rules {
+
+		selector :=
+			strings.TrimSpace(
+				rule.Selector,
+			)
+
+		if selector != "" &&
+			!seen[selector] {
+
+			seen[selector] = true
+
+			*elements =
+				append(
+					*elements,
+					dto.SkinElement{
+						ID:       selector,
+						Label:    selector,
+						Selector: selector,
+						File:     rule.File,
+						Line:     rule.Line,
+						Layer:    rule.Layer,
+					},
+				)
+		}
+
+		collectSelectors(
+			rule.Children,
+			seen,
+			elements,
+		)
+	}
 }
