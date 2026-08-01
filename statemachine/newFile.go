@@ -27,12 +27,19 @@ func (n *NewFile) ID() StateID {
 }
 
 func (n *NewFile) OnEnter() error {
-	bridge.EmitUIEvent(machine.runtimeProvider, bridge.AppViewModel{
-		View: bridge.AppViewNewSplitFile,
-		SplitFile: &dto.SplitFile{
-			SelectedSkin: machine.configService.SelectedSkin,
+	return nil
+}
+
+func (n *NewFile) EmitUI() error {
+	bridge.EmitUIEvent(
+		machine.runtimeProvider,
+		bridge.AppViewModel{
+			View: bridge.AppViewNewSplitFile,
+			SplitFile: &dto.SplitFile{
+				SelectedSkin: machine.configService.SelectedSkin,
+			},
 		},
-	})
+	)
 
 	return nil
 }
