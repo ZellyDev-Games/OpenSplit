@@ -110,14 +110,15 @@ func (s *Service) SaveSplitFile(splitFile dto.SplitFile) error {
 				newDomain, err := adapters.DTOSplitFileToDomain(splitFile)
 				if err == nil {
 					if newDomain.Version > existingDomain.Version {
-						session.UpgradeSplitFile(&existingDomain, &newDomain)
 						logger.Infof(
 							logModule,
 							"upgrading split file v%d -> v%d",
 							existingDomain.Version,
 							newDomain.Version,
 						)
-						newDomain.RebuildStatistics()
+
+						session.UpgradeSplitFile(&existingDomain, &newDomain)
+
 						splitFile = adapters.DomainSplitFileToDTO(newDomain)
 					}
 				}
