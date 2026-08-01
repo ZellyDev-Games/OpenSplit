@@ -29,11 +29,21 @@ func (w *Welcome) ID() StateID {
 
 // OnEnter sets the context from the Wails app and signals the frontend to show the Welcome component
 func (w *Welcome) OnEnter() error {
+	logger.Debug(
+		logModule,
+		"opening welcome",
+	)
+
+	return w.EmitUI()
+}
+
+func (w *Welcome) EmitUI() error {
 	bridge.EmitUIEvent(machine.runtimeProvider, bridge.AppViewModel{
 		View: bridge.AppViewWelcome,
 	})
 	return nil
 }
+
 func (w *Welcome) OnExit() error { return nil }
 
 // Receive handles welcome screen commands.
@@ -69,6 +79,14 @@ func (w *Welcome) Receive(c command.Command, _ *string) (dispatcher.DispatchRepl
 	case command.EDIT:
 		logger.Debug(logModule, "Welcome received c EDIT")
 		machine.changeState(CONFIG)
+		return dispatcher.DispatchReply{}, nil
+	case command.NEW_SKIN:
+		logger.Debug(logModule, "Welcome received c NEW_SKIN")
+		machine.changeState(NEWSKIN)
+		return dispatcher.DispatchReply{}, nil
+	case command.EDIT_SKIN:
+		logger.Debug(logModule, "Welcome received c EDIT_SKIN")
+		machine.changeState(EDITSKIN)
 		return dispatcher.DispatchReply{}, nil
 	default:
 		return dispatcher.DispatchReply{}, fmt.Errorf("invalid c %d for state Welcome", c)
