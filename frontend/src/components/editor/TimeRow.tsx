@@ -25,7 +25,7 @@ export const TimeRow = forwardRef<Handle, TimeRowProps>((props, ref) => {
     const [centis, setCentis] = useState("");
 
     useEffect(() => {
-        if (props.time == null) {
+        if (props.time == null || props.time < 0) {
             setHours("");
             setMinutes("");
             setSeconds("");
