@@ -1,10 +1,8 @@
 import { Dispatch } from "../../wailsjs/go/dispatcher/Service";
-import { WindowSetSize } from "../../wailsjs/runtime";
 import zdgLogo from "../assets/images/ZG512.png";
 import { Command } from "../models/command";
 
 export default function Welcome() {
-    WindowSetSize(320, 580);
     return (
         <div className="welcome">
             <img src={zdgLogo} alt="" />
@@ -23,6 +21,20 @@ export default function Welcome() {
                 }}
             >
                 Load Split File
+            </button>
+            <button
+                onClick={async () => {
+                    await Dispatch(Command.NEW_SKIN, null);
+                }}
+            >
+                Create New Skin
+            </button>
+            <button
+                onClick={async () => {
+                    await Dispatch(Command.EDIT_SKIN, null);
+                }}
+            >
+                Edit Skin
             </button>
             <button
                 onClick={async () => {
