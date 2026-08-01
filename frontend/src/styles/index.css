@@ -1,17 +1,19 @@
 @layer reset, components, vars, skins, overrides;
-@import "./reset.css";
-@import "./common.css";
+@import "reset.css";
+@import "common.css";
 
-@import "./app.css";
+@import "app.css";
 
-@import "./welcome.css";
-@import "./tooltip.css";
-@import "./context-menu.css";
+@import "welcome.css";
+@import "tooltip.css";
+@import "context-menu.css";
 
-@import "./forms.css";
-@import "./autocomplete.css";
-@import "./config.css";
-@import "./editor.css";
+@import "forms.css";
+@import "autocomplete.css";
+@import "config.css";
+@import "editor.css";
 
-@import "./splitter.css";
-@import "./timer.css";
+@import "splitter.css";
+@import "timer.css";
+
+@import "skinEditor.css";
