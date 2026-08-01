@@ -95,6 +95,7 @@ func TestStartUIPumpStops(t *testing.T) {
 func TestEmitUIEvent(t *testing.T) {
 	rp := newMockRuntimeProvider()
 	model := AppViewModel{}
+
 	EmitUIEvent(rp, model)
 
 	select {
@@ -112,8 +113,12 @@ func TestEmitUIEvent(t *testing.T) {
 			t.Fatalf("expected AppViewModel arg, got %T", call.args[0])
 		}
 
-		if got != model {
-			t.Fatalf("expected model %#v, got %#v", model, got)
+		if !reflect.DeepEqual(got, model) {
+			t.Fatalf(
+				"expected model %#v, got %#v",
+				model,
+				got,
+			)
 		}
 
 	case <-time.After(200 * time.Millisecond):
