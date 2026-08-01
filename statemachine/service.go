@@ -32,6 +32,9 @@ const (
 	WELCOME StateID = iota
 	NEWFILE
 	EDITING
+	NEWSKIN
+	EDITSKIN
+	SKINEDITOR
 	RUNNING
 	CONFIG
 )
@@ -54,6 +57,10 @@ type HotkeyProvider interface {
 	Unhook() error
 }
 
+type uiEmitter interface {
+	EmitUI() error
+}
+
 // state implementations can be operated by the Service and do meaningful work, and communicate state to the frontend
 // via runtime.EventsEmit
 type state interface {
@@ -66,19 +73,19 @@ type state interface {
 
 // Service represents a state machine and holds references to all the tools to allow states to do useful work
 type Service struct {
-	ctx                                   context.Context
-	splitfileLock                         sync.Mutex
-	currentState                          state
-	sessionService                        *session.Service
-	skinProvider                          skin.SkinProvider
-	repoService                           *repo.Service
-	runtimeProvider                       RuntimeProvider
-	hotkeyProvider                        HotkeyProvider
-	configService                         *config.Service
-	speedrunService                       *speedrun.Service
-	saveOnWindowDimensionChanges          bool
-	unsubscribeFromWindowDimensionChanges func()
-	windowHasFocus                        bool
+	ctx                          context.Context
+	splitfileLock                sync.Mutex
+	currentState                 state
+	sessionService               *session.Service
+	skinProvider                 skin.SkinProvider
+	repoService                  *repo.Service
+	runtimeProvider              RuntimeProvider
+	hotkeyProvider               HotkeyProvider
+	configService                *config.Service
+	speedrunService              *speedrun.Service
+	saveOnWindowDimensionChanges bool
+	// unsubscribeFromWindowDimensionChanges func()
+	windowHasFocus bool
 }
 
 // NewMachine sets the global singleton, and gives it a friendly default state
@@ -97,9 +104,16 @@ func NewMachine(runtimeProvider RuntimeProvider, repoService *repo.Service, sess
 // Startup is called by Wails.Run to pass in a context to use against Wails.platform
 func (s *Service) Startup(ctx context.Context) {
 	logger.Info(logModule, "starting state machine")
+
 	machine.ctx = ctx
-	s.unsubscribeFromWindowDimensionChanges = s.setupWindowDimensionListener()
-	machine.changeState(WELCOME, s.sessionService)
+
+	machine.changeState(WELCOME)
+
+	s.runtimeProvider.EventsOn("ui:ready", func(...any) {
+		if emitter, ok := s.currentState.(uiEmitter); ok {
+			_ = emitter.EmitUI()
+		}
+	})
 }
 
 // AttachHotkeyProvider allows us to receive Dispatch payloads from the given HotkeyProvider
@@ -117,10 +131,7 @@ func (s *Service) ReceiveDispatch(c command.Command, payload *string) (dispatche
 
 	if c == command.QUIT {
 		logger.Debug(logModule, "QUIT c dispatched from front end")
-		_ = s.promptDirtySave()
-		if s.unsubscribeFromWindowDimensionChanges != nil {
-			s.unsubscribeFromWindowDimensionChanges()
-		}
+
 		s.runtimeProvider.Quit()
 		return dispatcher.DispatchReply{}, nil
 	}
@@ -179,13 +190,21 @@ func (s *Service) changeState(newState StateID, _ ...interface{}) {
 	case EDITING:
 		logger.Debug(logModule, "entering state Editing")
 		s.currentState, _ = NewEditingState()
+	case NEWSKIN:
+		logger.Debug(logModule, "entering state NewSkin")
+		s.currentState, _ = NewNewSkinState()
+	case EDITSKIN:
+		logger.Debug(logModule, "entering state EditSkin")
+		s.currentState, _ = NewEditSkinState()
+	case SKINEDITOR:
+		logger.Debug(logModule, "entering state SkinEditor")
+		s.currentState, _ = NewSkinEditorState()
 	case RUNNING:
 		logger.Debug(logModule, "entering state Running")
 		s.currentState, _ = NewRunningState()
 	case CONFIG:
 		logger.Debug(logModule, "entering state Config")
-		configState, _ := NewConfigState(s.currentState.ID())
-		s.currentState = configState
+		s.currentState, _ = NewConfigState(s.currentState.ID())
 	default:
 		panic("unhandled default case")
 	}
@@ -194,6 +213,12 @@ func (s *Service) changeState(newState StateID, _ ...interface{}) {
 		err := s.currentState.OnEnter()
 		if err != nil {
 			logger.Errorf(logModule, "OnEnter failed: %v", err)
+		}
+
+		if emitter, ok := s.currentState.(uiEmitter); ok {
+			if err := emitter.EmitUI(); err != nil {
+				logger.Errorf(logModule, "EmitUI failed: %v", err)
+			}
 		}
 	}
 }
@@ -241,11 +266,14 @@ func (s *Service) updateWorldRecord() {
 	s.sessionService.SetLoadedSplitFile(sf)
 
 	logger.Debug(logModule, "Emiting New World Record")
-	bridge.EmitUIEvent(s.runtimeProvider, bridge.AppViewModel{
-		View:    bridge.AppViewRunning,
-		Session: adapters.DomainToDTO(s.sessionService),
-		Config:  s.configService,
-	})
+	bridge.EmitUIEvent(
+		s.runtimeProvider,
+		bridge.AppViewModel{
+			View:    bridge.AppViewRunning,
+			Session: adapters.DomainToDTO(s.sessionService),
+			Config:  s.configService,
+		},
+	)
 }
 
 func (s *Service) saveSplitFile() error {
@@ -328,25 +356,35 @@ func (s *Service) promptPartialRun() error {
 	return nil
 }
 
-func (s *Service) promptDirtySave() error {
-	if s.sessionService.Dirty() {
-		response, err := s.runtimeProvider.MessageDialog(runtime.MessageDialogOptions{
-			Type:          runtime.QuestionDialog,
-			Title:         "Save New Run Data?",
-			Message:       "You have unsaved runs, would you like to save them?",
-			Buttons:       []string{"Yes", "No"},
-			DefaultButton: "Yes",
-		})
-		if err != nil {
-			return err
-		}
-
-		if response == "Yes" {
-			logger.Info(logModule, "persisting unsaved runs")
-			return s.saveSplitFile()
-		}
+func (s *Service) promptDirtySave() (bool, error) {
+	if !s.sessionService.Dirty() {
+		return true, nil
 	}
 
-	logger.Debug(logModule, "discarding unsaved runs")
-	return nil
+	response, err := s.runtimeProvider.MessageDialog(runtime.MessageDialogOptions{
+		Type:          runtime.QuestionDialog,
+		Title:         "Save Changes?",
+		Message:       "You have unsaved runs. Would you like to save them before closing?",
+		Buttons:       []string{"Yes", "No"},
+		DefaultButton: "Yes",
+	})
+
+	if err != nil {
+		return false, err
+	}
+
+	switch response {
+	case "Yes":
+		logger.Info(logModule, "saving unsaved runs before close")
+		if err := s.saveSplitFile(); err != nil {
+			return false, err
+		}
+		return true, nil
+
+	case "No":
+		logger.Info(logModule, "discarding unsaved runs")
+		return true, nil
+	}
+
+	return false, nil
 }
