@@ -8,10 +8,10 @@
  *  - Comparison mode
  */
 
-import React, { useEffect } from "react";
+import { SetStateAction, useEffect, useState } from "react";
 
 import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
-import { EventsOn, WindowSetPosition, WindowSetSize } from "../../../wailsjs/runtime";
+import { EventsOn } from "../../../wailsjs/runtime";
 import { MenuItem, useContextMenu } from "../../hooks/useContextMenu";
 import { Command } from "../../models/command";
 import { ConfigPayload } from "../../models/configPayload";
@@ -34,13 +34,37 @@ const comparisons: Comparison[] = [CompareAgainst.Average, CompareAgainst.Best, 
 type SplitterParams = {
     sessionPayload: SessionPayload;
     configPayload: ConfigPayload;
+    disableContextMenu?: boolean;
+    forceExpandAll?: boolean;
+
+    comparison?: Comparison;
+    onComparisonChange?: React.Dispatch<SetStateAction<Comparison>>;
 };
 
-export default function Splitter({ sessionPayload, configPayload }: SplitterParams) {
+export default function Splitter({
+    sessionPayload,
+    configPayload,
+    disableContextMenu = false,
+    forceExpandAll = false,
+    comparison: controlledComparison,
+    onComparisonChange,
+}: SplitterParams) {
     const contextMenu = useContextMenu();
-    const [contextMenuItems, setContextMenuItems] = React.useState<MenuItem[]>([]);
-    const [comparison, setComparison] = React.useState<Comparison>(CompareAgainst.Average);
-    const [globalHotkeys, setGlobalHotkeys] = React.useState<boolean>(configPayload.global_hotkeys_active);
+    const [contextMenuItems, setContextMenuItems] = useState<MenuItem[]>([]);
+    const [globalHotkeys, setGlobalHotkeys] = useState<boolean>(configPayload.global_hotkeys_active);
+
+    const [internalComparison, setInternalComparison] = useState<Comparison>(CompareAgainst.Average);
+
+    const comparison = controlledComparison ?? internalComparison;
+
+    const setComparison = (value: Comparison | ((current: Comparison) => Comparison)) => {
+        if (onComparisonChange) {
+            onComparisonChange(value);
+        } else {
+            setInternalComparison(value);
+        }
+    };
+
     const comparisonLabel: Record<Comparison, string> = {
         [CompareAgainst.Average]: "Comparing Against: Average",
         [CompareAgainst.Best]: "Comparing Against: Best Run",
@@ -67,23 +91,14 @@ export default function Splitter({ sessionPayload, configPayload }: SplitterPara
     }, []);
 
     useEffect(() => {
+        if (disableContextMenu) {
+            return;
+        }
+
         (async () => {
             setContextMenuItems(await buildContextMenu());
         })();
-    }, [globalHotkeys, comparison, sessionPayload.loaded_split_file?.wr?.show]);
-
-    useEffect(() => {
-        (async () => {
-            if (sessionPayload.loaded_split_file) {
-                WindowSetSize(
-                    sessionPayload.loaded_split_file.window_width,
-                    sessionPayload.loaded_split_file.window_height,
-                );
-
-                WindowSetPosition(sessionPayload.loaded_split_file.window_x, sessionPayload.loaded_split_file.window_y);
-            }
-        })();
-    }, [sessionPayload.loaded_split_file?.id]);
+    }, [disableContextMenu, globalHotkeys, comparison, sessionPayload.loaded_split_file?.wr?.show]);
 
     // regenerated whenever settings change
     const buildContextMenu = async (): Promise<MenuItem[]> => {
@@ -166,9 +181,11 @@ export default function Splitter({ sessionPayload, configPayload }: SplitterPara
     };
 
     return (
-        <div {...contextMenu.bind} id="splitter">
-            <ContextMenu state={contextMenu.state} close={contextMenu.close} items={contextMenuItems} />
-            <SegmentList sessionPayload={sessionPayload} comparison={comparison} />
+        <div {...(!disableContextMenu ? contextMenu.bind : {})} id="splitter">
+            {!disableContextMenu && (
+                <ContextMenu state={contextMenu.state} close={contextMenu.close} items={contextMenuItems} />
+            )}
+            <SegmentList sessionPayload={sessionPayload} comparison={comparison} forceExpandAll={forceExpandAll} />
             <div className="comparison-mode">{comparisonLabel[comparison]}</div>
             <Timer offset={sessionPayload.loaded_split_file?.offset ?? 0} wr={sessionPayload.loaded_split_file?.wr} />
         </div>
