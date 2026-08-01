@@ -1,15 +1,28 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
 import { Dispatch } from "../wailsjs/go/dispatcher/Service";
 import { GetSkinAddress } from "../wailsjs/go/skin/Service";
-import { EventsEmit, EventsOn, WindowGetPosition, WindowGetSize } from "../wailsjs/runtime";
+import {
+    EventsEmit,
+    EventsOn,
+    WindowGetPosition,
+    WindowGetSize,
+    WindowSetMaxSize,
+    WindowSetMinSize,
+    WindowSetPosition,
+    WindowSetSize,
+} from "../wailsjs/runtime";
 import Config from "./components/Config";
 import SplitEditor from "./components/editor/SplitEditor";
+import EditSkin from "./components/skinEditor/EditSkin";
+import NewSkin from "./components/skinEditor/NewSkin";
+import SkinEditor from "./components/skinEditor/SkinEditor";
 import Splitter from "./components/splitter/Splitter";
 import Welcome from "./components/Welcome";
 import { Command } from "./models/command";
 import { ConfigPayload } from "./models/configPayload";
 import SessionPayload from "./models/sessionPayload";
+import SkinModel from "./models/skinModel";
 import SplitFilePayload from "./models/splitFilePayload";
 import { log } from "./utils/logger";
 
@@ -17,23 +30,41 @@ export enum AppView {
     Welcome = "welcome",
     NewSplitFile = "new-split-file",
     EditSplitFile = "edit-split-file",
+    NewSkin = "new-skin",
+    EditSkin = "edit-skin",
+    SkinEditor = "skin-editor",
     Running = "running",
     Settings = "settings",
 }
 
-export type AppViewModel =
+type WindowConfig = {
+    width: number;
+    height: number;
+    resizable: boolean;
+    positioned?: boolean;
+    x?: number;
+    y?: number;
+};
+
+export type AppViewModel = {
+    window: WindowConfig;
+} & (
     | { view: AppView.Welcome }
-    | {
-          view: AppView.NewSplitFile;
-          splitFile?: SplitFilePayload | null;
-      }
+    | { view: AppView.NewSplitFile; splitFile?: SplitFilePayload | null }
     | { view: AppView.EditSplitFile; splitFile: SplitFilePayload | null }
+    | { view: AppView.NewSkin }
+    | { view: AppView.EditSkin }
     | { view: AppView.Running; session: SessionPayload; config: ConfigPayload }
-    | { view: AppView.Settings; config: ConfigPayload };
+    | { view: AppView.Settings; config: ConfigPayload }
+    | { view: AppView.SkinEditor }
+);
 
-type ViewRouterProps = { model: AppViewModel };
+type ViewRouterProps = {
+    model: AppViewModel;
+    skinModel: SkinModel | null;
+};
 
-function ViewRouter({ model }: ViewRouterProps) {
+function ViewRouter({ model, skinModel }: ViewRouterProps) {
     switch (model.view) {
         case AppView.Welcome:
             return <Welcome />;
@@ -44,11 +75,23 @@ function ViewRouter({ model }: ViewRouterProps) {
         case AppView.EditSplitFile:
             return <SplitEditor splitFilePayload={model.splitFile} />;
 
+        case AppView.NewSkin:
+            return <NewSkin />;
+
+        case AppView.EditSkin:
+            return skinModel ? <EditSkin skins={skinModel.skins} /> : <div>Loading skins...</div>;
+
+        case AppView.SkinEditor:
+            return skinModel ? <SkinEditor model={skinModel} /> : null;
+
         case AppView.Running:
             return <Splitter sessionPayload={model.session} configPayload={model.config} />;
 
         case AppView.Settings:
             return <Config configPayload={model.config} />;
+
+        default:
+            return <Welcome />;
     }
 }
 
@@ -59,17 +102,34 @@ function ViewRouter({ model }: ViewRouterProps) {
  * and routes between the various application views.
  */
 export default function App() {
-    const [viewModel, setViewModel] = React.useState<AppViewModel>({ view: AppView.Welcome });
+    const [viewModel, setViewModel] = useState<AppViewModel | null>(null);
+
+    const [skinModel, setSkinModel] = useState<SkinModel | null>(null);
+
     useDetectWindowChange();
     useAppEventBindings(setViewModel);
     useWindowFocus();
 
     useEffect(() => {
-        // get the initial skin
-        log.info("[App] Loading initial skin");
-        GetSkinAddress().then((a) => changeSkin(a));
+        const unsubscribeModel = EventsOn("skin:model", (model: SkinModel) => {
+            setSkinModel(model);
+        });
 
-        // subscribe to future updates
+        const unsubscribeReload = EventsOn("skin:reload", (address: string) => {
+            changeSkin(address);
+        });
+
+        return () => {
+            unsubscribeModel();
+            unsubscribeReload();
+        };
+    }, []);
+
+    useEffect(() => {
+        log.info("[App] Loading initial skin");
+
+        GetSkinAddress().then(changeSkin);
+
         return EventsOn("skin:update", (address: string) => {
             log.info("[App] Skin updated:", address);
             changeSkin(address);
@@ -78,7 +138,7 @@ export default function App() {
 
     return (
         <div id="App" className="app">
-            <ViewRouter model={viewModel} />
+            {viewModel && <ViewRouter model={viewModel} skinModel={skinModel} />}
         </div>
     );
 }
@@ -92,7 +152,9 @@ function changeSkin(address: string) {
         link.rel = "stylesheet";
         document.head.appendChild(link);
     }
+
     link.href = address;
+
     log.info("changed skin to ", link.href);
 }
 
@@ -137,21 +199,34 @@ function useDetectWindowChange() {
     }, []);
 }
 
-function useAppEventBindings(setViewModel: React.Dispatch<React.SetStateAction<AppViewModel>>) {
+function useAppEventBindings(setViewModel: React.Dispatch<React.SetStateAction<AppViewModel | null>>) {
     useEffect(() => {
-        const unsubViewModel = EventsOn("ui:model", (nextModel: AppViewModel) => {
-            log.info("[App] UI switched to", nextModel.view);
+        const unsubViewModel = EventsOn("ui:model", async (nextModel: AppViewModel) => {
+            console.log("[App] UI model", nextModel);
+
+            await applyWindowConfig(nextModel);
+
+            const size = await WindowGetSize();
+            console.log("[App] Window after resize", size);
+
             setViewModel(nextModel);
         });
 
+        EventsEmit("ui:ready");
+
         const unsubSession = EventsOn("session:update", (updatedSession: SessionPayload) => {
             setViewModel((prev) => {
+                if (!prev) {
+                    return prev;
+                }
+
                 if (prev.view === AppView.Running) {
                     return {
                         ...prev,
                         session: updatedSession,
                     };
                 }
+
                 return prev;
             });
         });
@@ -185,4 +260,30 @@ function useWindowFocus() {
             window.removeEventListener("blur", uf);
         };
     }, []);
+}
+
+async function applyWindowConfig(model: AppViewModel) {
+    const window = model.window;
+
+    console.log("[App] Applying window config", window);
+
+    // remove constraints
+    WindowSetMinSize(1, 1);
+    WindowSetMaxSize(10000, 10000);
+
+    // let OS update constraints
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    WindowSetSize(window.width, window.height);
+
+    if (window.positioned && window.x !== undefined && window.y !== undefined) {
+        WindowSetPosition(window.x, window.y);
+    }
+
+    if (!window.resizable) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        WindowSetMinSize(window.width, window.height);
+        WindowSetMaxSize(window.width, window.height);
+    }
 }
