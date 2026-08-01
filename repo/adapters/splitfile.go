@@ -16,7 +16,7 @@ func DomainSplitFileToDTO(sf session.SplitFile) dto.SplitFile {
 	// add personal best if exists
 	var PB *dto.Run = nil
 	if sf.PB != nil {
-		dtoPB := domainRunToDTO(*sf.PB, sf.Version)
+		dtoPB := domainRunToDTO(*sf.PB)
 		PB = &dtoPB
 	}
 
@@ -33,7 +33,7 @@ func DomainSplitFileToDTO(sf session.SplitFile) dto.SplitFile {
 		SelectedSkin: sf.SelectedSkin,
 
 		Segments: domainSegmentsToDTO(sf.Segments),
-		Runs:     domainRunsToDTO(sf.Runs, sf.ID, sf.Version),
+		Runs:     domainRunsToDTO(sf.Runs),
 		PB:       PB,
 
 		SOB:      sf.SOB.Milliseconds(),
@@ -219,18 +219,20 @@ func dtoSegmentToDomain(dtoSeg dto.Segment) session.Segment {
 	return seg
 }
 
-func domainRunsToDTO(runs []session.Run, splitFileID uuid.UUID, splitFileVersion int) []dto.Run {
+func domainRunsToDTO(runs []session.Run) []dto.Run {
 	out := make([]dto.Run, len(runs))
+
 	for i, r := range runs {
-		out[i] = domainRunToDTO(r, splitFileVersion)
+		out[i] = domainRunToDTO(r)
 	}
+
 	return out
 }
 
-func domainRunToDTO(run session.Run, splitFileVersion int) dto.Run {
+func domainRunToDTO(run session.Run) dto.Run {
 	return dto.Run{
 		ID:               run.ID.String(),
-		SplitFileVersion: splitFileVersion,
+		SplitFileVersion: run.SplitFileVersion,
 		TotalTime:        run.TotalTime.Milliseconds(),
 		Splits:           domainSplitsToDTO(run.Splits),
 		LeafSegments:     nil,
