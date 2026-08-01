@@ -24,24 +24,90 @@ func (s *SplitFile) AddRun(run *Run, rollingWindow int) {
 		s.RollingAverageRuns = rollingWindow
 	}
 
-	s.RebuildStatistics()
+	// Legacy split files (version 0) accept every run.
+	eligible := s.Version == 0 || run.SplitFileVersion == s.Version
+	if !eligible {
+		return
+	}
+
+	leafSegments := getLeafSegments(s.Segments, nil)
+
+	// ---------------------------------------------------------------------
+	// PB
+	// ---------------------------------------------------------------------
+
+	if s.PB == nil || run.TotalTime < s.PB.TotalTime {
+		copyRun := deepCopyRun(*run)
+		s.PB = &copyRun
+
+		for _, seg := range leafSegments {
+			if split, ok := run.Splits[seg.ID]; ok {
+				seg.PB = split.CurrentDuration
+			}
+		}
+
+		logger.Debugf(
+			logModule,
+			"new PB %dms",
+			run.TotalTime.Milliseconds(),
+		)
+	}
+
+	// ---------------------------------------------------------------------
+	// Golds + SOB
+	// ---------------------------------------------------------------------
+
+	sob := time.Duration(0)
+
+	for _, seg := range leafSegments {
+		if split, ok := run.Splits[seg.ID]; ok {
+			if seg.Gold == 0 || split.CurrentDuration < seg.Gold {
+				seg.Gold = split.CurrentDuration
+			}
+		}
+
+		sob += seg.Gold
+	}
+
+	s.SOB = sob
+
+	// ---------------------------------------------------------------------
+	// Rolling Average
+	// ---------------------------------------------------------------------
+
+	averages := s.computeRollingAverages()
+
+	for _, seg := range leafSegments {
+		if avg, ok := averages[seg.ID]; ok {
+			seg.Average = avg
+		}
+	}
+
+	logger.Debugf(
+		logModule,
+		"statistics updated incrementally SOB=%d PB=%v",
+		s.SOB.Milliseconds(),
+		s.PB != nil,
+	)
 }
 
-// RebuildStatistics recomputes all derived statistics from the run history.
+// RebuildStatistics performs a complete rebuild from run history.
 //
-// This performs a full rebuild of Golds, Rolling Averages, PB data, and Sum of Best.
-// It should be called after bulk modifications to run history.
+// This should only be used after migration, importing, or bulk editing of run
+// history.
 func (s *SplitFile) RebuildStatistics() {
 	if s == nil {
 		return
 	}
 
-	logger.Debugf(logModule,
+	logger.Debugf(
+		logModule,
 		"rebuilding statistics (%d runs)",
 		len(s.Runs),
 	)
 
 	leafSegments := getLeafSegments(s.Segments, nil)
+
 	if len(leafSegments) == 0 {
 		s.SOB = 0
 		s.PB = nil
@@ -51,80 +117,84 @@ func (s *SplitFile) RebuildStatistics() {
 	golds := s.computeGolds()
 	averages := s.computeRollingAverages()
 
-	var sob time.Duration
+	sob := time.Duration(0)
 
-	for _, leaf := range leafSegments {
-		if gold, ok := golds[leaf.ID]; ok {
-			leaf.Gold = gold
+	for _, seg := range leafSegments {
+		if gold, ok := golds[seg.ID]; ok {
+			seg.Gold = gold
 			sob += gold
-		} else if leaf.Gold <= 0 {
-			leaf.Gold = 0
 		}
 
-		if avg, ok := averages[leaf.ID]; ok {
-			leaf.Average = avg
-		} else if leaf.Average <= 0 {
-			leaf.Average = 0
+		if avg, ok := averages[seg.ID]; ok {
+			seg.Average = avg
 		}
 	}
 
-	pb, _, err := getPB(s.Runs)
-	if err != nil {
+	pb, err := s.computePB()
+	if err == nil {
+		s.PB = pb
+
+		for _, seg := range leafSegments {
+			if split, ok := pb.Splits[seg.ID]; ok {
+				seg.PB = split.CurrentDuration
+			}
+		}
+	} else {
 		s.PB = nil
-		s.SOB = sob
-		return
 	}
 
-	s.PB = pb
 	s.SOB = sob
 
-	for _, leaf := range leafSegments {
-		if split, ok := pb.Splits[leaf.ID]; ok {
-			leaf.PB = split.CurrentDuration
-		}
-	}
-
-	logger.Debugf(logModule,
+	logger.Debugf(
+		logModule,
 		"statistics rebuilt SOB=%d PB=%v",
 		s.SOB.Milliseconds(),
 		s.PB != nil,
 	)
 }
 
-func getPB(runs []Run) (*Run, time.Duration, error) {
-	if len(runs) == 0 {
-		return nil, 0, errors.New("no runs found")
-	}
+func (s *SplitFile) computePB() (*Run, error) {
+	var fastest *Run
 
-	var fastestRun *Run = nil
-	fastestTotal := time.Duration(0)
-	for i, run := range runs {
+	for i := range s.Runs {
+		run := &s.Runs[i]
+
 		if !run.Completed {
 			continue
 		}
-		if fastestRun == nil || run.TotalTime < fastestTotal {
-			fastestRun = &runs[i]
-			fastestTotal = run.TotalTime
+
+		// Legacy split files accept all runs.
+		if s.Version != 0 &&
+			run.SplitFileVersion != s.Version {
+			continue
+		}
+
+		if fastest == nil || run.TotalTime < fastest.TotalTime {
+			fastest = run
 		}
 	}
 
-	if fastestRun == nil {
-		return nil, time.Duration(0), errors.New("no completed runs found")
+	if fastest == nil {
+		return nil, errors.New("no completed runs found")
 	}
 
-	return fastestRun, fastestTotal, nil
+	copy := deepCopyRun(*fastest)
+	return &copy, nil
 }
 
 func (s *SplitFile) computeGolds() map[uuid.UUID]time.Duration {
 	golds := make(map[uuid.UUID]time.Duration)
 
 	for _, run := range s.Runs {
-		if !run.Completed {
+		// Legacy split files accept every run.
+		if s.Version != 0 &&
+			run.SplitFileVersion != s.Version {
 			continue
 		}
 
 		for id, split := range run.Splits {
-			if cur, ok := golds[id]; !ok || split.CurrentDuration < cur {
+			cur, ok := golds[id]
+			if !ok || split.CurrentDuration < cur {
 				golds[id] = split.CurrentDuration
 			}
 		}
@@ -133,62 +203,45 @@ func (s *SplitFile) computeGolds() map[uuid.UUID]time.Duration {
 	return golds
 }
 
-func (s *SplitFile) rollingRuns() []Run {
-	var completed []Run
-
-	for _, run := range s.Runs {
-		if !run.Completed {
-			continue
-		}
-
-		if run.SplitFileVersion != s.Version {
-			continue
-		}
-
-		completed = append(completed, run)
-	}
-
-	if len(completed) == 0 {
-		return nil
-	}
-
+func (s *SplitFile) computeRollingAverages() map[uuid.UUID]time.Duration {
 	window := s.RollingAverageRuns
 	if window <= 0 {
 		window = 10
 	}
 
-	if s.Version == 0 && len(completed) < window {
-		return completed
-	}
+	// Keep the most recent observations for each segment.
+	observations := make(map[uuid.UUID][]time.Duration)
 
-	if len(completed) <= window {
-		return completed
-	}
+	for _, run := range s.Runs {
+		// Legacy split files (version 0) accept every run.
+		if s.Version != 0 &&
+			run.SplitFileVersion != s.Version {
+			continue
+		}
 
-	return completed[len(completed)-window:]
-}
-
-func (s *SplitFile) computeRollingAverages() map[uuid.UUID]time.Duration {
-	runs := s.rollingRuns()
-
-	sums := make(map[uuid.UUID]time.Duration)
-	counts := make(map[uuid.UUID]int)
-
-	for _, run := range runs {
 		for id, split := range run.Splits {
-			sums[id] += split.CurrentDuration
-			counts[id]++
+			observations[id] = append(observations[id], split.CurrentDuration)
 		}
 	}
 
 	averages := make(map[uuid.UUID]time.Duration)
 
-	for id, sum := range sums {
-		if counts[id] == 0 {
+	for id, times := range observations {
+		if len(times) == 0 {
 			continue
 		}
 
-		averages[id] = sum / time.Duration(counts[id])
+		start := 0
+		if len(times) > window {
+			start = len(times) - window
+		}
+
+		var sum time.Duration
+		for _, t := range times[start:] {
+			sum += t
+		}
+
+		averages[id] = sum / time.Duration(len(times[start:]))
 	}
 
 	return averages
