@@ -2,31 +2,86 @@ package bridge
 
 import (
 	"github.com/zellydev-games/opensplit/logger"
+	"github.com/zellydev-games/opensplit/skin"
 )
 
-// Skin forwards skin updates to the frontend.
 type Skin struct {
 	runtimeProvider RuntimeProvider
-	skinUpdatedCh   <-chan string
+
+	skinUpdatedCh <-chan string
+
+	skinModelCh <-chan skin.SkinModel
+
+	skinProvider skin.SkinProvider
 }
 
-func NewSkin(skinUpdateCh <-chan string, runtimeProvider RuntimeProvider) *Skin {
+func NewSkin(
+	skinUpdateCh <-chan string,
+	skinModelCh <-chan skin.SkinModel,
+	runtimeProvider RuntimeProvider,
+	skinProvider skin.SkinProvider,
+) *Skin {
+
 	return &Skin{
+
 		runtimeProvider: runtimeProvider,
-		skinUpdatedCh:   skinUpdateCh,
+
+		skinUpdatedCh: skinUpdateCh,
+
+		skinModelCh: skinModelCh,
+
+		skinProvider: skinProvider,
 	}
+
 }
 
-func (c *Skin) StartUIPump() {
+func (b *Skin) StartUIPump() {
+
+	//
+	// Actual disk skin changes.
+	//
 	go func() {
-		for {
-			updatedSkinAddress, ok := <-c.skinUpdatedCh
-			if !ok {
-				logger.Debug(logModule, "skin UI pump stopped")
-				return
-			}
-			c.runtimeProvider.EventsEmit("skin:update", updatedSkinAddress)
+
+		for address := range b.skinUpdatedCh {
+
+			b.runtimeProvider.EventsEmit(
+				"skin:reload",
+				address,
+			)
+
 		}
+
+		logger.Debug(
+			logModule,
+			"skin reload pump stopped",
+		)
+
 	}()
-	logger.Debug(logModule, "skin UI pump started")
+
+	//
+	// Parsed editor model.
+	//
+	go func() {
+
+		for model := range b.skinModelCh {
+
+			b.runtimeProvider.EventsEmit(
+				"skin:model",
+				model,
+			)
+
+		}
+
+		logger.Debug(
+			logModule,
+			"skin model pump stopped",
+		)
+
+	}()
+
+	logger.Debug(
+		logModule,
+		"skin UI pumps started",
+	)
+
 }
