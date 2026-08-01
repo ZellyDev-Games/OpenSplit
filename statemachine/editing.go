@@ -25,13 +25,26 @@ func (e *Editing) OnEnter() error {
 		return errors.New("editing state entered but split file not loaded")
 	}
 
-	splitFileDTO := adapters.DomainSplitFileToDTO(sf)
 	machine.sessionService.Pause()
 	sf.RebuildStatistics()
-	bridge.EmitUIEvent(machine.runtimeProvider, bridge.AppViewModel{
-		View:      bridge.AppViewEditSplitFile,
-		SplitFile: &splitFileDTO,
-	})
+
+	return nil
+}
+
+func (e *Editing) EmitUI() error {
+	sf, _ := machine.sessionService.SplitFile()
+	sf.RebuildStatistics()
+
+	dto := adapters.DomainSplitFileToDTO(sf)
+
+	bridge.EmitUIEvent(
+		machine.runtimeProvider,
+		bridge.AppViewModel{
+			View:      bridge.AppViewEditSplitFile,
+			SplitFile: &dto,
+		},
+	)
+
 	return nil
 }
 
