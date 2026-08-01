@@ -38,7 +38,6 @@ func isHotkeyCommand(c command.Command) bool {
 
 func (r *Running) OnEnter() error {
 	machine.saveOnWindowDimensionChanges = true
-	sessionDto := adapters.DomainToDTO(machine.sessionService)
 	if machine.hotkeyProvider != nil {
 		err := machine.hotkeyProvider.StartHook(func(data keyinfo.KeyData) {
 			if !machine.configService.GlobalHotkeysActive && !machine.windowHasFocus {
@@ -90,11 +89,19 @@ func (r *Running) OnEnter() error {
 		}
 	}
 
-	bridge.EmitUIEvent(machine.runtimeProvider, bridge.AppViewModel{
-		View:    bridge.AppViewRunning,
-		Session: sessionDto,
-		Config:  machine.configService,
-	})
+	return nil
+}
+
+func (r *Running) EmitUI() error {
+	bridge.EmitUIEvent(
+		machine.runtimeProvider,
+		bridge.AppViewModel{
+			View:    bridge.AppViewRunning,
+			Session: adapters.DomainToDTO(machine.sessionService),
+			Config:  machine.configService,
+		},
+	)
+
 	return nil
 }
 
@@ -114,7 +121,7 @@ func (r *Running) Receive(c command.Command, payload *string) (dispatcher.Dispat
 	switch c {
 	case command.CLOSE:
 		logger.Debug(logModule, "Running received CLOSE c")
-		err := machine.promptDirtySave()
+		_, err := machine.promptDirtySave()
 		if err != nil {
 			return dispatcher.DispatchReply{}, err
 		}
