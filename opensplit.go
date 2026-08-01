@@ -68,7 +68,7 @@ func main() {
 
 	// Build out skin server
 	watcher := platform.NewDirChangeTracker()
-	skinService, skinUpdatedCh := skin.NewService(skinDir, configService, repoService, watcher)
+	skinService, skinUpdatedCh, skinModelCh := skin.NewService(skinDir, configService, repoService, watcher)
 
 	sessionService, sessionUpdateChannel := session.NewService(timerService, configService)
 	machine := statemachine.NewMachine(runtimeProvider, repoService, sessionService, configService, skinService, speedrunService)
@@ -77,7 +77,7 @@ func main() {
 	timerUIBridge := bridge.NewTimer(timerUpdateChannel, runtimeProvider)
 	sessionUIBridge := bridge.NewSession(sessionUpdateChannel, runtimeProvider)
 	configUIBridge := bridge.NewConfig(configUpdateChannel, runtimeProvider)
-	skinBridge := bridge.NewSkin(skinUpdatedCh, runtimeProvider)
+	skinBridge := bridge.NewSkin(skinUpdatedCh, skinModelCh, runtimeProvider, skinService)
 
 	// Build dispatcher that can receive commands from frontend or backend and dispatch them to the state machine
 	folderProvider := platform.NewFolderProvider(configService)
@@ -87,8 +87,8 @@ func main() {
 
 	err := wails.Run(&options.App{
 		Title:     "OpenSplit",
-		Width:     1024,
-		Height:    768,
+		Width:     320,
+		Height:    580,
 		Frameless: true,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
@@ -151,6 +151,15 @@ func main() {
 			if err != nil {
 				logger.Errorf(logModule, "error initializing skin server: %v", err)
 				return
+			}
+
+			err = skinService.EmitSkinModel()
+			if err != nil {
+				logger.Errorf(
+					logModule,
+					"failed initial skin model: %v",
+					err,
+				)
 			}
 
 			go skinService.Serve()
