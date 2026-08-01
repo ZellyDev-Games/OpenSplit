@@ -53,11 +53,12 @@ export function renderSegmentRows({
 
         const hasChildren = children.length > 0;
 
-        const displayAverage = showCumulativeTimes ? running.avg + segment.average : segment.average;
+        const displayAverage =
+            segment.average < 0 ? -1 : showCumulativeTimes ? running.avg + segment.average : segment.average;
 
-        const displayPB = showCumulativeTimes ? running.pb + segment.pb : segment.pb;
+        const displayPB = segment.pb < 0 ? -1 : showCumulativeTimes ? running.pb + segment.pb : segment.pb;
 
-        const displayGold = showCumulativeTimes ? running.gold + segment.gold : segment.gold;
+        const displayGold = segment.average < 0 ? -1 : showCumulativeTimes ? running.gold + segment.gold : segment.gold;
 
         const childResult = hasChildren
             ? renderSegmentRows({
@@ -102,9 +103,9 @@ export function renderSegmentRows({
 
         if (!hasChildren) {
             running = {
-                avg: running.avg + segment.average,
-                pb: running.pb + segment.pb,
-                gold: running.gold + segment.gold,
+                avg: addTime(running.avg, segment.average),
+                pb: addTime(running.pb, segment.pb),
+                gold: addTime(running.gold, segment.gold),
             };
         }
 
@@ -118,4 +119,12 @@ export function renderSegmentRows({
         rows,
         totals: running,
     };
+}
+
+function addTime(total: number, value: number): number {
+    if (value < 0) {
+        return total;
+    }
+
+    return total + value;
 }
