@@ -15,7 +15,7 @@ func DomainToDTO(svc *session.Service) *dto.Session {
 	var dtoRun *dto.Run = nil
 	currentRun, loaded := svc.Run()
 	if loaded {
-		r := domainRunToDTO(currentRun, sf.Version)
+		r := domainRunToDTO(currentRun)
 		dtoRun = &r
 	}
 
@@ -51,9 +51,9 @@ func CleanSplitFile(dtoSplitFile dto.SplitFile) (dto.SplitFile, error) {
 }
 
 func clearSegmentRecursive(segment *session.Segment) {
-	segment.PB = 0
-	segment.Gold = 0
-	segment.Average = 0
+	segment.PB = -1
+	segment.Gold = -1
+	segment.Average = -1
 
 	for i := 0; i < len(segment.Children); i++ {
 		clearSegmentRecursive(&segment.Children[i])
