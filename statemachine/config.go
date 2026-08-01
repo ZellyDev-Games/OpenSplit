@@ -32,10 +32,19 @@ func NewConfigState(previousState StateID) (*Config, error) {
 
 func (c *Config) OnEnter() error {
 	logger.Debug(logModule, "entering config state")
-	bridge.EmitUIEvent(machine.runtimeProvider, bridge.AppViewModel{
-		View:   bridge.AppViewSettings,
-		Config: machine.configService,
-	})
+
+	return nil
+}
+
+func (c *Config) EmitUI() error {
+	bridge.EmitUIEvent(
+		machine.runtimeProvider,
+		bridge.AppViewModel{
+			View:   bridge.AppViewSettings,
+			Config: machine.configService,
+		},
+	)
+
 	return nil
 }
 
