@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"path/filepath"
 
 	"github.com/zellydev-games/opensplit/logger"
 )
@@ -13,11 +14,45 @@ import (
 func (s *Service) InitListener() (int, error) {
 	s.initOnce.Do(func() {
 		fs := http.FileServer(http.Dir(s.skinDir))
+
 		mux := http.NewServeMux()
-		mux.Handle("/skin/", http.StripPrefix("/skin/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
-			w.Header().Set("Pragma", "no-cache")
-			w.Header().Set("Expires", "0")
+
+		mux.Handle("/skin/", http.StripPrefix("/skin/", http.HandlerFunc(func(
+			w http.ResponseWriter,
+			r *http.Request,
+		) {
+			// Disable browser caching.
+			//
+			// This is required for:
+			// - live skin editing
+			// - CSS reloads after file changes
+			// - preview updates
+			w.Header().Set(
+				"Cache-Control",
+				"no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+			)
+
+			w.Header().Set(
+				"Pragma",
+				"no-cache",
+			)
+
+			w.Header().Set(
+				"Expires",
+				"0",
+			)
+
+			w.Header().Set(
+				"Surrogate-Control",
+				"no-store",
+			)
+
+			if filepath.Ext(r.URL.Path) == ".css" {
+				w.Header().Set(
+					"Content-Type",
+					"text/css; charset=utf-8",
+				)
+			}
 
 			fs.ServeHTTP(w, r)
 		})))
@@ -25,16 +60,34 @@ func (s *Service) InitListener() (int, error) {
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
 			s.initErr = err
-			logger.Errorf(logModule, "error creating listener: %s", err.Error())
+			logger.Errorf(
+				logModule,
+				"error creating listener: %s",
+				err.Error(),
+			)
 			return
 		}
+
 		s.listener = ln
 
 		addr := ln.Addr().(*net.TCPAddr)
+
 		s.port = addr.Port
-		s.address = fmt.Sprintf("http://127.0.0.1:%d/skin/", s.port)
-		s.server = &http.Server{Handler: mux}
-		logger.Infof(logModule, "skin server setup on %s", s.address)
+
+		s.address = fmt.Sprintf(
+			"http://127.0.0.1:%d/skin/",
+			s.port,
+		)
+
+		s.server = &http.Server{
+			Handler: mux,
+		}
+
+		logger.Infof(
+			logModule,
+			"skin server setup on %s",
+			s.address,
+		)
 	})
 
 	return s.port, s.initErr
