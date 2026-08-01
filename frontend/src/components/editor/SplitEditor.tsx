@@ -13,7 +13,7 @@ import React, { useEffect, useState } from "react";
 import { Dispatch, ExportSplitFile } from "../../../wailsjs/go/dispatcher/Service";
 import { GetAvailableSkins } from "../../../wailsjs/go/skin/Service";
 import { Platforms, SearchCategories, SearchVariables } from "../../../wailsjs/go/speedrun/Service";
-import { WindowCenter, WindowSetSize } from "../../../wailsjs/runtime";
+import { WindowCenter } from "../../../wailsjs/runtime";
 import { Command } from "../../models/command";
 import SegmentPayload from "../../models/segmentPayload";
 import SplitFilePayload from "../../models/splitFilePayload";
@@ -58,7 +58,6 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
     const [showCumulativeTimes, setShowCumulativeTimes] = useState(false);
 
     useEffect(() => {
-        WindowSetSize(1000, 900);
         WindowCenter();
 
         log.debug("Loaded split editor", splitFilePayload?.id);
@@ -208,7 +207,6 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
 
             selected_skin: selectedSkin,
 
-            //             segments: segments,
             segments,
 
             runs: splitFilePayload?.runs ?? [],
@@ -217,12 +215,10 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
 
             sob: splitFilePayload?.sob ?? 0,
 
-            //             attempts: Number(attempts),
             attempts,
 
             offset: offsetText === "" || offsetText === "-" ? 0 : Number(offsetText),
 
-            //             platform: platform,
             platform,
 
             wr: splitFilePayload?.wr ?? {
