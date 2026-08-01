@@ -23,9 +23,10 @@ import { useSegmentRows } from "./useSegmentRows";
 type SegmentListParameters = {
     sessionPayload: SessionPayload;
     comparison: Comparison;
+    forceExpandAll?: boolean;
 };
 
-export default function SegmentList({ sessionPayload, comparison }: SegmentListParameters) {
+export default function SegmentList({ sessionPayload, comparison, forceExpandAll }: SegmentListParameters) {
     const [completeClassName, setCompleteClassName] = useState("");
     const activeRowRef = useRef<HTMLTableRowElement | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -139,7 +140,27 @@ export default function SegmentList({ sessionPayload, comparison }: SegmentListP
         return map;
     }, [flatSegments]);
 
-    const [expandedParents, setExpandedParents] = useState<Set<string>>(() => new Set());
+    const [expandedParents, setExpandedParents] = useState<Set<string>>(() => {
+        const expanded = new Set<string>();
+
+        flatSegments.forEach((segment) => {
+            if (segment.Segment.children.length > 0) {
+                expanded.add(segment.Segment.id);
+            }
+        });
+
+        return expanded;
+    });
+
+    useEffect(() => {
+        setExpandedParents(
+            new Set(
+                flatSegments
+                    .filter((segment) => segment.Segment.children.length > 0)
+                    .map((segment) => segment.Segment.id),
+            ),
+        );
+    }, [flatSegments]);
 
     // For each parent segment id, find the "last" leaf (by leaf_segments order) in its subtree.
     const lastLeafByParentId = useMemo(() => {
@@ -188,6 +209,17 @@ export default function SegmentList({ sessionPayload, comparison }: SegmentListP
      * Automatically expand active segment parents
      */
     useEffect(() => {
+        if (forceExpandAll) {
+            setExpandedParents(
+                new Set(
+                    flatSegments
+                        .filter((segment) => segment.Segment.children.length > 0)
+                        .map((segment) => segment.Segment.id),
+                ),
+            );
+            return;
+        }
+
         const leaves = sessionPayload.leaf_segments;
 
         if (!leaves) {
@@ -201,13 +233,8 @@ export default function SegmentList({ sessionPayload, comparison }: SegmentListP
             return;
         }
 
-        log.debug("[SegmentList] Active segment", {
-            index: sessionPayload.current_segment_index,
-            id: active.id,
-        });
-
         setExpandedParents(new Set(getAncestorIds(active.id, parentById)));
-    }, [sessionPayload.current_segment_index, sessionPayload.leaf_segments, parentById]);
+    }, [forceExpandAll, flatSegments, sessionPayload.current_segment_index, sessionPayload.leaf_segments, parentById]);
 
     /*
      * Scroll active row into view
