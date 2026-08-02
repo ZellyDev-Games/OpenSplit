@@ -79,6 +79,12 @@ export interface PreviewMetrics {
     splitter: DOMRect;
     content: DOMRect;
 
+    canvasWidth: number;
+    canvasHeight: number;
+
+    initialScrollLeft: number;
+    initialScrollTop: number;
+
     hasOverflow: boolean;
 
     overflowingElements: string[];

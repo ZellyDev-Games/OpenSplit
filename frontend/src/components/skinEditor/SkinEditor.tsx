@@ -22,7 +22,7 @@ interface Props {
 }
 
 export default function SkinEditor({ model }: Props) {
-    const [preview, setPreview] = useState<"empty" | "running" | "completed">("running");
+    const [preview, setPreview] = useState<"empty" | "running" | "completed">("empty");
     const [comparison, setComparison] = useState<Comparison>(CompareAgainst.Average);
 
     const session = useMemo(() => {
@@ -53,6 +53,12 @@ export default function SkinEditor({ model }: Props) {
             hasOverflow: false,
 
             overflowingElements: [],
+
+            canvasWidth: 0,
+            canvasHeight: 0,
+
+            initialScrollLeft: 0,
+            initialScrollTop: 0,
         },
     });
 

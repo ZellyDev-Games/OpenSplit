@@ -30,14 +30,6 @@ export function usePreviewDocument({ document, elements, callback }: Props) {
             frame = requestAnimationFrame(() => {
                 const splitter = document.getElementById("splitter");
 
-                const app = document.getElementById("App");
-
-                const previousTransform = app?.style.transform ?? "";
-
-                if (app) {
-                    app.style.transform = "none";
-                }
-
                 const runtime: RuntimeElement[] = [];
 
                 for (const element of elements) {
@@ -60,6 +52,12 @@ export function usePreviewDocument({ document, elements, callback }: Props) {
                 let metrics: PreviewMetrics = {
                     splitter: new DOMRect(),
                     content: new DOMRect(),
+
+                    canvasWidth: 0,
+                    canvasHeight: 0,
+
+                    initialScrollLeft: 0,
+                    initialScrollTop: 0,
 
                     hasOverflow: false,
                     overflowingElements: [],
@@ -116,7 +114,19 @@ export function usePreviewDocument({ document, elements, callback }: Props) {
                         contentBottom - contentTop,
                     );
 
-                    updateDocumentBounds(document, content);
+                    const splitterWidth = splitterBounds.width;
+                    const splitterHeight = splitterBounds.height;
+
+                    const leftOverflow = Math.max(0, -content.left);
+                    const topOverflow = Math.max(0, -content.top);
+
+                    const rightOverflow = Math.max(0, content.right - splitterWidth);
+
+                    const bottomOverflow = Math.max(0, content.bottom - splitterHeight);
+
+                    const canvasWidth = splitterWidth + leftOverflow + rightOverflow;
+
+                    const canvasHeight = splitterHeight + topOverflow + bottomOverflow;
 
                     metrics = {
                         splitter: new DOMRect(
@@ -128,23 +138,30 @@ export function usePreviewDocument({ document, elements, callback }: Props) {
 
                         content,
 
+                        canvasWidth,
+                        canvasHeight,
+
+                        initialScrollLeft: leftOverflow,
+
+                        initialScrollTop: topOverflow,
+
                         hasOverflow: overflowingElements.size > 0,
 
                         overflowingElements: [...overflowingElements],
                     };
                 }
 
-                /*
-                 * Restore translation after measuring.
-                 */
-                if (app) {
-                    app.style.transform = previousTransform;
-                }
-
                 const key = [
                     runtime.map((element) => element.id).join(","),
 
-                    [metrics.content.x, metrics.content.y, metrics.content.width, metrics.content.height].join(","),
+                    [
+                        metrics.content.x,
+                        metrics.content.y,
+                        metrics.content.width,
+                        metrics.content.height,
+                        metrics.canvasWidth,
+                        metrics.canvasHeight,
+                    ].join(","),
                 ].join("|");
 
                 if (key === previous.current) {
@@ -176,6 +193,7 @@ export function usePreviewDocument({ document, elements, callback }: Props) {
             mutationObserver.observe(splitter, {
                 childList: true,
                 subtree: true,
+                attributes: true,
             });
         }
 
@@ -187,24 +205,4 @@ export function usePreviewDocument({ document, elements, callback }: Props) {
             resizeObserver.disconnect();
         };
     }, [document, elements, callback]);
-}
-
-function updateDocumentBounds(document: Document, content: DOMRect) {
-    const app = document.getElementById("App");
-
-    if (!app) {
-        return;
-    }
-
-    /*
-     * Only translate the rendered content.
-     *
-     * The iframe viewport remains fixed.
-     * This prevents ResizeObserver feedback loops.
-     */
-    const offsetX = Math.max(0, -content.x);
-
-    const offsetY = Math.max(0, -content.y);
-
-    app.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
 }

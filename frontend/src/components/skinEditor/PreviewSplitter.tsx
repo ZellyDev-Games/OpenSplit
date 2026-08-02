@@ -75,6 +75,12 @@ export default function PreviewSplitter({
             splitter: new DOMRect(),
             content: new DOMRect(),
 
+            canvasWidth: 0,
+            canvasHeight: 0,
+
+            initialScrollLeft: 0,
+            initialScrollTop: 0,
+
             hasOverflow: false,
 
             overflowingElements: [],
@@ -157,32 +163,80 @@ export default function PreviewSplitter({
     });
     return (
         <div ref={workspaceRef} className="skin-preview-workspace">
-            <iframe
-                ref={iframeRef}
-                className="skin-preview-frame preview-outline"
-                sandbox="allow-same-origin allow-scripts"
+            <div
+                className="skin-preview-container"
                 style={{
-                    width: initialWidth,
-                    height: initialHeight,
+                    width: preview.metrics.canvasWidth || initialWidth,
+                    height: preview.metrics.canvasHeight || initialHeight,
                 }}
-            />
+            >
+                <iframe
+                    ref={iframeRef}
+                    className="skin-preview-frame preview-outline"
+                    sandbox="allow-same-origin allow-scripts"
+                    style={{
+                        width: preview.metrics.canvasWidth || initialWidth,
+                        height: preview.metrics.canvasHeight || initialHeight,
+                    }}
+                />
+            </div>
 
             {previewDocument && <CSSPreviewOverride css={overrideCSS} document={previewDocument} />}
 
             {container &&
                 createPortal(
                     <>
-                        <PreviewTimer value={sessionPayload.current_run?.total_time ?? 0} />
+                        <div
+                            id="preview-canvas-wrapper"
+                            style={{
+                                position: "relative",
+                                width: preview.metrics.canvasWidth || initialWidth,
+                                height: preview.metrics.canvasHeight || initialHeight,
+                            }}
+                        >
+                            <div
+                                id="preview-canvas"
+                                style={{
+                                    position: "relative",
 
-                        <div id="splitter" className="preview-outline">
-                            <Splitter
-                                sessionPayload={sessionPayload}
-                                configPayload={configPayload}
-                                disableContextMenu={disableContextMenu}
-                                forceExpandAll={forceExpandAll}
-                                comparison={comparison}
-                                onComparisonChange={onComparisonChange}
-                            />
+                                    width: preview.metrics.canvasWidth || initialWidth,
+
+                                    height: preview.metrics.canvasHeight || initialHeight,
+
+                                    flex: "none",
+
+                                    overflow: "visible",
+                                }}
+                            >
+                                <PreviewTimer value={sessionPayload.current_run?.total_time ?? 0} />
+
+                                <div
+                                    id="splitter"
+                                    className="preview-outline"
+                                    style={{
+                                        position: "absolute",
+
+                                        left: preview.metrics.initialScrollLeft,
+
+                                        top: preview.metrics.initialScrollTop,
+
+                                        width: initialWidth,
+
+                                        height: initialHeight,
+
+                                        overflow: "visible",
+                                    }}
+                                >
+                                    <Splitter
+                                        sessionPayload={sessionPayload}
+                                        configPayload={configPayload}
+                                        disableContextMenu={disableContextMenu}
+                                        forceExpandAll={forceExpandAll}
+                                        comparison={comparison}
+                                        onComparisonChange={onComparisonChange}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </>,
                     container,
