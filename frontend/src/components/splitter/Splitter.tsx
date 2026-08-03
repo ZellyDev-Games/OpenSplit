@@ -17,7 +17,7 @@ import { Command } from "../../models/command";
 import { ConfigPayload } from "../../models/configPayload";
 import SessionPayload from "../../models/sessionPayload";
 import { log } from "../../utils/logger";
-import { ContextMenu } from "../ContextMenu";
+import { ContextMenu } from "./ContextMenu";
 import SegmentList from "./SegmentList";
 import Timer from "./Timer";
 
