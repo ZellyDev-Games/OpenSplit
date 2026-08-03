@@ -229,10 +229,10 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
                 in_game_time: 0,
             },
 
-            window_x: 100,
-            window_y: 100,
-            window_width: 350,
-            window_height: 550,
+            window_x: splitFilePayload?.window_x ?? 100,
+            window_y: splitFilePayload?.window_y ?? 100,
+            window_width: splitFilePayload?.window_width ?? 350,
+            window_height: splitFilePayload?.window_height ?? 550,
         });
         log.debug("Saving split file", {
             id: payload.id,

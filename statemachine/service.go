@@ -73,19 +73,19 @@ type state interface {
 
 // Service represents a state machine and holds references to all the tools to allow states to do useful work
 type Service struct {
-	ctx                          context.Context
-	splitfileLock                sync.Mutex
-	currentState                 state
-	sessionService               *session.Service
-	skinProvider                 skin.SkinProvider
-	repoService                  *repo.Service
-	runtimeProvider              RuntimeProvider
-	hotkeyProvider               HotkeyProvider
-	configService                *config.Service
-	speedrunService              *speedrun.Service
-	saveOnWindowDimensionChanges bool
-	// unsubscribeFromWindowDimensionChanges func()
-	windowHasFocus bool
+	ctx                                   context.Context
+	splitfileLock                         sync.Mutex
+	currentState                          state
+	sessionService                        *session.Service
+	skinProvider                          skin.SkinProvider
+	repoService                           *repo.Service
+	runtimeProvider                       RuntimeProvider
+	hotkeyProvider                        HotkeyProvider
+	configService                         *config.Service
+	speedrunService                       *speedrun.Service
+	saveOnWindowDimensionChanges          bool
+	unsubscribeFromWindowDimensionChanges func()
+	windowHasFocus                        bool
 }
 
 // NewMachine sets the global singleton, and gives it a friendly default state
@@ -107,6 +107,7 @@ func (s *Service) Startup(ctx context.Context) {
 
 	machine.ctx = ctx
 
+	s.unsubscribeFromWindowDimensionChanges = s.setupWindowDimensionListener()
 	machine.changeState(WELCOME)
 
 	s.runtimeProvider.EventsOn("ui:ready", func(...any) {

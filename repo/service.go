@@ -126,17 +126,17 @@ func (s *Service) SaveSplitFile(splitFile dto.SplitFile) error {
 		}
 	}
 
-	payload, err := adapters.SplitFileToFrontEnd(splitFile)
-	if err != nil {
-		return err
-	}
-	identifier := buildSplitFileName(splitFile)
-
 	// minimum sizes and position
 	splitFile.WindowX = max(10, splitFile.WindowX)
 	splitFile.WindowY = max(10, splitFile.WindowY)
 	splitFile.WindowWidth = max(100, splitFile.WindowWidth)
 	splitFile.WindowHeight = max(100, splitFile.WindowHeight)
+
+	payload, err := adapters.SplitFileToFrontEnd(splitFile)
+	if err != nil {
+		return err
+	}
+	identifier := buildSplitFileName(splitFile)
 
 	logger.Debugf(logModule, "repository saving split file: %s", identifier)
 	s.splitFileLock.Lock()
