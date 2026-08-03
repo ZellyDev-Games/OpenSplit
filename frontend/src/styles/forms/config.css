@@ -1,4 +1,9 @@
 @layer components {
+    .actions {
+        display: flex;
+        justify-content: flex-end;
+    }
+
     .config-skins {
         margin-bottom: 20px;
     }
@@ -8,13 +13,7 @@
         margin-left: 20px;
     }
 
-    .options {
-        flex-grow: 1;
-    }
-
     .hotkeyContainer {
-        display: flex;
-        flex-direction: row;
         align-items: flex-end;
     }
 
@@ -29,8 +28,7 @@
         font-size: 14px;
     }
 
-    .actions {
-        display: flex;
-        justify-content: flex-end;
+    .options {
+        flex-grow: 1;
     }
 }

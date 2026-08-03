@@ -17,8 +17,6 @@
         grid-area: timer;
         justify-self: end;
 
-        display: flex;
-        flex-direction: row;
         align-items: baseline;
 
         font-family: "Monofonto", sans-serif;
