@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
 
+export type HighlightType = "selected" | "overflow" | "selected-overflow";
+
 export interface Highlight {
     element: Element;
-    type?: "selected" | "overflow";
+    type: HighlightType;
 }
 
 export default function useElementHighlight(highlights: Highlight[]) {
@@ -12,6 +14,7 @@ export default function useElementHighlight(highlights: Highlight[]) {
         const owner = ownerRef.current;
 
         if (highlights.length === 0) {
+            removeHighlights(document, ownerRef.current);
             return;
         }
 
@@ -51,16 +54,29 @@ export default function useElementHighlight(highlights: Highlight[]) {
                     boxSizing: "border-box",
                 });
 
-                if (item.type === "overflow") {
-                    Object.assign(overlay.style, {
-                        border: "3px solid #ff3333",
-                        background: "rgba(255,0,0,0.15)",
-                    });
-                } else {
-                    Object.assign(overlay.style, {
-                        border: "3px solid #00b7ff",
-                        background: "rgba(0,183,255,0.20)",
-                    });
+                switch (item.type) {
+                    case "selected":
+                        Object.assign(overlay.style, {
+                            border: "3px solid #00b7ff",
+                            background: "rgba(0,183,255,0.20)",
+                        });
+                        break;
+
+                    case "overflow":
+                        Object.assign(overlay.style, {
+                            border: "3px solid #ff3333",
+                            background: "rgba(255,0,0,0.15)",
+                        });
+                        break;
+
+                    case "selected-overflow":
+                        Object.assign(overlay.style, {
+                            border: "3px solid #ff3333",
+                            outline: "3px solid #00b7ff",
+                            outlineOffset: "-6px",
+                            background: "rgba(255,0,0,0.20)",
+                        });
+                        break;
                 }
 
                 document.body.appendChild(overlay);
@@ -100,7 +116,7 @@ export default function useElementHighlight(highlights: Highlight[]) {
         }
 
         return () => {
-            cleanups.forEach((cleanup) => cleanup);
+            cleanups.forEach((cleanup) => cleanup());
 
             for (const document of grouped.keys()) {
                 removeHighlights(document, owner);
