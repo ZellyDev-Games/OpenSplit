@@ -7,10 +7,14 @@ interface Props {
 
     elements: SkinElement[];
 
+    defaultPaddingX: number;
+
+    defaultPaddingY: number;
+
     callback?: (update: PreviewUpdate) => void;
 }
 
-export function usePreviewDocument({ document, elements, callback }: Props) {
+export function usePreviewDocument({ document, elements, defaultPaddingX, defaultPaddingY, callback }: Props) {
     const previous = useRef<string>("");
 
     useEffect(() => {
@@ -51,15 +55,33 @@ export function usePreviewDocument({ document, elements, callback }: Props) {
 
                 let metrics: PreviewMetrics = {
                     splitter: new DOMRect(),
+
                     content: new DOMRect(),
 
                     canvasWidth: 0,
+
                     canvasHeight: 0,
 
-                    initialScrollLeft: 0,
-                    initialScrollTop: 0,
+                    paddingLeft: 0,
 
-                    hasOverflow: false,
+                    paddingRight: 0,
+
+                    paddingTop: 0,
+
+                    paddingBottom: 0,
+
+                    overflowX: 0,
+
+                    overflowY: 0,
+
+                    splitterOffsetX: 0,
+
+                    splitterOffsetY: 0,
+
+                    hasCanvasOverflow: false,
+
+                    hasElementOverflow: false,
+
                     overflowingElements: [],
                 };
 
@@ -76,9 +98,23 @@ export function usePreviewDocument({ document, elements, callback }: Props) {
                     let contentRight = splitterBounds.width;
                     let contentBottom = splitterBounds.height;
 
+                    const splitterWidth = splitterBounds.width;
+                    const splitterHeight = splitterBounds.height;
+
+                    let overflowLeft = 0;
+                    let overflowTop = 0;
+                    let overflowRight = splitterWidth;
+                    let overflowBottom = splitterHeight;
+
+                    const OVERFLOW_EPSILON = 1;
+
                     const overflowingElements = new Set<string>();
 
                     for (const runtimeElement of runtime) {
+                        if (runtimeElement.element === splitter) {
+                            continue;
+                        }
+
                         const bounds = runtimeElement.element.getBoundingClientRect();
 
                         const relative = {
@@ -88,16 +124,55 @@ export function usePreviewDocument({ document, elements, callback }: Props) {
                             bottom: bounds.bottom - splitterBounds.top,
                         };
 
-                        const overflow =
-                            relative.left < 0 ||
-                            relative.top < 0 ||
-                            relative.right > splitterBounds.width ||
-                            relative.bottom > splitterBounds.height;
+                        overflowLeft = Math.min(overflowLeft, relative.left);
 
-                        if (overflow) {
+                        overflowTop = Math.min(overflowTop, relative.top);
+
+                        overflowRight = Math.max(overflowRight, relative.right);
+
+                        overflowBottom = Math.max(overflowBottom, relative.bottom);
+
+                        /*
+                         * Scroll containers should not expand the preview canvas.
+                         *
+                         * Example:
+                         *   #splitContainer
+                         *       hidden segment rowsgg
+                         *
+                         * Those rows may be outside the visible splitter area but
+                         * should not make the iframe larger.
+                         */
+                        const clippedByScrollContainer = isClippedByScrollContainer(runtimeElement.element, splitter);
+
+                        const overflow =
+                            relative.left < -OVERFLOW_EPSILON ||
+                            relative.top < -OVERFLOW_EPSILON ||
+                            relative.right > splitterBounds.width + OVERFLOW_EPSILON ||
+                            relative.bottom > splitterBounds.height + OVERFLOW_EPSILON;
+
+                        /*
+                         * Only report visible overflow.
+                         *
+                         * Elements inside scroll containers (#splitContainer, tables,
+                         * segment lists, etc.) are expected to leave the viewport.
+                         */
+                        if (overflow && !clippedByScrollContainer) {
                             overflowingElements.add(runtimeElement.id);
                         }
 
+                        /*
+                         * Scroll containers should not contribute to canvas sizing.
+                         */
+                        if (clippedByScrollContainer) {
+                            continue;
+                        }
+
+                        /*
+                         * Content sizing should still include the element bounds.
+                         *
+                         * This allows real skin elements extending beyond the splitter
+                         * to expand the preview canvas.
+                         */
                         contentLeft = Math.min(contentLeft, relative.left);
 
                         contentTop = Math.min(contentTop, relative.top);
@@ -106,27 +181,66 @@ export function usePreviewDocument({ document, elements, callback }: Props) {
 
                         contentBottom = Math.max(contentBottom, relative.bottom);
                     }
-
                     const content = new DOMRect(
-                        contentLeft,
-                        contentTop,
-                        contentRight - contentLeft,
-                        contentBottom - contentTop,
+                        overflowLeft,
+                        overflowTop,
+                        overflowRight - overflowLeft,
+                        overflowBottom - overflowTop,
                     );
 
-                    const splitterWidth = splitterBounds.width;
-                    const splitterHeight = splitterBounds.height;
-
                     const leftOverflow = Math.max(0, -content.left);
-                    const topOverflow = Math.max(0, -content.top);
 
                     const rightOverflow = Math.max(0, content.right - splitterWidth);
 
+                    const topOverflow = Math.max(0, -content.top);
+
                     const bottomOverflow = Math.max(0, content.bottom - splitterHeight);
 
-                    const canvasWidth = splitterWidth + leftOverflow + rightOverflow;
+                    /*
+                     * The canvas can be larger than the splitter because it contains
+                     * centering padding. This is independent from whether any skin
+                     * element is actually overflowing.
+                     *
+                     * This controls initial workspace scrolling.
+                     */
+                    const hasCanvasOverflow =
+                        leftOverflow > OVERFLOW_EPSILON ||
+                        rightOverflow > OVERFLOW_EPSILON ||
+                        topOverflow > OVERFLOW_EPSILON ||
+                        bottomOverflow > OVERFLOW_EPSILON;
 
-                    const canvasHeight = splitterHeight + topOverflow + bottomOverflow;
+                    /*
+                     * Default centered padding from workspace size.
+                     *
+                     * Example:
+                     *
+                     * workspace 468px
+                     * splitter  320px
+                     *
+                     * padding = (468 - 320) / 2 = 74px
+                     *
+                     * This padding must remain mirrored.
+                     */
+
+                    const horizontalPadding = Math.max(defaultPaddingX, leftOverflow, rightOverflow);
+
+                    const verticalPadding = Math.max(defaultPaddingY, topOverflow, bottomOverflow);
+
+                    const paddingLeft = horizontalPadding;
+
+                    const paddingRight = horizontalPadding;
+
+                    const paddingTop = verticalPadding;
+
+                    const paddingBottom = verticalPadding;
+
+                    const canvasWidth = splitterWidth + paddingLeft + paddingRight;
+
+                    const canvasHeight = splitterHeight + paddingTop + paddingBottom;
+
+                    const splitterOffsetX = paddingLeft;
+
+                    const splitterOffsetY = paddingTop;
 
                     metrics = {
                         splitter: new DOMRect(
@@ -139,13 +253,28 @@ export function usePreviewDocument({ document, elements, callback }: Props) {
                         content,
 
                         canvasWidth,
+
                         canvasHeight,
 
-                        initialScrollLeft: leftOverflow,
+                        paddingLeft,
 
-                        initialScrollTop: topOverflow,
+                        paddingRight,
 
-                        hasOverflow: overflowingElements.size > 0,
+                        paddingTop,
+
+                        paddingBottom,
+
+                        overflowX: Math.max(leftOverflow, rightOverflow),
+
+                        overflowY: Math.max(topOverflow, bottomOverflow),
+
+                        splitterOffsetX,
+
+                        splitterOffsetY,
+
+                        hasCanvasOverflow,
+
+                        hasElementOverflow: overflowingElements.size > 0,
 
                         overflowingElements: [...overflowingElements],
                     };
@@ -153,7 +282,6 @@ export function usePreviewDocument({ document, elements, callback }: Props) {
 
                 const key = [
                     runtime.map((element) => element.id).join(","),
-
                     [
                         metrics.content.x,
                         metrics.content.y,
@@ -161,6 +289,7 @@ export function usePreviewDocument({ document, elements, callback }: Props) {
                         metrics.content.height,
                         metrics.canvasWidth,
                         metrics.canvasHeight,
+                        metrics.overflowingElements,
                     ].join(","),
                 ].join("|");
 
@@ -205,4 +334,18 @@ export function usePreviewDocument({ document, elements, callback }: Props) {
             resizeObserver.disconnect();
         };
     }, [document, elements, callback]);
+}
+
+function isClippedByScrollContainer(element: Element, root: Element): boolean {
+    let current = element.parentElement;
+
+    while (current && current !== root) {
+        if (current.scrollHeight > current.clientHeight || current.scrollWidth > current.clientWidth) {
+            return true;
+        }
+
+        current = current.parentElement;
+    }
+
+    return false;
 }
