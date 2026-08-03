@@ -30,7 +30,7 @@ Structural changes should be isolated to `overrides.css`.
 OpenSplit defines the following CSS layer order:
 
 ```css
-@layer reset, components, vars, skins, overrides;
+@layer reset, vars, components, skins, overrides;
 ```
 
 Layers are applied in order.
