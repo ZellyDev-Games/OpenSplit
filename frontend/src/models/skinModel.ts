@@ -109,7 +109,9 @@ export interface PreviewMetrics {
 
     splitterOffsetY: number;
 
-    hasOverflow: boolean;
+    hasCanvasOverflow: boolean;
+
+    hasElementOverflow: boolean;
 
     overflowingElements: string[];
 }
