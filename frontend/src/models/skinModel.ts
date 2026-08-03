@@ -77,13 +77,37 @@ export interface RuntimeElement extends SkinElement {
 
 export interface PreviewMetrics {
     splitter: DOMRect;
+
     content: DOMRect;
 
     canvasWidth: number;
+
     canvasHeight: number;
 
-    initialScrollLeft: number;
-    initialScrollTop: number;
+    /**
+     * Mirrored canvas padding around splitter.
+     */
+    paddingLeft: number;
+
+    paddingRight: number;
+
+    paddingTop: number;
+
+    paddingBottom: number;
+
+    /**
+     * Maximum overflow beyond splitter bounds.
+     */
+    overflowX: number;
+
+    overflowY: number;
+
+    /**
+     * Actual splitter position inside canvas.
+     */
+    splitterOffsetX: number;
+
+    splitterOffsetY: number;
 
     hasOverflow: boolean;
 
