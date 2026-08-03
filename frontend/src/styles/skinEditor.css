@@ -71,19 +71,19 @@
         flex: 1;
 
         display: flex;
-        justify-content: center;
-        align-items: center;
 
         overflow: auto;
 
-        padding: 12px;
-
         box-sizing: border-box;
+
+        position: relative;
     }
 
     .skin-preview-container {
         position: relative;
+
         overflow: visible;
+
         flex: none;
     }
 
@@ -189,20 +189,7 @@
         align-items: center;
     }
 
-    .preview-outline {
-        outline: 1px solid rgba(128, 128, 128, 0.5);
-    }
-
     #preview-canvas {
-        overflow: visible !important;
-    }
-
-    .preview-outline #splitter {
-        position: relative;
-
-        width: 320px;
-        height: 580px;
-
         overflow: visible !important;
     }
 
@@ -507,22 +494,6 @@
 
     .css-rules pre {
         white-space: pre-wrap;
-    }
-
-    /*
-     * Preview override helpers
-     */
-
-    .previewSplitter {
-        position: relative;
-
-        outline: 1px solid var(--border-color);
-
-        outline-offset: -1px;
-    }
-
-    .skinSelected {
-        outline: 2px dashed;
     }
 
     /*
