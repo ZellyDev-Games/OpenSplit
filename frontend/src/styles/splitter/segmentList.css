@@ -1,0 +1,40 @@
+@layer components {
+    #splitContainer {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    #splitContainer::-webkit-scrollbar {
+        width: 0;
+    }
+
+    #splitContainer:hover::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    #splitContainer::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.4);
+        border-radius: 6px;
+    }
+
+    #splitContainer::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    #finalSegment {
+        flex: 0 0 auto;
+    }
+
+    #splitList table {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        border-collapse: collapse;
+    }
+
+    #splitList table td {
+        border-left: 0;
+        border-right: 0;
+    }
+}

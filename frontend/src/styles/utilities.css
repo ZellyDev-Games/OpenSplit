@@ -1,0 +1,33 @@
+@layer components {
+    .panel {
+        display: flex;
+        flex-direction: column;
+
+        min-width: 0;
+        min-height: 0;
+
+        overflow: hidden;
+    }
+
+    .fill {
+        flex: 1;
+        min-width: 0;
+        min-height: 0;
+    }
+
+    .row {
+        display: flex;
+        flex-direction: row;
+    }
+
+    .column {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .center {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}

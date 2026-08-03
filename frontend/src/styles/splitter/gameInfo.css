@@ -1,0 +1,37 @@
+@layer components {
+    #gameInfo {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+
+        padding: 12px 16px;
+        min-height: 88px;
+        box-sizing: border-box;
+    }
+
+    #gameTitle {
+        margin: 0;
+        padding: 4px 0;
+
+        line-height: 1.15;
+    }
+
+    #gameCategory {
+        margin: 4px 0 0;
+        padding: 0 0 4px;
+
+        line-height: 1.1;
+    }
+
+    #attempts {
+        position: absolute;
+        top: 8px;
+        right: 10px;
+
+        padding: 2px 6px;
+
+        font-size: 0.85em;
+        line-height: 1;
+        white-space: nowrap;
+    }
+}

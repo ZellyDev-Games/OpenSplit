@@ -1,0 +1,58 @@
+@layer components {
+    .rule-editor,
+    .text-file-editor {
+        flex: 1 1 auto;
+
+        align-items: stretch;
+    }
+
+    .rule-editor textarea,
+    .text-file-editor textarea {
+        flex: 1 1 auto;
+
+        width: 100%;
+        min-width: 0;
+        min-height: 0;
+
+        box-sizing: border-box;
+
+        resize: none;
+
+        overflow: auto;
+
+        font-family: "Cascadia Code", "Consolas", monospace;
+        font-size: 0.9rem;
+    }
+
+    .rule-editor h4 {
+        margin: 0 0 6px 0;
+        text-align: left;
+        align-self: stretch;
+    }
+
+    .text-file-editor h3 {
+        flex: 0 0 auto;
+    }
+
+    /*
+     * CSS rule display
+     */
+
+    .css-rules {
+        border: 1px solid rgba(128, 128, 128, 0.4);
+
+        padding: 10px;
+
+        overflow: auto;
+
+        max-height: 250px;
+    }
+
+    .css-rules h4 {
+        margin: 0 0 8px 0;
+    }
+
+    .css-rules pre {
+        white-space: pre-wrap;
+    }
+}

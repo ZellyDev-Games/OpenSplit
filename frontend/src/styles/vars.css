@@ -1,0 +1,31 @@
+@layer vars {
+    :root {
+        /* Theme colors */
+        --background: #282828;
+        --surface: #333;
+        --surface-dark: #1f1f1f;
+
+        --text-color: #d9d9f0;
+        --muted-text: #888;
+
+        --border-color: #666;
+
+        --accent: #640199;
+        --accent-color: #640199;
+
+        /* Splitter */
+        --splitlist-direction: column;
+
+        --split-delta-text-align: right;
+        --split-delta-font-family: Techna;
+
+        --split-comparison-text-align: right;
+        --split-comparison-font-family: Techna;
+
+        --group-bg: #333;
+
+        /* Layout */
+        --panel-padding: 8px;
+        --panel-gap: 8px;
+    }
+}

@@ -1,0 +1,33 @@
+@layer components {
+    /*
+     * Actions
+     */
+
+    .skin-editor-actions {
+        grid-column: 3;
+
+        display: flex;
+
+        justify-content: flex-end;
+
+        align-items: center;
+
+        gap: 6px;
+
+        padding: 2px 4px;
+
+        min-height: 0;
+
+        grid-row: 2;
+    }
+
+    .skin-editor-actions button {
+        padding: 1px 8px;
+
+        font-size: 0.8rem;
+
+        height: 22px;
+
+        min-width: 55px;
+    }
+}

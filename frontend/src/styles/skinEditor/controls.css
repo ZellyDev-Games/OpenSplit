@@ -1,0 +1,140 @@
+@layer components {
+    /*
+     * Skin controls
+     */
+
+    .skin-controls {
+        display: flex;
+
+        flex-direction: column;
+
+        height: 100%;
+
+        padding: 8px;
+
+        box-sizing: border-box;
+    }
+
+    .skin-selector-info {
+        display: flex;
+
+        flex-direction: column;
+
+        gap: 4px;
+
+        margin-top: 8px;
+    }
+
+    .skin-selector-info label {
+        font-size: 0.85rem;
+
+        font-weight: bold;
+    }
+
+    .skin-selector-info code {
+        padding: 6px;
+
+        border: 1px solid #666;
+
+        border-radius: 4px;
+
+        font-family: monospace;
+
+        user-select: all;
+
+        overflow-wrap: anywhere;
+    }
+
+    /*
+     * Element tree
+     */
+
+    .element-tree {
+        flex: 1;
+
+        min-height: 0;
+
+        overflow-y: auto;
+
+        overflow-x: hidden;
+
+        padding-right: 12px;
+
+        display: flex;
+
+        flex-direction: column;
+
+        gap: 6px;
+
+        box-sizing: border-box;
+    }
+
+    .element-file {
+        flex: 0 0 auto;
+
+        width: 100%;
+
+        min-width: 0;
+
+        text-align: left;
+
+        padding: 8px;
+
+        border: 1px solid #666;
+
+        background: transparent;
+
+        cursor: pointer;
+
+        overflow: hidden;
+
+        box-sizing: border-box;
+    }
+
+    .element-file .file-name {
+        font-weight: bold;
+
+        font-family: monospace;
+
+        overflow: hidden;
+
+        text-overflow: ellipsis;
+
+        white-space: nowrap;
+    }
+
+    .element-file .layer,
+    .element-file .line {
+        font-size: 0.8rem;
+
+        opacity: 0.7;
+
+        overflow: hidden;
+
+        text-overflow: ellipsis;
+
+        white-space: nowrap;
+    }
+
+    .element-file.selected {
+        outline: 2px solid #640199;
+    }
+
+    .element-file pre {
+        margin: 6px 0 0;
+
+        padding: 0;
+
+        font-family: monospace;
+
+        max-width: 100%;
+
+        white-space: pre-wrap;
+
+        overflow-wrap: anywhere;
+
+        overflow: hidden;
+
+        box-sizing: border-box;
+    }
+}

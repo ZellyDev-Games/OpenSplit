@@ -1,0 +1,143 @@
+@layer components {
+    /*
+     * Preview
+     */
+
+    #preview-canvas {
+        overflow: visible !important;
+    }
+
+    .overflow-warning {
+        border-color: red;
+        background: rgba(255, 0, 0, 0.08);
+    }
+
+    .preview-overflow {
+        outline: 2px solid red !important;
+    }
+
+    .skin-editor-preview {
+        grid-column: 2;
+
+        display: flex;
+        flex-direction: column;
+
+        overflow: hidden;
+
+        background: #282828;
+    }
+
+    .skin-preview {
+        width: 100%;
+        height: 100%;
+
+        display: flex;
+
+        justify-content: center;
+
+        align-items: center;
+    }
+
+    .skin-preview-container {
+        position: relative;
+
+        overflow: visible;
+
+        flex: none;
+    }
+
+    .skin-preview-frame {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        display: block;
+    }
+
+    .skin-preview-group {
+        align-items: center;
+        justify-content: center;
+
+        gap: 8px;
+
+        padding: 2px 8px;
+    }
+
+    .skin-preview-group .button-row {
+        align-items: center;
+
+        gap: 6px;
+    }
+
+    .skin-preview-group button {
+        padding: 3px 8px;
+    }
+
+    .skin-preview-group label {
+        font-size: 0.85rem;
+
+        font-weight: bold;
+
+        white-space: nowrap;
+    }
+
+    .skin-preview-group select {
+        padding: 4px 8px;
+
+        min-width: 120px;
+
+        box-sizing: border-box;
+    }
+
+    .skin-preview-group span {
+        min-width: 90px;
+
+        text-align: center;
+
+        padding: 4px 8px;
+    }
+
+    .skin-preview-toolbar {
+        display: flex;
+
+        flex-direction: column;
+
+        justify-content: center;
+        align-items: center;
+
+        gap: 6px;
+
+        padding: 8px;
+
+        flex: 0 0 auto;
+
+        border-bottom: 1px solid #666;
+    }
+
+    .skin-preview-workspace {
+        flex: 1;
+
+        display: flex;
+
+        overflow: auto;
+
+        box-sizing: border-box;
+
+        position: relative;
+    }
+
+    .skin-preview-warning {
+        flex: 0 0 auto;
+
+        margin-top: 8px;
+
+        padding: 6px 10px;
+
+        border: 1px solid #d6a000;
+
+        background: rgba(255, 220, 80, 0.12);
+
+        font-size: 0.85rem;
+        grid-column: 2;
+        grid-row: 2;
+    }
+}

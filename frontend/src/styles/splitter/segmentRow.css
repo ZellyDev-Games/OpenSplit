@@ -1,0 +1,31 @@
+@layer components {
+    .segment-icon {
+        width: 18px;
+        height: 18px;
+        object-fit: contain;
+        margin-right: 6px;
+        vertical-align: middle;
+        border-radius: 2px;
+    }
+
+    .splitName img {
+        flex-shrink: 0;
+    }
+
+    button.collapseToggle {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+
+        width: 12px;
+        min-height: 8px;
+
+        margin-right: 6px;
+        padding: 3px;
+
+        border: 0;
+
+        line-height: 8px;
+        text-align: center;
+    }
+}

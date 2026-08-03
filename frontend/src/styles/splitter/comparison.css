@@ -1,0 +1,18 @@
+@layer components {
+    .comparison-mode {
+        text-align: center;
+        font-size: 0.85rem;
+        padding: 4px 0;
+        user-select: none;
+    }
+
+    .splitComparison {
+        text-align: right;
+        font-family: Techna, sans-serif;
+    }
+
+    .splitDelta {
+        text-align: right;
+        font-family: Techna, monospace;
+    }
+}

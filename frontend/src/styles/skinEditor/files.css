@@ -1,0 +1,63 @@
+@layer components {
+    /*
+     * Skin files panel
+     */
+
+    .skin-files {
+        height: 100%;
+
+        display: flex;
+
+        flex-direction: column;
+
+        padding: 8px;
+
+        box-sizing: border-box;
+
+        min-height: 0;
+    }
+
+    .skin-files hr {
+        width: 100%;
+    }
+
+    .skin-files-toolbar {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        min-width: 0;
+    }
+
+    .skin-files-toolbar button {
+        flex: 0 0 40px;
+        width: 40px;
+        padding: 0;
+    }
+
+    .skin-files-toolbar select {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .skin-image-preview {
+        max-width: 100%;
+        max-height: 100%;
+        overflow: hidden;
+    }
+
+    .skin-image-preview img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+
+    .unsaved-changes {
+        flex: 0 0 auto;
+
+        align-items: center;
+        text-align: center;
+
+        font-size: 0.85rem;
+        padding: 4px 8px;
+    }
+}
