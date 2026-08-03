@@ -1,0 +1,45 @@
+@layer components {
+    .segment-time input {
+        height: 25%;
+        text-align: right;
+        background-color: #444;
+        padding-right: 10px;
+        min-width: 40px;
+    }
+
+    .seg-group > td {
+        border-left: 3px solid rgba(0, 0, 0, 0.25);
+        border-right: 3px solid rgba(0, 0, 0, 0.25);
+    }
+
+    /* Top border on the group parent row */
+    .seg-group-parent > td {
+        border-top: 3px solid rgba(0, 0, 0, 0.25);
+    }
+
+    .seg-group-bottom > td {
+        border-bottom: 3px solid rgba(0, 0, 0, 0.25);
+    }
+
+    div.segment-time {
+        align-items: flex-end;
+        padding: 5px 20px 5px 5px;
+    }
+
+    tr.seg-group > td {
+        background: #333;
+    }
+
+    tr.seg-group-parent > td {
+        filter: brightness(1.15);
+        font-weight: 600;
+    }
+
+    tr.seg-group-child > td {
+        filter: brightness(0.95);
+    }
+
+    tr.seg-group:hover > td {
+        filter: brightness(1.25);
+    }
+}

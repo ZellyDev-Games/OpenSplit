@@ -1,0 +1,48 @@
+@layer components {
+    ::placeholder {
+        color: #808080; /* Example: a light gray color */
+    }
+
+    form {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+    }
+
+    form .actions {
+        width: 100%;
+        display: flex;
+        justify-content: end;
+    }
+
+    form .actions button {
+        margin-left: 10px;
+    }
+
+    input,
+    textarea {
+        --wails-draggable: no-drag;
+        padding: 15px;
+        border: 1px solid #333;
+        border-radius: 3px;
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 16px;
+        background-color: #282828;
+        color: #d9d9d9;
+    }
+
+    input:focus {
+        outline: none;
+    }
+
+    input:focus-visible {
+        outline: 2px solid#640199; /* your color */
+        outline-offset: 2px; /* pull it off the edge a bit */
+    }
+
+    label {
+        position: relative;
+        left: 5px;
+    }
+}
