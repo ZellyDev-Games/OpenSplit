@@ -22,7 +22,7 @@ interface Props {
 }
 
 export default function SkinEditor({ model }: Props) {
-    const [preview, setPreview] = useState<"empty" | "running" | "completed">("empty");
+    const [preview, setPreview] = useState<"empty" | "running" | "completed">("running");
     const [comparison, setComparison] = useState<Comparison>(CompareAgainst.Average);
 
     const session = useMemo(() => {
@@ -48,23 +48,40 @@ export default function SkinEditor({ model }: Props) {
         elements: [],
         metrics: {
             splitter: new DOMRect(),
+
             content: new DOMRect(),
 
-            hasOverflow: false,
-
-            overflowingElements: [],
-
             canvasWidth: 0,
+
             canvasHeight: 0,
 
-            initialScrollLeft: 0,
-            initialScrollTop: 0,
+            paddingLeft: 0,
+
+            paddingRight: 0,
+
+            paddingTop: 0,
+
+            paddingBottom: 0,
+
+            overflowX: 0,
+
+            overflowY: 0,
+
+            splitterOffsetX: 0,
+
+            splitterOffsetY: 0,
+
+            hasCanvasOverflow: false,
+
+            hasElementOverflow: false,
+
+            overflowingElements: [],
         },
     });
 
     const runtimeElements = previewUpdate.elements;
 
-    const hasPreviewOverflow = previewUpdate.metrics.hasOverflow;
+    const hasPreviewOverflow = previewUpdate.metrics.hasElementOverflow;
 
     const allElements = useMemo(
         () => mergeSkinElements(previewElements, model.elements, runtimeElements),
