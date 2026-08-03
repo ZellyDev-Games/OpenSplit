@@ -333,7 +333,7 @@ export function usePreviewDocument({ document, elements, defaultPaddingX, defaul
 
             resizeObserver.disconnect();
         };
-    }, [document, elements, callback]);
+    }, [document, elements, callback, defaultPaddingX, defaultPaddingY]);
 }
 
 function isClippedByScrollContainer(element: Element, root: Element): boolean {
