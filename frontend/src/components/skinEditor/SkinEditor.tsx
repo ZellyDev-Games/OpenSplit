@@ -130,7 +130,7 @@ export default function SkinEditor({ model }: Props) {
 
     return (
         <div className="skin-editor">
-            <section className="skin-editor-left skin-editor-column">
+            <section className="skin-editor-left panel skin-editor-column">
                 <SkinControls
                     model={combinedModel}
                     elements={allElements}
@@ -147,7 +147,7 @@ export default function SkinEditor({ model }: Props) {
 
             <section className="skin-editor-preview skin-editor-column">
                 <div className="skin-preview-toolbar">
-                    <div className="skin-preview-group">
+                    <div className="row skin-preview-group">
                         <label>Session</label>
 
                         <select
@@ -163,7 +163,7 @@ export default function SkinEditor({ model }: Props) {
                     <div className="skin-preview-group">
                         <label>Comparison</label>
 
-                        <div className="button-row">
+                        <div className="row button-row">
                             <button
                                 onClick={() =>
                                     setComparison((current) => {
