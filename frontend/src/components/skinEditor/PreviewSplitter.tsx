@@ -61,11 +61,16 @@ export default function PreviewSplitter({
     const { iframeRef, container } = usePreviewFrame(skinCSS);
 
     const workspaceRef = useRef<HTMLDivElement>(null);
+    const initialScrollApplied = useRef(false);
 
     const [viewport, setViewport] = useState({
         width: 0,
         height: 0,
     });
+
+    const defaultPaddingX = Math.max(0, (viewport.width - initialWidth) / 2);
+
+    const defaultPaddingY = Math.max(0, (viewport.height - initialHeight) / 2);
 
     const previewDocument = container?.ownerDocument ?? null;
 
@@ -73,15 +78,32 @@ export default function PreviewSplitter({
         elements: [],
         metrics: {
             splitter: new DOMRect(),
+
             content: new DOMRect(),
 
             canvasWidth: 0,
+
             canvasHeight: 0,
 
-            initialScrollLeft: 0,
-            initialScrollTop: 0,
+            paddingLeft: 0,
 
-            hasOverflow: false,
+            paddingRight: 0,
+
+            paddingTop: 0,
+
+            paddingBottom: 0,
+
+            overflowX: 0,
+
+            overflowY: 0,
+
+            splitterOffsetX: 0,
+
+            splitterOffsetY: 0,
+
+            hasCanvasOverflow: false,
+
+            hasElementOverflow: false,
 
             overflowingElements: [],
         },
@@ -128,8 +150,41 @@ export default function PreviewSplitter({
     usePreviewDocument({
         document: previewDocument,
         elements,
+
+        defaultPaddingX,
+        defaultPaddingY,
+
         callback: updatePreview,
     });
+
+    useLayoutEffect(() => {
+        const workspace = workspaceRef.current;
+
+        if (!workspace) {
+            return;
+        }
+
+        if (!preview.metrics.hasCanvasOverflow && !preview.metrics.hasElementOverflow) {
+            workspace.scrollLeft = 0;
+            workspace.scrollTop = 0;
+
+            initialScrollApplied.current = false;
+
+            return;
+        }
+
+        workspace.scrollLeft = preview.metrics.paddingLeft - defaultPaddingX;
+
+        workspace.scrollTop = preview.metrics.paddingTop - defaultPaddingY;
+
+        initialScrollApplied.current = true;
+    }, [
+        preview.metrics.paddingLeft,
+        preview.metrics.paddingTop,
+        preview.metrics.hasCanvasOverflow,
+        defaultPaddingX,
+        defaultPaddingY,
+    ]);
 
     usePreviewSelection({
         document: previewDocument,
@@ -139,43 +194,59 @@ export default function PreviewSplitter({
     });
 
     const highlights: Highlight[] = runtimeElements.flatMap<Highlight>((element) => {
-        const isSelected = selectedElement?.id === element.id;
+        const selected = selectedElement?.id === element.id;
 
-        if (!isSelected) {
-            return [];
+        const overflow = preview.metrics.overflowingElements.includes(element.id);
+
+        if (selected && overflow) {
+            return [
+                {
+                    element: element.element,
+                    type: "selected-overflow",
+                },
+            ];
         }
 
-        const isOverflowing = preview.metrics.overflowingElements.includes(element.id);
+        if (selected) {
+            return [
+                {
+                    element: element.element,
+                    type: "selected",
+                },
+            ];
+        }
 
-        return [
-            {
-                element: element.element,
-                type: isOverflowing ? "overflow" : "selected",
-            },
-        ];
+        if (overflow) {
+            return [
+                {
+                    element: element.element,
+                    type: "overflow",
+                },
+            ];
+        }
+
+        return [];
     });
 
     useElementHighlight(highlights);
 
-    console.log({
-        viewport,
-        metrics: preview.metrics,
-    });
     return (
-        <div ref={workspaceRef} className="skin-preview-workspace">
+        <div ref={workspaceRef} className={"skin-preview-workspace"}>
             <div
                 className="skin-preview-container"
                 style={{
                     width: preview.metrics.canvasWidth || initialWidth,
+
                     height: preview.metrics.canvasHeight || initialHeight,
                 }}
             >
                 <iframe
                     ref={iframeRef}
-                    className="skin-preview-frame preview-outline"
+                    className="skin-preview-frame"
                     sandbox="allow-same-origin allow-scripts"
                     style={{
                         width: preview.metrics.canvasWidth || initialWidth,
+
                         height: preview.metrics.canvasHeight || initialHeight,
                     }}
                 />
@@ -190,7 +261,9 @@ export default function PreviewSplitter({
                             id="preview-canvas-wrapper"
                             style={{
                                 position: "relative",
+
                                 width: preview.metrics.canvasWidth || initialWidth,
+
                                 height: preview.metrics.canvasHeight || initialHeight,
                             }}
                         >
@@ -212,16 +285,14 @@ export default function PreviewSplitter({
 
                                 <div
                                     id="splitter"
-                                    className="preview-outline"
+                                    className="previewSplitter"
                                     style={{
                                         position: "absolute",
 
-                                        left: preview.metrics.initialScrollLeft,
-
-                                        top: preview.metrics.initialScrollTop,
+                                        left: preview.metrics.paddingLeft,
+                                        top: preview.metrics.paddingTop,
 
                                         width: initialWidth,
-
                                         height: initialHeight,
 
                                         overflow: "visible",
