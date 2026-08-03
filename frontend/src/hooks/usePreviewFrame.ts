@@ -36,27 +36,27 @@ export function usePreviewFrame(skinCSS?: string) {
             <style>
             html,
             body {
-                margin:0;
-                padding:0;
+                margin: 0;
+                padding: 0;
 
-                overflow:visible;
+                width: 100%;
+                height: 100%;
 
-                width:max-content;
-                height:max-content;
+                overflow: visible;
             }
 
             #root {
-                width:max-content;
-                height:max-content;
+                width: 100%;
+                height: 100%;
             }
 
             #App {
-                position:relative;
+                position: relative;
 
-                overflow:visible;
+                width: 100%;
+                height: 100%;
 
-                width:max-content;
-                height:max-content;
+                overflow: visible;
             }
             </style>
 
