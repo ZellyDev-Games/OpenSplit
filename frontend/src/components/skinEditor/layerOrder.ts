@@ -1,4 +1,4 @@
-export const CSS_LAYER_ORDER = ["reset", "components", "vars", "skins", "overrides"];
+export const CSS_LAYER_ORDER = ["reset", "vars", "components", "skins", "overrides"];
 
 export function layerPriority(layer: string): number {
     const index = CSS_LAYER_ORDER.indexOf(layer);
