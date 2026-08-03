@@ -33,32 +33,6 @@
     }
 
     .autocomplete-list li:hover {
-        background: var(--accent);
-    }
-
-    .autocomplete-item {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-    }
-
-    .autocomplete-item img {
-        width: 40px;
-        height: 40px;
-
-        border: 2px solid #000;
-        border-radius: 4px;
-
-        object-fit: contain;
-        background: #000;
-    }
-
-    .autocomplete-item .game-info {
-        display: flex;
-        flex: 1;
-        flex-direction: column;
-
-        margin-left: 10px;
-        min-width: 0;
+        background: #640199;
     }
 }
