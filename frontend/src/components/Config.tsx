@@ -108,8 +108,8 @@ export default function Config({ configPayload }: ConfigParams) {
         ];
 
         return commands.map(([command, label]) => (
-            <div className="row" key={command}>
-                <div className="hotkeyContainer">
+            <div className="hotkey-row" key={command}>
+                <div className="row hotkeyContainer">
                     <p className="hotkeyID">{label}:</p>
                     <p className="hotkeyValue">{getHotkeyName(config.key_config?.[command])}</p>
 
