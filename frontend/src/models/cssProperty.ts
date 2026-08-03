@@ -40,10 +40,6 @@ export interface CSSRuleEditor {
     originalFile: string;
 
     originalId: string;
-
-    // create: boolean;
-
-    // delete: boolean;
 }
 
 export interface CSSPropertyOption {
