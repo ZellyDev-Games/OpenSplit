@@ -27,7 +27,7 @@
     }
 
     tr.seg-group > td {
-        background: #333;
+        background: var(--group-bg);
     }
 
     tr.seg-group-parent > td {
