@@ -1,19 +1,44 @@
-@layer reset, components, vars, skins, overrides;
+@layer reset, vars, components, skins, overrides;
+/* Foundation */
+
 @import "reset.css";
+@import "fonts.css";
+@import "utilities.css";
 @import "common.css";
 
-@import "app.css";
+/* Application */
 
-@import "welcome.css";
-@import "tooltip.css";
-@import "context-menu.css";
+@import "app/app.css";
+@import "app/welcome.css";
 
-@import "forms.css";
-@import "autocomplete.css";
-@import "config.css";
-@import "editor.css";
+/* Shared Components */
 
-@import "splitter.css";
-@import "timer.css";
+@import "components/context-menu.css";
+@import "components/tooltip.css";
+@import "components/autocomplete.css";
 
-@import "skinEditor.css";
+/* Forms */
+
+@import "forms/forms.css";
+@import "forms/datagrid.css";
+@import "forms/config.css";
+@import "forms/editor.css";
+@import "forms/segmentEditor.css";
+
+/* Splitter */
+
+@import "splitter/splitter.css";
+@import "splitter/gameInfo.css";
+@import "splitter/segmentList.css";
+@import "splitter/segmentRow.css";
+@import "splitter/comparison.css";
+@import "splitter/timer.css";
+
+/* Skin Editor */
+
+@import "skinEditor/layout.css";
+@import "skinEditor/preview.css";
+@import "skinEditor/controls.css";
+@import "skinEditor/files.css";
+@import "skinEditor/ruleEditor.css";
+@import "skinEditor/actions.css";
