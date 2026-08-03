@@ -14,19 +14,15 @@ const (
 	//
 
 	NEW
-
 	LOAD
-
 	EDIT
 
 	CANCEL
-
 	SUBMIT
 
 	CLOSE
 
 	RESET
-
 	SAVE
 
 	//
@@ -34,9 +30,7 @@ const (
 	//
 
 	SPLIT
-
 	UNDO
-
 	SKIP
 
 	PAUSE
@@ -46,10 +40,9 @@ const (
 	//
 
 	TOGGLEGLOBAL
+	TOGGLEWR
 
 	FOCUS
-
-	TOGGLEWR
 
 	//
 	// Internal
@@ -58,7 +51,6 @@ const (
 	HELLO
 
 	DONE
-
 	UNDONE
 
 	//
@@ -66,7 +58,6 @@ const (
 	//
 
 	SET_RUNTIME_OFFSET
-
 	CLEAR_RUNTIME_OFFSET
 
 	//
@@ -74,7 +65,6 @@ const (
 	//
 
 	COMPARISON_LEFT
-
 	COMPARISON_RIGHT
 
 	//
@@ -82,7 +72,6 @@ const (
 	//
 
 	NEW_SKIN
-
 	EDIT_SKIN
 
 	SKIN_SELECT
@@ -92,23 +81,19 @@ const (
 	//
 
 	SKIN_FILE
-
 	SKIN_ELEMENT
+	SKIN_RULE
 
 	CLEAR_ELEMENT
-
-	SKIN_RULE
 
 	//
 	// Skin editor working copy mutations
 	//
 
 	SKIN_CREATE_FILE
-
 	SKIN_CREATE_RULE
 
 	SKIN_RULE_UPDATE
-
 	SKIN_FILE_UPDATE
 
 	SKIN_RULE_DELETE
@@ -120,6 +105,5 @@ const (
 	//
 
 	SKIN_SAVE
-
 	SKIN_RELOAD
 )
