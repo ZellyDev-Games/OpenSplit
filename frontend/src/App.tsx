@@ -137,7 +137,7 @@ export default function App() {
     }, []);
 
     return (
-        <div id="App" className="app">
+        <div id="App" className="app panel">
             {viewModel && <ViewRouter model={viewModel} skinModel={skinModel} />}
         </div>
     );

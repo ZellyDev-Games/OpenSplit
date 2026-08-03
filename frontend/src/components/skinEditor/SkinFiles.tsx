@@ -57,7 +57,7 @@ function TextFileEditor({
     }, [file.path, file.contents]);
 
     return (
-        <div className="text-file-editor">
+        <div className="panel text-file-editor">
             <h3>Text</h3>
 
             <textarea
@@ -132,7 +132,7 @@ export default function SkinFiles({
     const isCSS = selected?.type === "css" || selected?.path.endsWith(".css");
 
     return (
-        <div className="skin-files">
+        <div className="panel skin-files">
             <h3>Element</h3>
 
             <select value={selectedElement ?? ""} onChange={(event) => onElementSelected(event.target.value)}>
@@ -242,7 +242,7 @@ export default function SkinFiles({
                     )}
 
                     {activeRule && (
-                        <div className="rule-editor">
+                        <div className="panel rule-editor">
                             <h4>CSS</h4>
 
                             <textarea
