@@ -1,25 +1,4 @@
 @layer components {
-    @font-face {
-        font-family: "Sublima";
-        src: url("Sublima-ExtraBold.otf") format("opentype");
-    }
-
-    @font-face {
-        font-family: "Hack";
-        src: url("Hack-Bold.ttf") format("truetype");
-        font-weight: bold;
-    }
-
-    @font-face {
-        font-family: "Techna";
-        src: url("TechnaSans-Regular.otf") format("opentype");
-    }
-
-    @font-face {
-        font-family: "Monofonto";
-        src: url("mf.otf") format("opentype");
-    }
-
     :root {
         background: #282828;
         color: #d9d9f0;
@@ -28,14 +7,6 @@
         transition:
             width 0.2s ease,
             height 0.2s ease;
-    }
-
-    hr {
-        width: 100%;
-        height: 1px;
-        margin: 5px 0;
-        border: 0;
-        background: #abd5e7;
     }
 
     .container {
@@ -78,5 +49,13 @@
 
     button:hover {
         background: #640199;
+    }
+
+    hr {
+        width: 100%;
+        height: 1px;
+        margin: 5px 0;
+        border: 0;
+        background: #abd5e7;
     }
 }

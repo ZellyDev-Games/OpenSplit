@@ -1,0 +1,22 @@
+@layer components {
+    @font-face {
+        font-family: "Sublima";
+        src: url("fonts/Sublima-ExtraBold.otf") format("opentype");
+    }
+
+    @font-face {
+        font-family: "Hack";
+        src: url("fonts/Hack-Bold.ttf") format("truetype");
+        font-weight: bold;
+    }
+
+    @font-face {
+        font-family: "Techna";
+        src: url("fonts/TechnaSans-Regular.otf") format("opentype");
+    }
+
+    @font-face {
+        font-family: "Monofonto";
+        src: url("fonts/mf.otf") format("opentype");
+    }
+}
