@@ -16,10 +16,10 @@ import {
 import React from "react";
 
 import SegmentPayload from "../../models/segmentPayload";
-import { IconButton } from "../Tooltip";
 import { colorFromId, GroupCtx } from "./hashColor";
 import SegmentIconPicker from "./SegmentIconPicker";
 import { TimeRow } from "./TimeRow";
+import { IconButton } from "./Tooltip";
 
 type SegmentRowProps = {
     segment: SegmentPayload;
