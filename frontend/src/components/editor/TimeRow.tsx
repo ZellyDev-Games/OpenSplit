@@ -69,7 +69,7 @@ export const TimeRow = forwardRef<Handle, TimeRowProps>((props, ref) => {
     }));
 
     return (
-        <div className="segment-time">
+        <div className="row segment-time">
             <input
                 placeholder="H"
                 value={hours}

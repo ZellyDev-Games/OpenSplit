@@ -56,7 +56,7 @@ export default function Timer({ offset, wr }: TimerParams) {
 
     return (
         <div id="timer-container">
-            <div id="time-container" aria-label="formatted duration">
+            <div id="time-container" className="row" aria-label="formatted duration">
                 <span id="time-sign">{time < 0 && "-"}</span>
                 <span id="time-hours" data-present={formattedTimeParts.showHours ? "1" : "0"}>
                     <strong>{formattedTimeParts.hoursText}</strong>
