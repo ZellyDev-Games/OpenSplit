@@ -1,14 +1,14 @@
-import SegmentPayload from "../../models/segmentPayload";
+import SegmentPayload from "../../../models/segmentPayload";
 
 /**
  * Flattened representation of the segment tree.
  * Used for rendering while preserving hierarchy information.
  */
 export type FlatSegment = {
-    Segment: SegmentPayload;
-    Depth: number;
-    ParentId: string | null;
-    HasChildren: boolean;
+    segment: SegmentPayload;
+    depth: number;
+    parentId: string | null;
+    hasChildren: boolean;
 };
 
 /**
@@ -37,10 +37,10 @@ export function flattenSegments(
 
     for (const segment of segments) {
         flat.push({
-            Segment: segment,
-            Depth: depth,
-            ParentId: parentId,
-            HasChildren: segment.children.length > 0,
+            segment: segment,
+            depth: depth,
+            parentId: parentId,
+            hasChildren: segment.children.length > 0,
         });
 
         if (segment.children.length > 0) {
