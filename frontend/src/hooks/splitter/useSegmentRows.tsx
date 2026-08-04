@@ -1,14 +1,19 @@
-import React from "react";
+import React, { useMemo } from "react";
 
+import ActiveSegmentRow from "../../components/splitter/segments/ActiveSegmentRow";
+import ParentSegmentRow from "../../components/splitter/segments/ParentSegmentRow";
+import SegmentRow from "../../components/splitter/segments/SegmentRow";
+import { CumulativeTimeDisplay, DeltaDisplay } from "../../components/splitter/segments/SegmentTime";
+import { FlatSegment, isVisible, Targets } from "../../components/splitter/segments/segmentUtils";
 import SegmentPayload from "../../models/segmentPayload";
 import SessionPayload from "../../models/sessionPayload";
-import ActiveSegmentRow from "./ActiveSegmentRow";
-import ParentSegmentRow from "./ParentSegmentRow";
-import SegmentRow from "./SegmentRow";
-import { CumulativeTimeDisplay, DeltaDisplay } from "./SegmentTime";
-import { FlatSegment, isVisible, Targets } from "./segmentUtils";
 
-type Params = {
+type SegmentRowsResult = {
+    rows: React.ReactNode[];
+    finalRow: React.ReactNode | null;
+};
+
+type UseSegmentRowsParams = {
     sessionPayload: SessionPayload;
     flatSegments: FlatSegment[];
     targets: Targets;
@@ -22,7 +27,6 @@ type Params = {
     activeRowRef: React.RefObject<HTMLTableRowElement | null>;
     toggleParent: (id: string) => void;
 };
-
 export function useSegmentRows({
     sessionPayload,
     flatSegments,
@@ -36,8 +40,8 @@ export function useSegmentRows({
     finalLeafId,
     activeRowRef,
     toggleParent,
-}: Params) {
-    return React.useMemo(() => {
+}: UseSegmentRowsParams): SegmentRowsResult {
+    return useMemo<SegmentRowsResult>(() => {
         const rows: React.ReactNode[] = [];
         let finalRow: React.ReactNode = null;
 
@@ -46,7 +50,7 @@ export function useSegmentRows({
         }
 
         for (const segmentData of flatSegments) {
-            const segment = segmentData.Segment;
+            const segment = segmentData.segment;
 
             const isFinalLeaf = segment.id === finalLeafId;
 
@@ -101,10 +105,10 @@ export function useSegmentRows({
                     <ParentSegmentRow
                         key={segment.id}
                         segment={segment}
-                        depth={segmentData.Depth}
+                        depth={segmentData.depth}
                         completeClassName={completeClassName}
                         isExpanded={isExpanded}
-                        hasChildren={segmentData.HasChildren}
+                        hasChildren={segmentData.hasChildren}
                         lastLeafSplit={lastLeafSplit}
                         parentComparison={parentComparison}
                         parentDelta={parentDelta}
