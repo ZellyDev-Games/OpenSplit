@@ -1,7 +1,7 @@
 import { JSX } from "react";
 
-import SegmentPayload from "../../models/segmentPayload";
-import SplitPayload from "../../models/splitPayload";
+import SegmentPayload from "../../../models/segmentPayload";
+import SplitPayload from "../../../models/splitPayload";
 
 type ParentSegmentRowProps = {
     segment: SegmentPayload;

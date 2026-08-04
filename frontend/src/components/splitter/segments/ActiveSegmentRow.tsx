@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 
-import { EventsOn } from "../../../wailsjs/runtime";
+import { useTimer } from "../../../hooks/splitter/useTimer";
 import SegmentRow from "./SegmentRow";
 import { FlatSegment } from "./segmentUtils";
 
@@ -23,13 +23,7 @@ export default function ActiveSegmentRow({
     previousCumulative,
     activeRowRef,
 }: ActiveSegmentRowProps) {
-    const [time, setTime] = useState(0);
-
-    useEffect(() => {
-        return EventsOn("timer:update", (value: number) => {
-            setTime(value);
-        });
-    }, []);
+    const time = useTimer();
 
     return (
         <SegmentRow

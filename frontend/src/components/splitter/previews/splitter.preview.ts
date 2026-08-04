@@ -1,4 +1,4 @@
-import type { SkinElement } from "../../models/skinModel";
+import type { SkinElement } from "../../../models/skinModel";
 
 const elements: SkinElement[] = [
     {
