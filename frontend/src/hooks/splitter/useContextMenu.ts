@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 
-import { log } from "../utils/logger";
+import { log } from "../../utils/logger";
 
 export type MenuSeparator = { type: "separator" };
 export type MenuAction = {
