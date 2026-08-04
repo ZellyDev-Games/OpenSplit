@@ -4,8 +4,8 @@ import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
 import { Command } from "../../models/command";
 import SessionPayload from "../../models/sessionPayload";
 import { log } from "../../utils/logger";
-import { MenuItem } from "../useContextMenu";
 import { CompareAgainst, Comparison } from "./useComparison";
+import { MenuItem } from "./useContextMenu";
 
 type UseSplitterMenuParams = {
     disableContextMenu: boolean;
