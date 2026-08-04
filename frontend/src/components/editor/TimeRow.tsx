@@ -7,7 +7,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 
-import { msToParts, partsToMS } from "../splitter/Timer";
+import { msToParts, partsToMS } from "../splitter/timer/timerUtils";
 
 type TimeRowProps = {
     time: number | null;

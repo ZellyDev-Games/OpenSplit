@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
+import { CompareAgainst, Comparison } from "../../hooks/splitter/useComparison";
 import { useSkinEditor } from "../../hooks/useSkinEditor";
 import { Command } from "../../models/command";
 import SkinModel, { CSSRule, PreviewUpdate } from "../../models/skinModel";
-import { CompareAgainst, Comparison } from "../splitter/Splitter";
 import { mergeSkinElements } from "./mergeSkinElements";
 import { previewConfig } from "./previewBase";
 import { previewSession as completedPreview } from "./previewCompletedSession";

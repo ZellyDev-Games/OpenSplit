@@ -2,6 +2,7 @@ import { Dispatch, SetStateAction, useCallback, useLayoutEffect, useRef, useStat
 import { createPortal } from "react-dom";
 
 import { EventsEmit } from "../../../wailsjs/runtime/runtime";
+import { Comparison } from "../../hooks/splitter/useComparison";
 import useElementHighlight, { Highlight } from "../../hooks/useElementHighlight";
 import { usePreviewDocument } from "../../hooks/usePreviewDocument";
 import { usePreviewFrame } from "../../hooks/usePreviewFrame";
@@ -9,7 +10,7 @@ import { usePreviewSelection } from "../../hooks/usePreviewSelection";
 import { ConfigPayload } from "../../models/configPayload";
 import SessionPayload from "../../models/sessionPayload";
 import { PreviewUpdate, RuntimeElement, SkinElement } from "../../models/skinModel";
-import Splitter, { Comparison } from "../splitter/Splitter";
+import Splitter from "../splitter/Splitter";
 import CSSPreviewOverride from "./CSSPreviewOverride";
 
 interface Props {
