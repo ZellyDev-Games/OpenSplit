@@ -1,7 +1,7 @@
 import React, { JSX } from "react";
 
-import SegmentPayload from "../../models/segmentPayload";
-import SplitPayload from "../../models/splitPayload";
+import SegmentPayload from "../../../models/segmentPayload";
+import SplitPayload from "../../../models/splitPayload";
 import { ComparisonDisplay, CumulativeTimeDisplay, DeltaDisplay } from "./SegmentTime";
 import { FlatSegment } from "./segmentUtils";
 
@@ -38,14 +38,14 @@ export default function SegmentRow({
 
     const runningSegmentTime = activeRow && time != null ? time - previousCumulative : null;
 
-    const segment: SegmentPayload = segmentData.Segment;
+    const segment: SegmentPayload = segmentData.segment;
 
     return (
         <tr ref={activeRow ? (activeRowRef ?? null) : null} className={"segmentRow" + (activeRow ? " selected" : "")}>
             <td
                 className="splitName"
                 style={{
-                    paddingLeft: 5 + segmentData.Depth * 16,
+                    paddingLeft: 5 + segmentData.depth * 16,
                 }}
             >
                 {renderToggle}

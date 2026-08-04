@@ -1,14 +1,14 @@
 import { JSX } from "react";
 
-import SegmentPayload from "../../models/segmentPayload";
-import SplitPayload from "../../models/splitPayload";
-import { displayFormattedTimeParts, formatDuration, msToParts } from "./Timer";
+import SegmentPayload from "../../../models/segmentPayload";
+import SplitPayload from "../../../models/splitPayload";
+import { displayFormattedTimeParts, formatDuration, msToParts } from "../timer/timerUtils";
 
 /**
  * Delta time display for splits and active rows.
  */
 export function DeltaDisplay({ delta, gold = false }: { delta: number; gold?: boolean }): JSX.Element {
-    const t = displayFormattedTimeParts(formatDuration(msToParts(delta)));
+    const t = displayFormattedTimeParts(formatDuration(msToParts(delta), true));
 
     let className = "";
 
@@ -22,7 +22,6 @@ export function DeltaDisplay({ delta, gold = false }: { delta: number; gold?: bo
 
     return (
         <strong className={className}>
-            {delta > 0 && "+"}
             {t[0]}
             <small>{t[1]}</small>
         </strong>
