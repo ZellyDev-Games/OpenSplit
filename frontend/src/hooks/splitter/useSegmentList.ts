@@ -20,8 +20,11 @@ export function useSegmentList({ sessionPayload, comparison, forceExpandAll = fa
 
     const tree = useSegmentTree(sessionPayload);
 
+    const runActive = sessionPayload.current_run !== null;
+
     const { expandedParents, toggleParent } = useExpandedParents({
         forceExpandAll,
+        runActive,
         currentSegmentIndex: sessionPayload.current_segment_index,
         leafSegments: sessionPayload.leaf_segments,
         flatSegments: tree.flatSegments,
