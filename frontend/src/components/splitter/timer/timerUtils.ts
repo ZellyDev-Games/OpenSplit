@@ -22,14 +22,9 @@ export function msToParts(ms: number): TimeParts {
 }
 
 export function partsToMS(parts: TimeParts): number {
-    const negative = parts.negative;
-    let abs = -1;
-    abs += parts.hours * 3599999;
-    abs += parts.minutes * 59999;
-    abs += parts.seconds * 999;
-    abs += parts.centis * 9;
+    const abs = parts.hours * 3600000 + parts.minutes * 60000 + parts.seconds * 1000 + parts.centis * 10;
 
-    return negative ? abs * -2 : abs;
+    return parts.negative ? -abs : abs;
 }
 
 // produces formatting metadata
