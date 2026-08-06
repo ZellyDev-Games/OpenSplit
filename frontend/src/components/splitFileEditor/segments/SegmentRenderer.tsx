@@ -1,13 +1,17 @@
-import React from "react";
+import { Dispatch, SetStateAction } from "react";
 
-import SegmentPayload from "../../models/segmentPayload";
+import { groupIntoPreviousSibling, ungroupToTopLevel } from "../../../hooks/splitFileEditor/segmentGroup";
+import { moveSegmentDown, moveSegmentUp } from "../../../hooks/splitFileEditor/segmentMove";
+import { addTime } from "../../../hooks/splitFileEditor/useSegmentRows";
+import SegmentPayload from "../../../models/segmentPayload";
+import { RenderResult, RunningTotals } from "../types/render";
+import { SegmentUpdater } from "../types/segment";
 import { colorFromId, GroupCtx } from "./hashColor";
 import SegmentRow from "./SegmentRow";
-import { groupIntoPreviousSibling, moveSegmentDown, moveSegmentUp, ungroupToTopLevel } from "./segmentTree";
-import { RenderResult, RunningTotals, SegmentUpdater } from "./types";
 
 type RenderSegmentRowsProps = {
     segments: SegmentPayload[];
+    setSegments?: Dispatch<SetStateAction<SegmentPayload[]>>;
     depth?: number;
     inheritedGroup?: GroupCtx | null;
     isDirectChild?: boolean;
@@ -16,8 +20,6 @@ type RenderSegmentRowsProps = {
 
     showCumulativeTimes: boolean;
 
-    setSegments: React.Dispatch<React.SetStateAction<SegmentPayload[]>>;
-
     onDelete: (id: string) => void;
     onAddChild: (parent: SegmentPayload | null) => void;
     onUpdate: SegmentUpdater;
@@ -25,6 +27,7 @@ type RenderSegmentRowsProps = {
 
 export function renderSegmentRows({
     segments,
+    setSegments,
     depth = 0,
     inheritedGroup = null,
     isDirectChild = false,
@@ -36,15 +39,16 @@ export function renderSegmentRows({
 
     showCumulativeTimes,
 
-    setSegments,
-
     onDelete,
     onAddChild,
     onUpdate,
 }: RenderSegmentRowsProps): RenderResult {
+    let running = { ...totals };
     const rows: React.ReactElement[] = [];
 
-    let running = { ...totals };
+    const updateTree = (fn: (segments: SegmentPayload[]) => SegmentPayload[]) => {
+        setSegments?.(fn);
+    };
 
     for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
@@ -58,7 +62,7 @@ export function renderSegmentRows({
 
         const displayPB = segment.pb < 0 ? -1 : showCumulativeTimes ? running.pb + segment.pb : segment.pb;
 
-        const displayGold = segment.average < 0 ? -1 : showCumulativeTimes ? running.gold + segment.gold : segment.gold;
+        const displayGold = segment.gold < 0 ? -1 : showCumulativeTimes ? running.gold + segment.gold : segment.gold;
 
         const childResult = hasChildren
             ? renderSegmentRows({
@@ -88,13 +92,13 @@ export function renderSegmentRows({
                 index={i}
                 inheritedGroup={inheritedGroup}
                 isDirectChild={isDirectChild}
-                displayAverage={displayAverage}
-                displayPB={displayPB}
-                displayGold={displayGold}
-                onMoveUp={(id) => setSegments((prev) => moveSegmentUp(prev, id))}
-                onMoveDown={(id) => setSegments((prev) => moveSegmentDown(prev, id))}
-                onGroup={(id) => setSegments((prev) => groupIntoPreviousSibling(prev, id))}
-                onUngroup={(id) => setSegments((prev) => ungroupToTopLevel(prev, id))}
+                average={displayAverage}
+                pb={displayPB}
+                gold={displayGold}
+                onMoveUp={(id) => updateTree((prev) => moveSegmentUp(prev, id))}
+                onMoveDown={(id) => updateTree((prev) => moveSegmentDown(prev, id))}
+                onGroup={(id) => updateTree((prev) => groupIntoPreviousSibling(prev, id))}
+                onUngroup={(id) => updateTree((prev) => ungroupToTopLevel(prev, id))}
                 onDelete={onDelete}
                 onAddChild={onAddChild}
                 onUpdate={onUpdate}
@@ -119,12 +123,4 @@ export function renderSegmentRows({
         rows,
         totals: running,
     };
-}
-
-function addTime(total: number, value: number): number {
-    if (value < 0) {
-        return total;
-    }
-
-    return total + value;
 }

@@ -1,16 +1,14 @@
-import React from "react";
+import { Dispatch, SetStateAction } from "react";
 
-import SegmentPayload from "../../models/segmentPayload";
+import SegmentPayload from "../../../models/segmentPayload";
+import { SegmentUpdater } from "../types/segment";
 import { renderSegmentRows } from "./SegmentRenderer";
-import { SegmentUpdater } from "./types";
 
 type SegmentTableProps = {
     segments: SegmentPayload[];
 
-    setSegments: React.Dispatch<React.SetStateAction<SegmentPayload[]>>;
-
     showCumulativeTimes: boolean;
-    setShowCumulativeTimes: React.Dispatch<React.SetStateAction<boolean>>;
+    setShowCumulativeTimes: Dispatch<SetStateAction<boolean>>;
 
     onAddSegment: (parent: SegmentPayload | null) => void;
     onDeleteSegment: (id: string) => void;
@@ -19,7 +17,6 @@ type SegmentTableProps = {
 
 export default function SegmentTable({
     segments,
-    setSegments,
     showCumulativeTimes,
     setShowCumulativeTimes,
     onAddSegment,
@@ -58,19 +55,19 @@ export default function SegmentTable({
 
                                     <th style={{ width: "45%" }}>Segment Name</th>
 
-                                    <th>
+                                    <th className="time-column">
                                         Average Time
-                                        <small>(HH:MM:SS.ccc)</small>
+                                        <small>(HH:MM:SS.cc)</small>
                                     </th>
 
-                                    <th>
+                                    <th className="time-column">
                                         Personal Best
-                                        <small>(HH:MM:SS.ccc)</small>
+                                        <small>(HH:MM:SS.cc)</small>
                                     </th>
 
-                                    <th>
+                                    <th className="time-column">
                                         Gold
-                                        <small>(HH:MM:SS.ccc)</small>
+                                        <small>(HH:MM:SS.cc)</small>
                                     </th>
 
                                     <th style={{ width: "5%" }}>Add</th>
@@ -85,8 +82,6 @@ export default function SegmentTable({
                                         segments,
 
                                         showCumulativeTimes,
-
-                                        setSegments,
 
                                         onDelete: onDeleteSegment,
                                         onAddChild: onAddSegment,

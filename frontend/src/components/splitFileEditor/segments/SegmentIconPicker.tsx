@@ -5,17 +5,18 @@
  * the split file without requiring external asset management.
  */
 
-import React from "react";
+import { CSSProperties } from "react";
 
-import addIcon from "../../assets/images/add.png";
-import removeIcon from "../../assets/images/remove.png";
+import addIcon from "../../../assets/images/add.png";
+import removeIcon from "../../../assets/images/remove.png";
+import useImagePicker from "../../../hooks/splitFileEditor/useImagePicker";
 
 type SegmentIconPickerProps = {
     icon: string;
     onChange: (icon: string) => void;
 };
 
-const iconStyle: React.CSSProperties = {
+const iconStyle: CSSProperties = {
     width: 24,
     height: 24,
     cursor: "pointer",
@@ -25,7 +26,7 @@ const iconStyle: React.CSSProperties = {
     boxSizing: "border-box",
 };
 
-const previewStyle: React.CSSProperties = {
+const previewStyle: CSSProperties = {
     width: 24,
     height: 24,
     objectFit: "contain",
@@ -35,28 +36,7 @@ const previewStyle: React.CSSProperties = {
 };
 
 export default function SegmentIconPicker({ icon, onChange }: SegmentIconPickerProps) {
-    const inputRef = React.useRef<HTMLInputElement>(null);
-
-    /**
-     * Reads the selected image and converts it to a base64 data URL.
-     */
-    const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-
-        if (!file) {
-            return;
-        }
-
-        const reader = new FileReader();
-
-        reader.onload = () => {
-            onChange(reader.result as string);
-        };
-
-        reader.readAsDataURL(file);
-
-        e.target.value = "";
-    };
+    const { inputRef, handleUpload } = useImagePicker(onChange);
 
     return (
         <>
