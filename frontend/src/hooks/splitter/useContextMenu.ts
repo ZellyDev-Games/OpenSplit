@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { MouseEvent, useCallback, useState } from "react";
 
 import { log } from "../../utils/logger";
 
@@ -26,7 +26,7 @@ export type ContextMenuProps = {
 export function useContextMenu() {
     const [state, setState] = useState<ContextMenuState>({ open: false, x: 0, y: 0 });
 
-    const onContextMenu = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    const onContextMenu = useCallback((e: MouseEvent<HTMLElement>) => {
         log.debug("[ContextMenu] Open", {
             x: e.clientX,
             y: e.clientY,

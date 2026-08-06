@@ -1,4 +1,4 @@
-import React from "react";
+import { RefObject } from "react";
 
 import { useTimer } from "../../../hooks/splitter/useTimer";
 import SegmentRow from "./SegmentRow";
@@ -9,7 +9,7 @@ type ActiveSegmentRowProps = {
     cTarget: number;
     iTarget: number;
     previousCumulative: number;
-    activeRowRef: React.RefObject<HTMLTableRowElement | null>;
+    activeRowRef: RefObject<HTMLTableRowElement | null>;
 };
 
 /**

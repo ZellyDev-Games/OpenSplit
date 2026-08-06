@@ -1,4 +1,4 @@
-import React, { JSX } from "react";
+import { JSX, RefObject } from "react";
 
 import SegmentPayload from "../../../models/segmentPayload";
 import SplitPayload from "../../../models/splitPayload";
@@ -13,7 +13,7 @@ type SegmentRowProps = {
     activeRow?: boolean;
     time?: number | null;
     previousCumulative?: number;
-    activeRowRef?: React.RefObject<HTMLTableRowElement | null>;
+    activeRowRef?: RefObject<HTMLTableRowElement | null>;
     renderToggle?: JSX.Element | null;
 };
 

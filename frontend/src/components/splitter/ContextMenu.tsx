@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from "react";
+import { MouseEvent, useLayoutEffect, useRef, useState } from "react";
 
 import { ContextMenuProps, MenuAction, MenuSeparator } from "../../hooks/splitter/useContextMenu";
 
@@ -29,18 +29,18 @@ export function ContextMenu({ state, close, items = [] }: ContextMenuProps) {
 
     if (!state.open) return null;
 
-    const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const handleOverlayClick = (e: MouseEvent<HTMLDivElement>) => {
         e.stopPropagation();
         close();
     };
 
-    const handleOverlayContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
+    const handleOverlayContextMenu = (e: MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
         close();
     };
 
-    const stopPropagation = (e: React.MouseEvent<HTMLDivElement>) => {
+    const stopPropagation = (e: MouseEvent<HTMLDivElement>) => {
         e.stopPropagation();
     };
 
@@ -71,7 +71,7 @@ export function ContextMenu({ state, close, items = [] }: ContextMenuProps) {
                             const item = it as MenuAction;
                             const disabled = !!item.disabled;
 
-                            const onItemClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+                            const onItemClick = (e: MouseEvent<HTMLButtonElement>) => {
                                 e.stopPropagation();
 
                                 if (disabled) return;
