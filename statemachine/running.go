@@ -215,7 +215,18 @@ func (r *Running) Receive(c command.Command, payload *string) (dispatcher.Dispat
 		machine.runtimeProvider.EventsEmit("comparison:right")
 	case command.TOGGLEWR:
 		logger.Debug(logModule, "world record display toggled")
-		machine.sessionService.ToggleWorldRecordDisplay()
+
+		show, err := machine.sessionService.ToggleWorldRecordDisplay()
+		if err != nil {
+			return dispatcher.DispatchReply{
+				Code:    1,
+				Message: err.Error(),
+			}, nil
+		}
+
+		if err := machine.repoService.SaveWorldRecordDisplay(show); err != nil {
+			logger.Errorf(logModule, "failed saving WR display state: %v", err)
+		}
 
 		machine.runtimeProvider.EventsEmit(
 			"session:update",
