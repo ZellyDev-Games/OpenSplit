@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -186,17 +187,23 @@ func (s *Service) SetLoadedSplitFile(sf SplitFile) {
 	)
 }
 
-func (s *Service) ToggleWorldRecordDisplay() {
+func (s *Service) ToggleWorldRecordDisplay() (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if s.loadedSplitFile == nil {
-		return
+		return false, errors.New("no split file loaded")
 	}
+
+	s.loadedSplitFile.WR.Show = !s.loadedSplitFile.WR.Show
 
 	logger.Debugf(
 		logModule,
 		"world record display=%v",
 		s.loadedSplitFile.WR.Show,
 	)
-	s.loadedSplitFile.WR.Show = !s.loadedSplitFile.WR.Show
+
+	return s.loadedSplitFile.WR.Show, nil
 }
 
 // SetRuntimeOffsetOverride replaces the configured splitfile offset
