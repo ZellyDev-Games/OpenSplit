@@ -7,6 +7,7 @@ import { log } from "../../utils/logger";
 type UseExpandedParentsParams = {
     forceExpandAll?: boolean;
     currentSegmentIndex: number;
+    runActive: boolean;
     leafSegments?: SegmentPayload[] | null;
     flatSegments: FlatSegment[];
     parentById: Map<string, string | null>;
@@ -14,63 +15,35 @@ type UseExpandedParentsParams = {
 
 export function useExpandedParents({
     forceExpandAll = false,
+    runActive,
     currentSegmentIndex,
     leafSegments,
     flatSegments,
     parentById,
 }: UseExpandedParentsParams) {
-    const [expandedParents, setExpandedParents] = useState<Set<string>>(() => {
-        const expanded = new Set<string>();
+    const expandAll = () =>
+        new Set(
+            flatSegments.filter((segment) => segment.segment.children.length > 0).map((segment) => segment.segment.id),
+        );
 
-        flatSegments.forEach((segment) => {
-            if (segment.segment.children.length > 0) {
-                expanded.add(segment.segment.id);
-            }
-        });
+    const [expandedParents, setExpandedParents] = useState<Set<string>>(() => expandAll());
 
-        return expanded;
-    });
-
-    /*
-     * Automatically expand active segment parents
-     */
     useEffect(() => {
-        if (forceExpandAll) {
-            setExpandedParents(
-                new Set(
-                    flatSegments
-                        .filter((segment) => segment.segment.children.length > 0)
-                        .map((segment) => segment.segment.id),
-                ),
-            );
+        if (forceExpandAll || !runActive) {
+            setExpandedParents(expandAll());
             return;
         }
 
-        const leaves = leafSegments;
-
-        if (!leaves) {
-            setExpandedParents(new Set());
-            return;
-        }
-
-        const active = leaves[currentSegmentIndex];
+        const active = leafSegments?.[currentSegmentIndex];
 
         if (!active) {
+            setExpandedParents(expandAll());
             return;
         }
 
+        // Running: collapse everything except active branch
         setExpandedParents(new Set(getAncestorIds(active.id, parentById)));
-    }, [forceExpandAll, flatSegments, currentSegmentIndex, leafSegments, parentById]);
-
-    useEffect(() => {
-        setExpandedParents(
-            new Set(
-                flatSegments
-                    .filter((segment) => segment.segment.children.length > 0)
-                    .map((segment) => segment.segment.id),
-            ),
-        );
-    }, [flatSegments]);
+    }, [forceExpandAll, runActive, currentSegmentIndex, leafSegments, parentById, flatSegments]);
 
     const toggleParent = (id: string) => {
         setExpandedParents((previous) => {
@@ -78,6 +51,7 @@ export function useExpandedParents({
                 id,
                 expanded: !previous.has(id),
             });
+
             const next = new Set(previous);
 
             if (next.has(id)) {
