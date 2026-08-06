@@ -1,0 +1,108 @@
+@layer components {
+    #split-form > .row,
+    #split-form > .metadata-row .row {
+        display: flex;
+        align-items: center;
+        padding: 6px 0;
+    }
+
+    #split-form > .row > label,
+    #split-form > .metadata-row label {
+        width: 100px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+        text-align: center;
+    }
+
+    #split-form > .row input,
+    #split-form > .row select,
+    #split-form > .metadata-row input,
+    #split-form > .metadata-row select {
+        margin-top: 4px;
+    }
+
+    /*
+     * Split editor spacing.
+     *
+     * Do not apply padding to:
+     * - segment table
+     * - segment table contents
+     * - editor action buttons
+     */
+    .form-container > form > *:not(.datagrid-container):not(.actions):not(#exporter) {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .form-container > h2 {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    /*
+     * Top metadata rows need spacing between fields.
+     */
+    .metadata-row {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    /*
+     * Keep the Add Segment / Show Cumulative Times row untouched
+     * except for existing margins.
+     */
+    .segment-editor-controls {
+        padding: 0;
+    }
+
+    /*
+     * Segment action buttons:
+     *
+     * up       ungroup
+     * down     group
+     */
+    .segment-actions {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-areas:
+            "up ungroup"
+            "down group";
+        gap: 2px;
+    }
+
+    .segment-actions .tooltip-bubble {
+        left: 100%;
+        top: 50%;
+        transform: translate(8px, -50%);
+    }
+
+    .segment-action-up,
+    .segment-action-down,
+    .segment-action-group,
+    .segment-action-ungroup {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .segment-action-up {
+        grid-area: up;
+    }
+
+    .segment-action-down {
+        grid-area: down;
+    }
+
+    .segment-action-group {
+        grid-area: group;
+    }
+
+    .segment-action-ungroup {
+        grid-area: ungroup;
+    }
+}
