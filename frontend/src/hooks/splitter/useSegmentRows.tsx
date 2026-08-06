@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { ReactNode, RefObject, useMemo } from "react";
 
 import ActiveSegmentRow from "../../components/splitter/segments/ActiveSegmentRow";
 import ParentSegmentRow from "../../components/splitter/segments/ParentSegmentRow";
@@ -9,8 +9,8 @@ import SegmentPayload from "../../models/segmentPayload";
 import SessionPayload from "../../models/sessionPayload";
 
 type SegmentRowsResult = {
-    rows: React.ReactNode[];
-    finalRow: React.ReactNode | null;
+    rows: ReactNode[];
+    finalRow: ReactNode | null;
 };
 
 type UseSegmentRowsParams = {
@@ -24,7 +24,7 @@ type UseSegmentRowsParams = {
     lastLeafByParentId: Map<string, string>;
     leavesByParentId: Map<string, SegmentPayload[]>;
     finalLeafId: string | null;
-    activeRowRef: React.RefObject<HTMLTableRowElement | null>;
+    activeRowRef: RefObject<HTMLTableRowElement | null>;
     toggleParent: (id: string) => void;
 };
 export function useSegmentRows({
@@ -42,8 +42,8 @@ export function useSegmentRows({
     toggleParent,
 }: UseSegmentRowsParams): SegmentRowsResult {
     return useMemo<SegmentRowsResult>(() => {
-        const rows: React.ReactNode[] = [];
-        let finalRow: React.ReactNode = null;
+        const rows: ReactNode[] = [];
+        let finalRow: ReactNode = null;
 
         if (!sessionPayload.loaded_split_file || !sessionPayload.leaf_segments) {
             return { rows, finalRow };
@@ -67,9 +67,9 @@ export function useSegmentRows({
 
                 const lastLeafSplit = lastLeafId ? (sessionPayload.current_run?.splits[lastLeafId] ?? null) : null;
 
-                let parentComparison: React.ReactNode = null;
-                let parentDelta: React.ReactNode = null;
-                let parentSegmentDelta: React.ReactNode = null;
+                let parentComparison: ReactNode = null;
+                let parentDelta: ReactNode = null;
+                let parentSegmentDelta: ReactNode = null;
 
                 if (lastLeafId) {
                     const cTarget = targets.cumulative[lastLeafId] ?? null;
