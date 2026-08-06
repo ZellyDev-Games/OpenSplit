@@ -23,6 +23,7 @@
     }
 
     .datagrid td {
+        position: relative;
         border: 1px solid #666;
         background-color: #282828;
     }
@@ -34,5 +35,14 @@
     }
     .datagrid input:focus {
         outline: 0;
+    }
+
+    .datagrid .has-tooltip {
+        position: relative;
+        z-index: 10;
+    }
+
+    .datagrid .has-tooltip:hover {
+        z-index: 100;
     }
 }
