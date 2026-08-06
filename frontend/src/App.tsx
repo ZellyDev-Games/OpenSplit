@@ -13,10 +13,10 @@ import {
     WindowSetSize,
 } from "../wailsjs/runtime";
 import Config from "./components/Config";
-import SplitEditor from "./components/editor/SplitEditor";
 import EditSkin from "./components/skinEditor/EditSkin";
 import NewSkin from "./components/skinEditor/NewSkin";
 import SkinEditor from "./components/skinEditor/SkinEditor";
+import SplitEditor from "./components/splitFileEditor/SplitEditor";
 import Splitter from "./components/splitter/Splitter";
 import Welcome from "./components/Welcome";
 import { Command } from "./models/command";
