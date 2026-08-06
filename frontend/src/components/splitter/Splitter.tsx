@@ -38,8 +38,6 @@ export default function Splitter({
     onComparisonChange,
 }: SplitterParams) {
     const contextMenu = useContextMenu();
-    // const [contextMenuItems, setContextMenuItems] = useState<MenuItem[]>([]);
-    // const [globalHotkeys, setGlobalHotkeys] = useState<boolean>(configPayload.global_hotkeys_active);
 
     const { comparison, setComparison } = useComparison(controlledComparison, onComparisonChange);
 
