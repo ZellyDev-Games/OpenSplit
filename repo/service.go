@@ -55,46 +55,6 @@ func buildSplitFileName(sf dto.SplitFile) string {
 	return strings.Join(parts, "-") + ".osf"
 }
 
-// LoadSplitFile reads splitfile bytes from a repo and returns it as a session.SplitFile
-func (s *Service) LoadSplitFile() (dto.SplitFile, error) {
-	logger.Debug(logModule, "loading split file")
-	s.splitFileLock.RLock()
-	splitFile, err := s.repository.LoadSplitFile()
-	if err != nil {
-		s.splitFileLock.RUnlock()
-		return dto.SplitFile{}, err
-	}
-	s.splitFileLock.RUnlock()
-	splitFileDTO, _ := adapters.JSONSplitFileToDTO(string(splitFile))
-	logger.Infof(logModule, "loaded split file: %s-%s", splitFileDTO.GameName, splitFileDTO.GameCategory)
-	return splitFileDTO, nil
-}
-
-// SaveSplitFileWindowDimensions loads the active filename in the repository service,
-// modified the window dimension fields in that file, and resaves it without touching split or run data
-func (s *Service) SaveSplitFileWindowDimensions(X int, Y int, Width int, Height int) error {
-	s.splitFileLock.RLock()
-	diskSplitFileBytes, err := s.repository.GetLoadedSplitFile()
-	if err != nil {
-		s.splitFileLock.RUnlock()
-		return err
-	}
-	s.splitFileLock.RUnlock()
-
-	diskSplitFile, err := adapters.JSONSplitFileToDTO(string(diskSplitFileBytes))
-	if err != nil {
-		return err
-	}
-
-	diskSplitFile.WindowX = X
-	diskSplitFile.WindowY = Y
-	diskSplitFile.WindowWidth = Width
-	diskSplitFile.WindowHeight = Height
-
-	logger.Debugf(logModule, "saving window dimensions: X: %d, Y: %d, Width: %d, Height: %d", X, Y, Width, Height)
-	return s.SaveSplitFile(diskSplitFile)
-}
-
 func (s *Service) SaveSplitFile(splitFile dto.SplitFile) error {
 	// Merge statistics from the currently loaded split file when
 	// saving a newer split file version.
@@ -149,6 +109,76 @@ func (s *Service) SaveSplitFile(splitFile dto.SplitFile) error {
 
 	logger.Infof(logModule, "repository saved split file: %s", identifier)
 	return nil
+}
+
+// LoadSplitFile reads splitfile bytes from a repo and returns it as a session.SplitFile
+func (s *Service) LoadSplitFile() (dto.SplitFile, error) {
+	logger.Debug(logModule, "loading split file")
+	s.splitFileLock.RLock()
+	splitFile, err := s.repository.LoadSplitFile()
+	if err != nil {
+		s.splitFileLock.RUnlock()
+		return dto.SplitFile{}, err
+	}
+	s.splitFileLock.RUnlock()
+	splitFileDTO, _ := adapters.JSONSplitFileToDTO(string(splitFile))
+	logger.Infof(logModule, "loaded split file: %s-%s", splitFileDTO.GameName, splitFileDTO.GameCategory)
+	return splitFileDTO, nil
+}
+
+// SaveSplitFileWindowDimensions loads the active filename in the repository service,
+// modified the window dimension fields in that file, and resaves it without touching split or run data
+func (s *Service) SaveSplitFileWindowDimensions(X int, Y int, Width int, Height int) error {
+	s.splitFileLock.RLock()
+	diskSplitFileBytes, err := s.repository.GetLoadedSplitFile()
+	if err != nil {
+		s.splitFileLock.RUnlock()
+		return err
+	}
+	s.splitFileLock.RUnlock()
+
+	diskSplitFile, err := adapters.JSONSplitFileToDTO(string(diskSplitFileBytes))
+	if err != nil {
+		return err
+	}
+
+	diskSplitFile.WindowX = X
+	diskSplitFile.WindowY = Y
+	diskSplitFile.WindowWidth = Width
+	diskSplitFile.WindowHeight = Height
+
+	logger.Debugf(logModule, "saving window dimensions: X: %d, Y: %d, Width: %d, Height: %d", X, Y, Width, Height)
+	return s.SaveSplitFile(diskSplitFile)
+}
+
+func (s *Service) SaveWorldRecordDisplay(show bool) error {
+	s.splitFileLock.Lock()
+	defer s.splitFileLock.Unlock()
+
+	existingBytes, err := s.repository.GetLoadedSplitFile()
+	if err != nil {
+		return err
+	}
+
+	dto, err := adapters.JSONSplitFileToDTO(string(existingBytes))
+	if err != nil {
+		return err
+	}
+
+	dto.WR.Show = show
+
+	payload, err := adapters.SplitFileToFrontEnd(dto)
+	if err != nil {
+		return err
+	}
+
+	identifier := buildSplitFileName(dto)
+
+	return s.repository.SaveSplitFile(
+		payload,
+		identifier,
+		false,
+	)
 }
 
 func (s *Service) Export() error {
