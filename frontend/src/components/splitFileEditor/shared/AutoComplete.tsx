@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 
 import { useAutoCompleteWidth } from "../../../hooks/splitFileEditor/useAutoCompleteWidth";
-import { useClickOutside } from "../../../hooks/useClickOutside";
+import { useClickOutside } from "../../../hooks/splitFileEditor/useClickOutside";
 
 export type AutocompleteProps<T> = {
     id?: string;
