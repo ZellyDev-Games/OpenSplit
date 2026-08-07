@@ -23,7 +23,7 @@ export function IconButton({
                 e.stopPropagation();
                 onClick();
             }}
-            aria-label={tooltip}
+            // aria-label={tooltip}
             title={tooltip} // fallback if CSS isn't loaded
         >
             <FontAwesomeIcon icon={icon} />
