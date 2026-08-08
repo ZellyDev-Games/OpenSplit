@@ -1,8 +1,8 @@
 import { CSSAtRule, CSSRuleEditor } from "../../models/skin/css";
 import { SkinModel } from "../../models/skin/editor";
 import { SkinElement } from "../../models/skin/element";
-import { formatCSSRule } from "./formatCSS";
-import { selectorMatches } from "./selectorMatch";
+import { formatCSSRule } from "./utils/formatCSS";
+import { selectorMatches } from "./utils/selectorMatch";
 
 interface Props {
     model: SkinModel;

@@ -1,4 +1,4 @@
-import { CSSAtRule, SkinCSSRule } from "../../models/skin/css";
+import { CSSAtRule, SkinCSSRule } from "../../../models/skin/css";
 
 export function collectRuntimeCSS(): SkinCSSRule[] {
     const rules: SkinCSSRule[] = [];

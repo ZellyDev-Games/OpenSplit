@@ -1,6 +1,6 @@
-import RunPayload from "../../../models/runPayload";
-import SegmentPayload from "../../../models/segmentPayload";
-import SplitPayload from "../../../models/splitPayload";
+import RunPayload from "../../../../models/runPayload";
+import SegmentPayload from "../../../../models/segmentPayload";
+import SplitPayload from "../../../../models/splitPayload";
 
 interface PreviewSplit {
     id: string;

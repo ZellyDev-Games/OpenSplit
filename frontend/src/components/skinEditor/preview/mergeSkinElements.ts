@@ -1,4 +1,4 @@
-import type { RuntimeElement, SkinElement } from "../../models/skin/element";
+import type { RuntimeElement, SkinElement } from "../../../models/skin/element";
 
 export function mergeSkinElements(
     preview: SkinElement[],

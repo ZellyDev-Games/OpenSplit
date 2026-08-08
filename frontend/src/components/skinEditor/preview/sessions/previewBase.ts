@@ -1,9 +1,9 @@
-import { Command } from "../../../models/command";
-import { ConfigPayload } from "../../../models/configPayload";
-import SegmentPayload from "../../../models/segmentPayload";
-import SessionPayload from "../../../models/sessionPayload";
-import SplitFilePayload from "../../../models/splitFilePayload";
-import WorldRecord from "../../../models/worldRecord";
+import { Command } from "../../../../models/command";
+import { ConfigPayload } from "../../../../models/configPayload";
+import SegmentPayload from "../../../../models/segmentPayload";
+import SessionPayload from "../../../../models/sessionPayload";
+import SplitFilePayload from "../../../../models/splitFilePayload";
+import WorldRecord from "../../../../models/worldRecord";
 
 function createSegments(): SegmentPayload[] {
     return [
