@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 
 import { EventsOn } from "../../../wailsjs/runtime";
 import { log } from "../../utils/logger";
@@ -13,7 +13,7 @@ export type Comparison = CompareAgainst.Best | CompareAgainst.Average | CompareA
 
 const comparisons = [CompareAgainst.Average, CompareAgainst.Best, CompareAgainst.SumOfBest];
 
-export function useComparison(controlled?: Comparison, onChange?: React.Dispatch<React.SetStateAction<Comparison>>) {
+export function useComparison(controlled?: Comparison, onChange?: Dispatch<SetStateAction<Comparison>>) {
     const [internal, setInternal] = useState<Comparison>(CompareAgainst.Average);
 
     const comparison = controlled ?? internal;

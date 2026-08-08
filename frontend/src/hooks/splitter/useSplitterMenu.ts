@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { SetStateAction, useEffect, useState } from "react";
 
 import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
 import { Command } from "../../models/command";
@@ -11,7 +11,7 @@ type UseSplitterMenuParams = {
     disableContextMenu: boolean;
     globalHotkeysInitial: boolean;
     comparison: Comparison;
-    setComparison: React.Dispatch<React.SetStateAction<Comparison>>;
+    setComparison: React.Dispatch<SetStateAction<Comparison>>;
     sessionPayload: SessionPayload;
 };
 

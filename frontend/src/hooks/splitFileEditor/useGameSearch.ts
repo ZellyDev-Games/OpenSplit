@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { RefObject, useEffect, useState } from "react";
 
 import { SearchGames } from "../../../wailsjs/go/speedrun/Service";
 import { GameMatch } from "../../components/splitFileEditor/types/game";
 
-export default function useGameSearch(value: string, selectingGame: React.RefObject<boolean>) {
+export default function useGameSearch(value: string, selectingGame: RefObject<boolean>) {
     const [games, setGames] = useState<GameMatch[]>([]);
 
     useEffect(() => {

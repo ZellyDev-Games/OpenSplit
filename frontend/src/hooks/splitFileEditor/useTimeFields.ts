@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useState } from "react";
+import { ForwardedRef, useEffect, useImperativeHandle, useState } from "react";
 
 import { msToParts, partsToMS } from "../../components/splitter/timer/timerUtils";
 
@@ -11,7 +11,7 @@ export type TimeFieldsHandle = {
     getMillis(): number;
 };
 
-export function useTimeFields(props: UseTimeFieldsProps, ref: React.ForwardedRef<TimeFieldsHandle>) {
+export function useTimeFields(props: UseTimeFieldsProps, ref: ForwardedRef<TimeFieldsHandle>) {
     const [hours, setHours] = useState("");
     const [minutes, setMinutes] = useState("");
     const [seconds, setSeconds] = useState("");
