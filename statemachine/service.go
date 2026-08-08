@@ -105,10 +105,10 @@ func NewMachine(runtimeProvider RuntimeProvider, repoService *repo.Service, sess
 func (s *Service) Startup(ctx context.Context) {
 	logger.Info(logModule, "starting state machine")
 
-	machine.ctx = ctx
+	s.ctx = ctx
 
 	s.unsubscribeFromWindowDimensionChanges = s.setupWindowDimensionListener()
-	machine.changeState(WELCOME)
+	s.changeState(WELCOME)
 
 	s.runtimeProvider.EventsOn("ui:ready", func(...any) {
 		if emitter, ok := s.currentState.(uiEmitter); ok {
@@ -147,7 +147,7 @@ func (s *Service) ReceiveDispatch(c command.Command, payload *string) (dispatche
 	if c == command.TOGGLEGLOBAL {
 		logger.Debug(logModule, "TOGGLEGLOBAL c dispatched from frontend")
 		s.configService.GlobalHotkeysActive = !s.configService.GlobalHotkeysActive
-		err := machine.repoService.SaveConfig(machine.configService)
+		err := s.repoService.SaveConfig(s.configService)
 		if err != nil {
 			message := fmt.Sprintf("error saving config to repo %s", err)
 			return dispatcher.DispatchReply{Code: 1, Message: message}, errors.New(message)
@@ -288,13 +288,13 @@ func (s *Service) saveSplitFile() error {
 	dto := adapters.DomainSplitFileToDTO(sf)
 
 	logger.Debug(logModule, "saving split file")
-	err := machine.repoService.SaveSplitFile(dto)
+	err := s.repoService.SaveSplitFile(dto)
 	if err != nil {
 		return err
 	}
 	logger.Info(logModule, "split file saved")
 
-	machine.sessionService.ClearDirty()
+	s.sessionService.ClearDirty()
 	return nil
 }
 
@@ -324,11 +324,11 @@ func (s *Service) setupWindowDimensionListener() func() {
 				h = max(100, int(f))
 			}
 
-			err := machine.repoService.SaveSplitFileWindowDimensions(x, y, w, h)
+			err := s.repoService.SaveSplitFileWindowDimensions(x, y, w, h)
 			if err != nil {
 				logger.Errorf(logModule, "SaveSplitFileWindowDimensions failed: %v", err)
 			}
-			machine.sessionService.UpdateWindowDimensions(x, y, w, h)
+			s.sessionService.UpdateWindowDimensions(x, y, w, h)
 		}
 	})
 }
