@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction } from "react";
+import { Dispatch, ReactElement, SetStateAction } from "react";
 
 import { groupIntoPreviousSibling, ungroupToTopLevel } from "../../../hooks/splitFileEditor/segmentGroup";
 import { moveSegmentDown, moveSegmentUp } from "../../../hooks/splitFileEditor/segmentMove";
@@ -44,7 +44,7 @@ export function renderSegmentRows({
     onUpdate,
 }: RenderSegmentRowsProps): RenderResult {
     let running = { ...totals };
-    const rows: React.ReactElement[] = [];
+    const rows: ReactElement[] = [];
 
     const updateTree = (fn: (segments: SegmentPayload[]) => SegmentPayload[]) => {
         setSegments?.(fn);
