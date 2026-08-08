@@ -8,7 +8,7 @@
  *  - Comparison mode
  */
 
-import { SetStateAction } from "react";
+import { Dispatch, SetStateAction } from "react";
 
 import { CompareAgainst, Comparison, useComparison } from "../../hooks/splitter/useComparison";
 import { useContextMenu } from "../../hooks/splitter/useContextMenu";
@@ -26,7 +26,7 @@ type SplitterParams = {
     forceExpandAll?: boolean;
 
     comparison?: Comparison;
-    onComparisonChange?: React.Dispatch<SetStateAction<Comparison>>;
+    onComparisonChange?: Dispatch<SetStateAction<Comparison>>;
 };
 
 export default function Splitter({
