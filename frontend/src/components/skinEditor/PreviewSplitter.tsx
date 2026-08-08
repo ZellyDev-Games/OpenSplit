@@ -2,32 +2,31 @@ import { Dispatch, SetStateAction, useCallback, useLayoutEffect, useRef, useStat
 import { createPortal } from "react-dom";
 
 import { EventsEmit } from "../../../wailsjs/runtime/runtime";
+import { createPreviewHighlights } from "../../hooks/skinEditor/previewDocument/createPreviewHighlights";
+import { createEmptyPreviewUpdate } from "../../hooks/skinEditor/previewDocument/previewDefaults";
+import { usePreviewDocument } from "../../hooks/skinEditor/usePreviewDocument";
 import { Comparison } from "../../hooks/splitter/useComparison";
-import useElementHighlight, { Highlight } from "../../hooks/useElementHighlight";
-import { usePreviewDocument } from "../../hooks/usePreviewDocument";
+import useElementHighlight from "../../hooks/useElementHighlight";
 import { usePreviewFrame } from "../../hooks/usePreviewFrame";
 import { usePreviewSelection } from "../../hooks/usePreviewSelection";
 import { ConfigPayload } from "../../models/configPayload";
 import SessionPayload from "../../models/sessionPayload";
-import { PreviewUpdate, RuntimeElement, SkinElement } from "../../models/skinModel";
+import type { RuntimeElement, SkinElement } from "../../models/skin/element";
+import type { PreviewUpdate } from "../../models/skin/preview";
 import Splitter from "../splitter/Splitter";
 import CSSPreviewOverride from "./CSSPreviewOverride";
 
 interface Props {
     initialWidth: number;
-
     initialHeight: number;
 
     skinCSS?: string;
-
     overrideCSS?: string;
 
     comparison: Comparison;
-
     onComparisonChange: Dispatch<SetStateAction<Comparison>>;
 
     sessionPayload: SessionPayload;
-
     configPayload: ConfigPayload;
 
     elements: SkinElement[];
@@ -39,7 +38,6 @@ interface Props {
     onPreviewUpdate?(update: PreviewUpdate): void;
 
     disableContextMenu?: boolean;
-
     forceExpandAll?: boolean;
 }
 
@@ -62,55 +60,21 @@ export default function PreviewSplitter({
     const { iframeRef, container } = usePreviewFrame(skinCSS);
 
     const workspaceRef = useRef<HTMLDivElement>(null);
-    const initialScrollApplied = useRef(false);
 
     const [viewport, setViewport] = useState({
         width: 0,
         height: 0,
     });
 
+    const [preview, setPreview] = useState<PreviewUpdate>(createEmptyPreviewUpdate);
+
+    const runtimeElements = preview.elements;
+
     const defaultPaddingX = Math.max(0, (viewport.width - initialWidth) / 2);
 
     const defaultPaddingY = Math.max(0, (viewport.height - initialHeight) / 2);
 
     const previewDocument = container?.ownerDocument ?? null;
-
-    const [preview, setPreview] = useState<PreviewUpdate>({
-        elements: [],
-        metrics: {
-            splitter: new DOMRect(),
-
-            content: new DOMRect(),
-
-            canvasWidth: 0,
-
-            canvasHeight: 0,
-
-            paddingLeft: 0,
-
-            paddingRight: 0,
-
-            paddingTop: 0,
-
-            paddingBottom: 0,
-
-            overflowX: 0,
-
-            overflowY: 0,
-
-            splitterOffsetX: 0,
-
-            splitterOffsetY: 0,
-
-            hasCanvasOverflow: false,
-
-            hasElementOverflow: false,
-
-            overflowingElements: [],
-        },
-    });
-
-    const runtimeElements = preview.elements;
 
     const updatePreview = useCallback(
         (update: PreviewUpdate) => {
@@ -120,9 +84,6 @@ export default function PreviewSplitter({
         [onPreviewUpdate],
     );
 
-    /*
-     * Track available editor space
-     */
     useLayoutEffect(() => {
         const workspace = workspaceRef.current;
 
@@ -130,7 +91,7 @@ export default function PreviewSplitter({
             return;
         }
 
-        const update = () => {
+        const updateViewport = () => {
             const rect = workspace.getBoundingClientRect();
 
             setViewport({
@@ -139,22 +100,22 @@ export default function PreviewSplitter({
             });
         };
 
-        update();
+        updateViewport();
 
-        const observer = new ResizeObserver(update);
+        const observer = new ResizeObserver(updateViewport);
 
         observer.observe(workspace);
 
-        return () => observer.disconnect();
+        return () => {
+            observer.disconnect();
+        };
     }, []);
 
     usePreviewDocument({
         document: previewDocument,
         elements,
-
         defaultPaddingX,
         defaultPaddingY,
-
         callback: updatePreview,
     });
 
@@ -169,20 +130,17 @@ export default function PreviewSplitter({
             workspace.scrollLeft = 0;
             workspace.scrollTop = 0;
 
-            initialScrollApplied.current = false;
-
             return;
         }
 
         workspace.scrollLeft = preview.metrics.paddingLeft - defaultPaddingX;
 
         workspace.scrollTop = preview.metrics.paddingTop - defaultPaddingY;
-
-        initialScrollApplied.current = true;
     }, [
         preview.metrics.paddingLeft,
         preview.metrics.paddingTop,
         preview.metrics.hasCanvasOverflow,
+        preview.metrics.hasElementOverflow,
         defaultPaddingX,
         defaultPaddingY,
     ]);
@@ -194,51 +152,21 @@ export default function PreviewSplitter({
         disableContextMenu,
     });
 
-    const highlights: Highlight[] = runtimeElements.flatMap<Highlight>((element) => {
-        const selected = selectedElement?.id === element.id;
-
-        const overflow = preview.metrics.overflowingElements.includes(element.id);
-
-        if (selected && overflow) {
-            return [
-                {
-                    element: element.element,
-                    type: "selected-overflow",
-                },
-            ];
-        }
-
-        if (selected) {
-            return [
-                {
-                    element: element.element,
-                    type: "selected",
-                },
-            ];
-        }
-
-        if (overflow) {
-            return [
-                {
-                    element: element.element,
-                    type: "overflow",
-                },
-            ];
-        }
-
-        return [];
-    });
+    const highlights = createPreviewHighlights(runtimeElements, preview.metrics, selectedElement);
 
     useElementHighlight(highlights);
 
+    const canvasWidth = preview.metrics.canvasWidth || initialWidth;
+
+    const canvasHeight = preview.metrics.canvasHeight || initialHeight;
+
     return (
-        <div ref={workspaceRef} className={"skin-preview-workspace"}>
+        <div ref={workspaceRef} className="skin-preview-workspace">
             <div
                 className="skin-preview-container"
                 style={{
-                    width: preview.metrics.canvasWidth || initialWidth,
-
-                    height: preview.metrics.canvasHeight || initialHeight,
+                    width: canvasWidth,
+                    height: canvasHeight,
                 }}
             >
                 <iframe
@@ -246,9 +174,8 @@ export default function PreviewSplitter({
                     className="skin-preview-frame"
                     sandbox="allow-same-origin allow-scripts"
                     style={{
-                        width: preview.metrics.canvasWidth || initialWidth,
-
-                        height: preview.metrics.canvasHeight || initialHeight,
+                        width: canvasWidth,
+                        height: canvasHeight,
                     }}
                 />
             </div>
@@ -257,62 +184,103 @@ export default function PreviewSplitter({
 
             {container &&
                 createPortal(
-                    <>
-                        <div
-                            id="preview-canvas-wrapper"
-                            style={{
-                                position: "relative",
-
-                                width: preview.metrics.canvasWidth || initialWidth,
-
-                                height: preview.metrics.canvasHeight || initialHeight,
-                            }}
-                        >
-                            <div
-                                id="preview-canvas"
-                                style={{
-                                    position: "relative",
-
-                                    width: preview.metrics.canvasWidth || initialWidth,
-
-                                    height: preview.metrics.canvasHeight || initialHeight,
-
-                                    flex: "none",
-
-                                    overflow: "visible",
-                                }}
-                            >
-                                <PreviewTimer value={sessionPayload.current_run?.total_time ?? 0} />
-
-                                <div
-                                    id="splitter"
-                                    className="previewSplitter"
-                                    style={{
-                                        position: "absolute",
-
-                                        left: preview.metrics.paddingLeft,
-                                        top: preview.metrics.paddingTop,
-
-                                        width: initialWidth,
-                                        height: initialHeight,
-
-                                        overflow: "visible",
-                                    }}
-                                >
-                                    <Splitter
-                                        sessionPayload={sessionPayload}
-                                        configPayload={configPayload}
-                                        disableContextMenu={disableContextMenu}
-                                        forceExpandAll={forceExpandAll}
-                                        comparison={comparison}
-                                        onComparisonChange={onComparisonChange}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </>,
+                    <PreviewCanvas
+                        width={canvasWidth}
+                        height={canvasHeight}
+                        splitterWidth={initialWidth}
+                        splitterHeight={initialHeight}
+                        paddingLeft={preview.metrics.paddingLeft}
+                        paddingTop={preview.metrics.paddingTop}
+                        sessionPayload={sessionPayload}
+                        configPayload={configPayload}
+                        disableContextMenu={disableContextMenu}
+                        forceExpandAll={forceExpandAll}
+                        comparison={comparison}
+                        onComparisonChange={onComparisonChange}
+                    />,
                     container,
                 )}
+        </div>
+    );
+}
+
+interface PreviewCanvasProps {
+    width: number;
+    height: number;
+
+    splitterWidth: number;
+    splitterHeight: number;
+
+    paddingLeft: number;
+    paddingTop: number;
+
+    sessionPayload: SessionPayload;
+    configPayload: ConfigPayload;
+
+    disableContextMenu: boolean;
+    forceExpandAll: boolean;
+
+    comparison: Comparison;
+    onComparisonChange: Dispatch<SetStateAction<Comparison>>;
+}
+
+function PreviewCanvas({
+    width,
+    height,
+    splitterWidth,
+    splitterHeight,
+    paddingLeft,
+    paddingTop,
+    sessionPayload,
+    configPayload,
+    disableContextMenu,
+    forceExpandAll,
+    comparison,
+    onComparisonChange,
+}: PreviewCanvasProps) {
+    return (
+        <div
+            id="preview-canvas-wrapper"
+            style={{
+                position: "relative",
+                width,
+                height,
+            }}
+        >
+            <div
+                id="preview-canvas"
+                style={{
+                    position: "relative",
+                    width,
+                    height,
+                    flex: "none",
+                    overflow: "visible",
+                }}
+            >
+                <PreviewTimer value={sessionPayload.current_run?.total_time ?? 0} />
+
+                <div
+                    id="splitter"
+                    className="previewSplitter"
+                    style={{
+                        position: "absolute",
+                        left: paddingLeft,
+                        top: paddingTop,
+                        width: splitterWidth,
+                        height: splitterHeight,
+                        overflow: "visible",
+                    }}
+                >
+                    <Splitter
+                        sessionPayload={sessionPayload}
+                        configPayload={configPayload}
+                        disableContextMenu={disableContextMenu}
+                        forceExpandAll={forceExpandAll}
+                        comparison={comparison}
+                        onComparisonChange={onComparisonChange}
+                    />
+                </div>
+            </div>
         </div>
     );
 }
