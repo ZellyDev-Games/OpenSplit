@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { RuntimeElement } from "../models/skin/element";
+import { RuntimeElement } from "../../models/skin/element";
 
 interface PreviewSelectionOptions {
     document: Document | null;

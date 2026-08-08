@@ -6,9 +6,9 @@ import { createPreviewHighlights } from "../../hooks/skinEditor/previewDocument/
 import { createEmptyPreviewUpdate } from "../../hooks/skinEditor/previewDocument/previewDefaults";
 import useElementHighlight from "../../hooks/skinEditor/useElementHighlight";
 import { usePreviewDocument } from "../../hooks/skinEditor/usePreviewDocument";
+import { usePreviewFrame } from "../../hooks/skinEditor/usePreviewFrame";
+import { usePreviewSelection } from "../../hooks/skinEditor/usePreviewSelection";
 import { Comparison } from "../../hooks/splitter/useComparison";
-import { usePreviewFrame } from "../../hooks/usePreviewFrame";
-import { usePreviewSelection } from "../../hooks/usePreviewSelection";
 import { ConfigPayload } from "../../models/configPayload";
 import SessionPayload from "../../models/sessionPayload";
 import type { RuntimeElement, SkinElement } from "../../models/skin/element";
