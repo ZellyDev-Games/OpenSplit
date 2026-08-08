@@ -4,7 +4,9 @@ import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
 import { CompareAgainst, Comparison } from "../../hooks/splitter/useComparison";
 import { useSkinEditor } from "../../hooks/useSkinEditor";
 import { Command } from "../../models/command";
-import SkinModel, { CSSRule, PreviewUpdate } from "../../models/skinModel";
+import { SkinCSSRule } from "../../models/skin/css";
+import { SkinModel } from "../../models/skin/editor";
+import { PreviewUpdate } from "../../models/skin/preview";
 import { mergeSkinElements } from "./mergeSkinElements";
 import { previewElements } from "./previewElements";
 import PreviewSplitter from "./PreviewSplitter";
@@ -42,7 +44,7 @@ export default function SkinEditor({ model }: Props) {
 
     const editor = useSkinEditor(model);
 
-    const runtimeRules = useMemo<CSSRule[]>(() => collectRuntimeCSS(), []);
+    const runtimeRules = useMemo<SkinCSSRule[]>(() => collectRuntimeCSS(), []);
 
     const [previewUpdate, setPreviewUpdate] = useState<PreviewUpdate>({
         elements: [],
@@ -75,7 +77,7 @@ export default function SkinEditor({ model }: Props) {
 
             hasElementOverflow: false,
 
-            overflowingElements: [],
+            overflowingIds: new Set<string>(),
         },
     });
 
@@ -141,7 +143,7 @@ export default function SkinEditor({ model }: Props) {
                     onElementSelected={editor.selectElement}
                     onFileSelected={editor.selectFile}
                     onRuleSelected={editor.selectRule}
-                    overflowingElements={previewUpdate.metrics.overflowingElements}
+                    overflowingIds={previewUpdate.metrics.overflowingIds}
                 />
             </section>
 
@@ -244,7 +246,7 @@ export default function SkinEditor({ model }: Props) {
                     onCreateFile={editor.createFile}
                     onChangeRule={editor.updateRule}
                     onChangeFile={editor.updateFile}
-                    overflowingElements={previewUpdate.metrics.overflowingElements}
+                    overflowingIds={previewUpdate.metrics.overflowingIds}
                 />
             </section>
 

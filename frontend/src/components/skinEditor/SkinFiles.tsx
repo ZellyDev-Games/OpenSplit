@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
-import { CSSRuleEditor } from "../../models/skin/css";
-import { CSSFile, SkinEditorTarget, SkinElement } from "../../models/skinModel";
+import { CSSFile, CSSRuleEditor } from "../../models/skin/css";
+import { SkinEditorTarget } from "../../models/skin/editor";
+import { SkinElement } from "../../models/skin/element";
 
 interface Props {
     activeRule: CSSRuleEditor | null;
@@ -40,7 +41,7 @@ interface Props {
 
     dirty: boolean;
 
-    overflowingElements: string[];
+    overflowingIds: Set<string>;
 }
 
 function TextFileEditor({
@@ -93,14 +94,14 @@ export default function SkinFiles({
     onCreateFile,
     onChangeRule,
     onChangeFile,
-    overflowingElements,
+    overflowingIds,
 }: Props) {
     const [body, setBody] = useState(activeRule?.body ?? "");
 
     const editingRule = useRef<string | null>(null);
     const lastRevision = useRef<number>(revision);
 
-    const overflowing = new Set(overflowingElements);
+    const overflowing = new Set(overflowingIds);
 
     useEffect(() => {
         if (!activeRule) {

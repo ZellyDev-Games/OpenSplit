@@ -1,5 +1,6 @@
 import { CSSRuleEditor } from "../../models/skin/css";
-import SkinModel, { SkinElement } from "../../models/skinModel";
+import { SkinModel } from "../../models/skin/editor";
+import { SkinElement } from "../../models/skin/element";
 import ElementTree from "./ElementTree";
 import { sortLayers } from "./layerOrder";
 import { selectorMatches } from "./selectorMatch";
@@ -23,7 +24,7 @@ interface Props {
 
     onRuleSelected(rule: CSSRuleEditor): Promise<void>;
 
-    overflowingElements: string[];
+    overflowingIds: Set<string>;
 }
 
 export default function SkinControls({
@@ -36,11 +37,11 @@ export default function SkinControls({
     onElementSelected,
     onFileSelected,
     onRuleSelected,
-    overflowingElements,
+    overflowingIds,
 }: Props) {
     const currentElement = elements.find((element) => element.id === selectedElement) ?? null;
 
-    const overflowing = new Set(overflowingElements);
+    const overflowing = new Set(overflowingIds);
 
     const currentRules = currentElement
         ? model.rules.filter((rule) => selectorMatches(rule.selector, currentElement.selector))
