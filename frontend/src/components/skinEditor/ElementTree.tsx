@@ -1,4 +1,4 @@
-import { CSSRuleEditor } from "../../models/cssProperty";
+import { CSSRuleEditor } from "../../models/skin/css";
 import SkinModel, { CSSAtRule, SkinElement } from "../../models/skinModel";
 import { formatCSSRule } from "./formatCSS";
 import { selectorMatches } from "./selectorMatch";

@@ -1,4 +1,4 @@
-import { CSSRuleEditor } from "../../models/cssProperty";
+import { CSSRuleEditor } from "../../models/skin/css";
 import SkinModel, { SkinElement } from "../../models/skinModel";
 import ElementTree from "./ElementTree";
 import { sortLayers } from "./layerOrder";

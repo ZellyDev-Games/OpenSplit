@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { CSSRuleEditor } from "../../models/cssProperty";
+import { CSSRuleEditor } from "../../models/skin/css";
 import { CSSFile, SkinEditorTarget, SkinElement } from "../../models/skinModel";
 
 interface Props {
