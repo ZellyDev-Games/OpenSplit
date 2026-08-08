@@ -1,8 +1,8 @@
 import { CSSRuleEditor } from "../../models/skin/css";
 import { SkinModel } from "../../models/skin/editor";
 import { SkinElement } from "../../models/skin/element";
-import ElementTree from "./ElementTree";
-import { sortLayers } from "./utils/layerOrder";
+import ElementTree from "./skinControls/ElementTree";
+import { sortLayers } from "./skinControls/layerOrder";
 import { selectorMatches } from "./utils/selectorMatch";
 
 interface Props {
