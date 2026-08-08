@@ -6,14 +6,14 @@ import { useSkinEditor } from "../../hooks/useSkinEditor";
 import { Command } from "../../models/command";
 import SkinModel, { CSSRule, PreviewUpdate } from "../../models/skinModel";
 import { mergeSkinElements } from "./mergeSkinElements";
-import { previewConfig } from "./previewBase";
-import { previewSession as completedPreview } from "./previewCompletedSession";
 import { previewElements } from "./previewElements";
-import { previewSession as emptyPreview } from "./previewEmptySession";
-import { previewSession as inProgressPreview } from "./previewInProgressSession";
 import PreviewSplitter from "./PreviewSplitter";
 import { registerPreviewElements } from "./registerPreviewElements";
 import { collectRuntimeCSS } from "./runtimeCSSCollector";
+import { previewConfig } from "./sessions/previewBase";
+import { previewSession as completedPreview } from "./sessions/previewCompletedSession";
+import { previewSession as emptyPreview } from "./sessions/previewEmptySession";
+import { previewSession as inProgressPreview } from "./sessions/previewInProgressSession";
 import SkinControls from "./SkinControls";
 import SkinFiles from "./SkinFiles";
 
