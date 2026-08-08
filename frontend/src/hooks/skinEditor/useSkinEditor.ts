@@ -1,9 +1,9 @@
 import { useCallback } from "react";
 
-import type { CSSFile, CSSRuleEditor, SkinCSSRule } from "../models/skin/css";
-import type { SkinEditorTarget, SkinModel } from "../models/skin/editor";
+import type { CSSFile, CSSRuleEditor, SkinCSSRule } from "../../models/skin/css";
+import type { SkinEditorTarget, SkinModel } from "../../models/skin/editor";
+import { cssRuleToEditor } from "./cssRuleToEditor";
 import { flattenRules } from "./flattenRules";
-import { cssRuleToEditor } from "./skinEditor/cssRuleToEditor";
 import {
     createFile,
     createRule,
@@ -14,8 +14,8 @@ import {
     selectRule,
     updateFile,
     updateRule,
-} from "./skinEditor/skinEditorActions";
-import type { SkinEditorState } from "./skinEditor/skinEditorTypes";
+} from "./skinEditorActions";
+import type { SkinEditorState } from "./skinEditorTypes";
 
 const EMPTY_TARGET: SkinEditorTarget = {
     elementId: null,

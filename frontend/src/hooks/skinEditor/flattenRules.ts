@@ -1,4 +1,4 @@
-import type { SkinCSSRule } from "../models/skin/css";
+import type { SkinCSSRule } from "../../models/skin/css";
 
 export function flattenRules(rules: SkinCSSRule[]): SkinCSSRule[] {
     const result: SkinCSSRule[] = [];

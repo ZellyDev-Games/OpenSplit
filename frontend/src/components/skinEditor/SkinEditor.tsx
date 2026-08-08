@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
+import { useSkinEditor } from "../../hooks/skinEditor/useSkinEditor";
 import { CompareAgainst, Comparison } from "../../hooks/splitter/useComparison";
-import { useSkinEditor } from "../../hooks/useSkinEditor";
 import { Command } from "../../models/command";
 import { SkinCSSRule } from "../../models/skin/css";
 import { SkinModel } from "../../models/skin/editor";
