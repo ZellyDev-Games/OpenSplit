@@ -1,9 +1,9 @@
-import { CSSRuleEditor } from "../../models/skin/css";
-import { SkinModel } from "../../models/skin/editor";
-import { SkinElement } from "../../models/skin/element";
+import type { CSSRuleEditor } from "../../models/skin/css";
+import type { SkinModel } from "../../models/skin/editor";
+import type { SkinElement } from "../../models/skin/element";
 import ElementTree from "./skinControls/ElementTree";
-import { sortLayers } from "./skinControls/layerOrder";
-import { selectorMatches } from "./utils/selectorMatch";
+import PreviewElementSelect from "./skinControls/PreviewElementSelect";
+import { getSkinControlsInfo } from "./skinControls/skinControlsInfo";
 
 interface Props {
     model: SkinModel;
@@ -39,15 +39,7 @@ export default function SkinControls({
     onRuleSelected,
     overflowingIds,
 }: Props) {
-    const currentElement = elements.find((element) => element.id === selectedElement) ?? null;
-
-    const overflowing = new Set(overflowingIds);
-
-    const currentRules = currentElement
-        ? model.rules.filter((rule) => selectorMatches(rule.selector, currentElement.selector))
-        : [];
-
-    const layers = sortLayers([...new Set(currentRules.map((rule) => rule.layer).filter((layer) => layer.length > 0))]);
+    const info = getSkinControlsInfo(model, elements, selectedElement);
 
     return (
         <div className="skin-controls">
@@ -59,33 +51,26 @@ export default function SkinControls({
 
             <h3>Preview Element</h3>
 
-            <select value={selectedElement ?? ""} onChange={(event) => onElementSelected(event.target.value)}>
-                <option value="">Select element…</option>
-
-                {elements.map((element) => {
-                    const available = availableIds.has(element.id);
-
-                    return (
-                        <option key={element.id} value={element.id} disabled={!available}>
-                            {overflowing.has(element.id) ? "🔴 " : available ? "✓ " : "✗ "}
-                            {element.label}
-                        </option>
-                    );
-                })}
-            </select>
+            <PreviewElementSelect
+                elements={elements}
+                availableIds={availableIds}
+                selectedElement={selectedElement}
+                overflowingIds={overflowingIds}
+                onElementSelected={onElementSelected}
+            />
 
             <div className="skin-selector-info">
                 <label>Selector</label>
 
-                <code>{currentElement?.selector ?? "(none)"}</code>
+                <code>{info.selector}</code>
 
                 <label>Layers</label>
 
-                <code>{layers.length ? layers.join(", ") : "(none)"}</code>
+                <code>{info.layers}</code>
 
                 <label>Rules</label>
 
-                <code>{currentRules.length}</code>
+                <code>{info.ruleCount}</code>
             </div>
 
             <hr />
