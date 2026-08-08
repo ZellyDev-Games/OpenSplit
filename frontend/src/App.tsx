@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { SetStateAction, useEffect, useState } from "react";
 
 import { Dispatch } from "../wailsjs/go/dispatcher/Service";
 import { GetSkinAddress } from "../wailsjs/go/skin/Service";
@@ -199,7 +199,7 @@ function useDetectWindowChange() {
     }, []);
 }
 
-function useAppEventBindings(setViewModel: React.Dispatch<React.SetStateAction<AppViewModel | null>>) {
+function useAppEventBindings(setViewModel: React.Dispatch<SetStateAction<AppViewModel | null>>) {
     useEffect(() => {
         const unsubViewModel = EventsOn("ui:model", async (nextModel: AppViewModel) => {
             console.log("[App] UI model", nextModel);
