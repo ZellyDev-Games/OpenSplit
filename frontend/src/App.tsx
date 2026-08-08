@@ -22,7 +22,7 @@ import Welcome from "./components/Welcome";
 import { Command } from "./models/command";
 import { ConfigPayload } from "./models/configPayload";
 import SessionPayload from "./models/sessionPayload";
-import SkinModel from "./models/skinModel";
+import { SkinModel } from "./models/skin/editor";
 import SplitFilePayload from "./models/splitFilePayload";
 import { log } from "./utils/logger";
 
