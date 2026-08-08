@@ -1,7 +1,7 @@
 import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
 import { Command } from "../../models/command";
 import { CSSRuleEditor } from "../../models/skin/css";
-import { SkinEditorTarget } from "../../models/skinModel";
+import { SkinEditorTarget } from "../../models/skin/editor";
 
 export async function selectElement(id: string): Promise<void> {
     if (!id) {

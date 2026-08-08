@@ -1,12 +1,12 @@
-import { CSSRuleEditor } from "../../models/skin/css";
-import SkinModel, { CSSFile, CSSRule, SkinEditorTarget } from "../../models/skinModel";
+import { CSSFile, CSSRuleEditor, SkinCSSRule } from "../../models/skin/css";
+import { SkinEditorTarget, SkinModel } from "../../models/skin/editor";
 
 export interface SkinEditorState {
     model: SkinModel | null;
     target: SkinEditorTarget;
     files: CSSFile[];
     rules: CSSRuleEditor[];
-    flatRules: CSSRule[];
+    flatRules: SkinCSSRule[];
     activeRule: CSSRuleEditor | null;
     dirty: boolean;
 

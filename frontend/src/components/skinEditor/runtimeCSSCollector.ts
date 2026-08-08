@@ -1,7 +1,7 @@
-import { CSSAtRule,CSSRule as AppCSSRule } from "../../models/skinModel";
+import { CSSAtRule, SkinCSSRule } from "../../models/skin/css";
 
-export function collectRuntimeCSS(): AppCSSRule[] {
-    const rules: AppCSSRule[] = [];
+export function collectRuntimeCSS(): SkinCSSRule[] {
+    const rules: SkinCSSRule[] = [];
 
     for (const sheet of Array.from(document.styleSheets)) {
         let cssRules: CSSRuleList;
@@ -23,7 +23,7 @@ export function collectRuntimeCSS(): AppCSSRule[] {
     }));
 }
 
-function collectRules(cssRules: CSSRuleList, output: AppCSSRule[], source: string, parents: CSSAtRule[]) {
+function collectRules(cssRules: CSSRuleList, output: SkinCSSRule[], source: string, parents: CSSAtRule[]) {
     for (const rule of Array.from(cssRules)) {
         const atRule = getAtRule(rule);
 

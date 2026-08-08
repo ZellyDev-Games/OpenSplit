@@ -1,4 +1,4 @@
-import type { CSSFile, CSSRule, CSSRuleEditor } from "./css";
+import type { CSSFile, CSSRuleEditor, SkinCSSRule } from "./css";
 import type { SkinElement } from "./element";
 
 export type SkinEditorMode = "file" | "existing" | "create";
@@ -18,7 +18,7 @@ export interface SkinModel {
     styleSheet: string;
 
     files: CSSFile[];
-    rules: CSSRule[];
+    rules: SkinCSSRule[];
     elements: SkinElement[];
 
     target: SkinEditorTarget;

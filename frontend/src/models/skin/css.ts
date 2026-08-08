@@ -14,7 +14,7 @@ export interface CSSAtRule {
     params?: string;
 }
 
-export interface CSSRule {
+export interface SkinCSSRule {
     id: string;
     file: string;
     selector: string;
@@ -22,8 +22,8 @@ export interface CSSRule {
     body: string;
     line: number;
     order: number;
-    children?: CSSRule[];
-    atRules?: CSSAtRule[];
+    children?: SkinCSSRule[];
+    parents?: CSSAtRule[];
 }
 
 /**

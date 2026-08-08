@@ -1,10 +1,9 @@
-import { CSSRuleEditor } from "../../models/skin/css";
-import { CSSRule } from "../../models/skinModel";
+import { CSSRuleEditor, SkinCSSRule } from "../../models/skin/css";
 
 /**
  * Convert a parsed CSS rule into the editable rule model used by the editor.
  */
-export function cssRuleToEditor(rule: CSSRule): CSSRuleEditor {
+export function cssRuleToEditor(rule: SkinCSSRule): CSSRuleEditor {
     return {
         id: rule.id,
         originalFile: rule.file,
