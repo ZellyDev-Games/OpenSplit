@@ -1,6 +1,6 @@
 import type { RuntimeElement } from "../../../models/skin/element";
 import type { PreviewMetrics } from "../../../models/skin/preview";
-import type { Highlight } from "../../useElementHighlight";
+import type { Highlight } from "../useElementHighlight";
 
 export function createPreviewHighlights(
     runtimeElements: RuntimeElement[],
