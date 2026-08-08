@@ -1,4 +1,4 @@
-import type { SkinElement } from "../../models/skinModel";
+import type { SkinElement } from "../../models/skin/element";
 import splitGameInfo from "./../splitter/previews/splitGameInfo.preview";
 import splitter from "./../splitter/previews/splitter.preview";
 import parentSegmentRow from "./../splitter/segments/previews/parentSegmentRow.preview";
