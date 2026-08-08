@@ -1,14 +1,14 @@
-export const CSS_LAYER_ORDER = ["reset", "vars", "components", "skins", "overrides"];
+export const SKIN_LAYER_ORDER = ["reset", "vars", "components", "skins", "overrides"] as const;
 
-export function layerPriority(layer: string): number {
-    const index = CSS_LAYER_ORDER.indexOf(layer);
+const layerIndex = new Map<string, number>(SKIN_LAYER_ORDER.map((layer, index) => [layer, index]));
 
-    if (index >= 0) {
-        return index;
+export function layerPriority(layer?: string): number {
+    if (!layer) {
+        // Unlayered CSS has highest cascade priority.
+        return Number.MAX_SAFE_INTEGER;
     }
 
-    // Unknown/runtime unlayered CSS has highest priority
-    return CSS_LAYER_ORDER.length;
+    return layerIndex.get(layer) ?? Number.MAX_SAFE_INTEGER - 1;
 }
 
 export function sortLayers(layers: string[]): string[] {
