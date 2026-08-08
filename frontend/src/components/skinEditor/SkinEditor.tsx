@@ -1,22 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback } from "react";
 
 import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
 import { useSkinEditor } from "../../hooks/skinEditor/useSkinEditor";
-import { CompareAgainst, Comparison } from "../../hooks/splitter/useComparison";
+import { useSkinEditorPreview } from "../../hooks/skinEditor/useSkinEditorPreview";
 import { Command } from "../../models/command";
-import { SkinCSSRule } from "../../models/skin/css";
-import { SkinModel } from "../../models/skin/editor";
-import { PreviewUpdate } from "../../models/skin/preview";
-import { mergeSkinElements } from "./preview/mergeSkinElements";
-import { previewElements } from "./preview/previewElements";
-import { registerPreviewElements } from "./preview/registerPreviewElements";
-import { collectRuntimeCSS } from "./preview/runtimeCSSCollector";
-import { previewConfig } from "./preview/sessions/previewBase";
-import { previewSession as completedPreview } from "./preview/sessions/previewCompletedSession";
-import { previewSession as emptyPreview } from "./preview/sessions/previewEmptySession";
-import { previewSession as inProgressPreview } from "./preview/sessions/previewInProgressSession";
+import type { SkinModel } from "../../models/skin/editor";
 import PreviewSplitter from "./PreviewSplitter";
 import SkinControls from "./SkinControls";
+import SkinEditorToolbar from "./SkinEditorToolbar";
 import SkinFiles from "./SkinFiles";
 
 interface Props {
@@ -24,205 +15,58 @@ interface Props {
 }
 
 export default function SkinEditor({ model }: Props) {
-    const [preview, setPreview] = useState<"empty" | "running" | "completed">("running");
-    const [comparison, setComparison] = useState<Comparison>(CompareAgainst.Average);
-
-    const session = useMemo(() => {
-        switch (preview) {
-            case "empty":
-                return emptyPreview;
-            case "completed":
-                return completedPreview;
-            default:
-                return inProgressPreview;
-        }
-    }, [preview]);
-
-    useEffect(() => {
-        registerPreviewElements(previewElements);
-    }, []);
-
     const editor = useSkinEditor(model);
 
-    const runtimeRules = useMemo<SkinCSSRule[]>(() => collectRuntimeCSS(), []);
+    const preview = useSkinEditorPreview(model, editor);
 
-    const [previewUpdate, setPreviewUpdate] = useState<PreviewUpdate>({
-        elements: [],
-        metrics: {
-            splitter: new DOMRect(),
-
-            content: new DOMRect(),
-
-            canvasWidth: 0,
-
-            canvasHeight: 0,
-
-            paddingLeft: 0,
-
-            paddingRight: 0,
-
-            paddingTop: 0,
-
-            paddingBottom: 0,
-
-            overflowX: 0,
-
-            overflowY: 0,
-
-            splitterOffsetX: 0,
-
-            splitterOffsetY: 0,
-
-            hasCanvasOverflow: false,
-
-            hasElementOverflow: false,
-
-            overflowingIds: new Set<string>(),
-        },
-    });
-
-    const runtimeElements = previewUpdate.elements;
-
-    const hasPreviewOverflow = previewUpdate.metrics.hasElementOverflow;
-
-    const allElements = useMemo(
-        () => mergeSkinElements(previewElements, model.elements, runtimeElements),
-        [model.elements, runtimeElements],
-    );
-
-    const availableElements = useMemo(
-        () => mergeSkinElements(previewElements, model.elements, runtimeElements),
-        [model.elements, runtimeElements],
-    );
-
-    const selectedRuntime = editor.target.elementId
-        ? (runtimeElements.find((element) => element.id === editor.target.elementId) ?? null)
-        : null;
-
-    const availableIds = useMemo(() => new Set(runtimeElements.map((element) => element.id)), [runtimeElements]);
-
-    const combinedModel = useMemo<SkinModel>(
-        () => ({
-            ...model,
-            rules: [...editor.flatRules, ...runtimeRules],
-        }),
-        [model, runtimeRules],
-    );
-
-    /**
-     * The preview should render the backend working copy, not the
-     * installed files on disk.
-     */
-    const overrideCSS = useMemo(() => {
-        return editor.flatRules
-            .filter((rule) => rule.selector)
-            .map(
-                (rule) => `
-     ${rule.selector} {
-     ${rule.body}
-     }
-     `,
-            )
-            .join("\n");
-    }, [editor.flatRules]);
-
-    async function cancel() {
+    const cancel = useCallback(async () => {
         await Dispatch(Command.CANCEL, null);
-    }
+    }, []);
 
     return (
         <div className="skin-editor">
             <section className="skin-editor-left panel skin-editor-column">
                 <SkinControls
-                    model={combinedModel}
-                    elements={allElements}
-                    availableIds={availableIds}
+                    model={preview.combinedModel}
+                    elements={preview.elements}
+                    availableIds={preview.availableIds}
                     selectedElement={editor.target.elementId}
                     selectedFile={editor.target.file}
                     activeRule={editor.activeRule}
                     onElementSelected={editor.selectElement}
                     onFileSelected={editor.selectFile}
                     onRuleSelected={editor.selectRule}
-                    overflowingIds={previewUpdate.metrics.overflowingIds}
+                    overflowingIds={preview.previewUpdate.metrics.overflowingIds}
                 />
             </section>
 
             <section className="skin-editor-preview skin-editor-column">
-                <div className="skin-preview-toolbar">
-                    <div className="row skin-preview-group">
-                        <label>Session</label>
+                <SkinEditorToolbar
+                    mode={preview.mode}
+                    comparison={preview.comparison}
+                    onModeChange={preview.setMode}
+                    onComparisonChange={preview.setComparison}
+                />
 
-                        <select
-                            value={preview}
-                            onChange={(e) => setPreview(e.target.value as "empty" | "running" | "completed")}
-                        >
-                            <option value="empty">Empty</option>
-                            <option value="running">In Progress</option>
-                            <option value="completed">Completed</option>
-                        </select>
-                    </div>
-
-                    <div className="skin-preview-group">
-                        <label>Comparison</label>
-
-                        <div className="row button-row">
-                            <button
-                                onClick={() =>
-                                    setComparison((current) => {
-                                        const values = [
-                                            CompareAgainst.Average,
-                                            CompareAgainst.Best,
-                                            CompareAgainst.SumOfBest,
-                                        ];
-
-                                        const index = values.indexOf(current);
-                                        return values[(index - 1 + values.length) % values.length];
-                                    })
-                                }
-                            >
-                                ◀
-                            </button>
-
-                            <span>{comparison}</span>
-
-                            <button
-                                onClick={() =>
-                                    setComparison((current) => {
-                                        const values = [
-                                            CompareAgainst.Average,
-                                            CompareAgainst.Best,
-                                            CompareAgainst.SumOfBest,
-                                        ];
-
-                                        const index = values.indexOf(current);
-                                        return values[(index + 1) % values.length];
-                                    })
-                                }
-                            >
-                                ▶
-                            </button>
-                        </div>
-                    </div>
-                </div>
                 <PreviewSplitter
                     skinCSS={model.styleSheet}
-                    initialWidth={session.loaded_split_file?.window_width ?? 320}
-                    initialHeight={session.loaded_split_file?.window_height ?? 580}
-                    overrideCSS={overrideCSS}
-                    sessionPayload={session}
-                    configPayload={previewConfig}
-                    elements={availableElements}
-                    onPreviewUpdate={setPreviewUpdate}
-                    selectedElement={selectedRuntime}
+                    initialWidth={preview.session.loaded_split_file?.window_width ?? 320}
+                    initialHeight={preview.session.loaded_split_file?.window_height ?? 580}
+                    overrideCSS={preview.overrideCSS}
+                    sessionPayload={preview.session}
+                    configPayload={preview.config}
+                    elements={preview.elements}
+                    onPreviewUpdate={preview.setPreviewUpdate}
+                    selectedElement={preview.selectedRuntime}
                     onSelect={editor.selectElement}
                     disableContextMenu
                     forceExpandAll
-                    comparison={comparison}
-                    onComparisonChange={setComparison}
+                    comparison={preview.comparison}
+                    onComparisonChange={preview.setComparison}
                 />
             </section>
 
-            {hasPreviewOverflow && (
+            {preview.hasPreviewOverflow && (
                 <div className="skin-preview-warning">⚠ Elements extend outside the splitter preview.</div>
             )}
 
@@ -230,8 +74,8 @@ export default function SkinEditor({ model }: Props) {
                 <SkinFiles
                     activeRule={editor.activeRule}
                     rules={editor.rules}
-                    elements={allElements}
-                    availableIds={availableIds}
+                    elements={preview.elements}
+                    availableIds={preview.availableIds}
                     selectedElement={editor.target.elementId}
                     files={editor.files}
                     selectedFile={editor.target.file}
@@ -246,7 +90,7 @@ export default function SkinEditor({ model }: Props) {
                     onCreateFile={editor.createFile}
                     onChangeRule={editor.updateRule}
                     onChangeFile={editor.updateFile}
-                    overflowingIds={previewUpdate.metrics.overflowingIds}
+                    overflowingIds={preview.previewUpdate.metrics.overflowingIds}
                 />
             </section>
 
@@ -266,3 +110,272 @@ export default function SkinEditor({ model }: Props) {
         </div>
     );
 }
+
+// import { useEffect, useMemo, useState } from "react";
+
+// import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
+// import { useSkinEditor } from "../../hooks/skinEditor/useSkinEditor";
+// import { CompareAgainst, Comparison } from "../../hooks/splitter/useComparison";
+// import { Command } from "../../models/command";
+// import { SkinCSSRule } from "../../models/skin/css";
+// import { SkinModel } from "../../models/skin/editor";
+// import { PreviewUpdate } from "../../models/skin/preview";
+// import { mergeSkinElements } from "./preview/mergeSkinElements";
+// import { previewElements } from "./preview/previewElements";
+// import { registerPreviewElements } from "./preview/registerPreviewElements";
+// import { collectRuntimeCSS } from "./preview/runtimeCSSCollector";
+// import { previewConfig } from "./preview/sessions/previewBase";
+// import { previewSession as completedPreview } from "./preview/sessions/previewCompletedSession";
+// import { previewSession as emptyPreview } from "./preview/sessions/previewEmptySession";
+// import { previewSession as inProgressPreview } from "./preview/sessions/previewInProgressSession";
+// import PreviewSplitter from "./PreviewSplitter";
+// import SkinControls from "./SkinControls";
+// import SkinFiles from "./SkinFiles";
+
+// interface Props {
+//     model: SkinModel;
+// }
+
+// export default function SkinEditor({ model }: Props) {
+//     const [preview, setPreview] = useState<"empty" | "running" | "completed">("running");
+//     const [comparison, setComparison] = useState<Comparison>(CompareAgainst.Average);
+
+//     const session = useMemo(() => {
+//         switch (preview) {
+//             case "empty":
+//                 return emptyPreview;
+//             case "completed":
+//                 return completedPreview;
+//             default:
+//                 return inProgressPreview;
+//         }
+//     }, [preview]);
+
+//     useEffect(() => {
+//         registerPreviewElements(previewElements);
+//     }, []);
+
+//     const editor = useSkinEditor(model);
+
+//     const runtimeRules = useMemo<SkinCSSRule[]>(() => collectRuntimeCSS(), []);
+
+//     const [previewUpdate, setPreviewUpdate] = useState<PreviewUpdate>({
+//         elements: [],
+//         metrics: {
+//             splitter: new DOMRect(),
+
+//             content: new DOMRect(),
+
+//             canvasWidth: 0,
+
+//             canvasHeight: 0,
+
+//             paddingLeft: 0,
+
+//             paddingRight: 0,
+
+//             paddingTop: 0,
+
+//             paddingBottom: 0,
+
+//             overflowX: 0,
+
+//             overflowY: 0,
+
+//             splitterOffsetX: 0,
+
+//             splitterOffsetY: 0,
+
+//             hasCanvasOverflow: false,
+
+//             hasElementOverflow: false,
+
+//             overflowingIds: new Set<string>(),
+//         },
+//     });
+
+//     const runtimeElements = previewUpdate.elements;
+
+//     const hasPreviewOverflow = previewUpdate.metrics.hasElementOverflow;
+
+//     const allElements = useMemo(
+//         () => mergeSkinElements(previewElements, model.elements, runtimeElements),
+//         [model.elements, runtimeElements],
+//     );
+
+//     const availableElements = useMemo(
+//         () => mergeSkinElements(previewElements, model.elements, runtimeElements),
+//         [model.elements, runtimeElements],
+//     );
+
+//     const selectedRuntime = editor.target.elementId
+//         ? (runtimeElements.find((element) => element.id === editor.target.elementId) ?? null)
+//         : null;
+
+//     const availableIds = useMemo(() => new Set(runtimeElements.map((element) => element.id)), [runtimeElements]);
+
+//     const combinedModel = useMemo<SkinModel>(
+//         () => ({
+//             ...model,
+//             rules: [...editor.flatRules, ...runtimeRules],
+//         }),
+//         [model, runtimeRules],
+//     );
+
+//     /**
+//      * The preview should render the backend working copy, not the
+//      * installed files on disk.
+//      */
+//     const overrideCSS = useMemo(() => {
+//         return editor.flatRules
+//             .filter((rule) => rule.selector)
+//             .map(
+//                 (rule) => `
+//      ${rule.selector} {
+//      ${rule.body}
+//      }
+//      `,
+//             )
+//             .join("\n");
+//     }, [editor.flatRules]);
+
+//     async function cancel() {
+//         await Dispatch(Command.CANCEL, null);
+//     }
+
+//     return (
+//         <div className="skin-editor">
+//             <section className="skin-editor-left panel skin-editor-column">
+//                 <SkinControls
+//                     model={combinedModel}
+//                     elements={allElements}
+//                     availableIds={availableIds}
+//                     selectedElement={editor.target.elementId}
+//                     selectedFile={editor.target.file}
+//                     activeRule={editor.activeRule}
+//                     onElementSelected={editor.selectElement}
+//                     onFileSelected={editor.selectFile}
+//                     onRuleSelected={editor.selectRule}
+//                     overflowingIds={previewUpdate.metrics.overflowingIds}
+//                 />
+//             </section>
+
+//             <section className="skin-editor-preview skin-editor-column">
+//                 <div className="skin-preview-toolbar">
+//                     <div className="row skin-preview-group">
+//                         <label>Session</label>
+
+//                         <select
+//                             value={preview}
+//                             onChange={(e) => setPreview(e.target.value as "empty" | "running" | "completed")}
+//                         >
+//                             <option value="empty">Empty</option>
+//                             <option value="running">In Progress</option>
+//                             <option value="completed">Completed</option>
+//                         </select>
+//                     </div>
+
+//                     <div className="skin-preview-group">
+//                         <label>Comparison</label>
+
+//                         <div className="row button-row">
+//                             <button
+//                                 onClick={() =>
+//                                     setComparison((current) => {
+//                                         const values = [
+//                                             CompareAgainst.Average,
+//                                             CompareAgainst.Best,
+//                                             CompareAgainst.SumOfBest,
+//                                         ];
+
+//                                         const index = values.indexOf(current);
+//                                         return values[(index - 1 + values.length) % values.length];
+//                                     })
+//                                 }
+//                             >
+//                                 ◀
+//                             </button>
+
+//                             <span>{comparison}</span>
+
+//                             <button
+//                                 onClick={() =>
+//                                     setComparison((current) => {
+//                                         const values = [
+//                                             CompareAgainst.Average,
+//                                             CompareAgainst.Best,
+//                                             CompareAgainst.SumOfBest,
+//                                         ];
+
+//                                         const index = values.indexOf(current);
+//                                         return values[(index + 1) % values.length];
+//                                     })
+//                                 }
+//                             >
+//                                 ▶
+//                             </button>
+//                         </div>
+//                     </div>
+//                 </div>
+//                 <PreviewSplitter
+//                     skinCSS={model.styleSheet}
+//                     initialWidth={session.loaded_split_file?.window_width ?? 320}
+//                     initialHeight={session.loaded_split_file?.window_height ?? 580}
+//                     overrideCSS={overrideCSS}
+//                     sessionPayload={session}
+//                     configPayload={previewConfig}
+//                     elements={availableElements}
+//                     onPreviewUpdate={setPreviewUpdate}
+//                     selectedElement={selectedRuntime}
+//                     onSelect={editor.selectElement}
+//                     disableContextMenu
+//                     forceExpandAll
+//                     comparison={comparison}
+//                     onComparisonChange={setComparison}
+//                 />
+//             </section>
+
+//             {hasPreviewOverflow && (
+//                 <div className="skin-preview-warning">⚠ Elements extend outside the splitter preview.</div>
+//             )}
+
+//             <section className="skin-editor-files skin-editor-column">
+//                 <SkinFiles
+//                     activeRule={editor.activeRule}
+//                     rules={editor.rules}
+//                     elements={allElements}
+//                     availableIds={availableIds}
+//                     selectedElement={editor.target.elementId}
+//                     files={editor.files}
+//                     selectedFile={editor.target.file}
+//                     mode={editor.target.mode}
+//                     selector={editor.target.selector}
+//                     revision={model.revision}
+//                     dirty={editor.dirty}
+//                     onElementSelected={editor.selectElement}
+//                     onSelectFile={editor.selectFile}
+//                     onSelectRule={editor.selectRule}
+//                     onCreateRule={editor.createRule}
+//                     onCreateFile={editor.createFile}
+//                     onChangeRule={editor.updateRule}
+//                     onChangeFile={editor.updateFile}
+//                     overflowingIds={previewUpdate.metrics.overflowingIds}
+//                 />
+//             </section>
+
+//             <div className="skin-editor-actions">
+//                 <button className="secondary" onClick={editor.reset} disabled={!editor.dirty}>
+//                     Reload
+//                 </button>
+
+//                 <button onClick={editor.save} disabled={!editor.dirty}>
+//                     Save
+//                 </button>
+
+//                 <button className="secondary" onClick={cancel}>
+//                     Cancel
+//                 </button>
+//             </div>
+//         </div>
+//     );
+// }
