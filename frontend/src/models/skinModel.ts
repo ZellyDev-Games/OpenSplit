@@ -1,4 +1,4 @@
-import { CSSRuleEditor } from "./cssProperty";
+import { CSSRuleEditor } from "./skin/css";
 
 export interface CSSFile {
     name: string;
