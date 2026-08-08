@@ -16,10 +16,10 @@ export interface SkinElement {
     order?: number;
 }
 
-export interface RuntimeElement {
-    id: string;
+export interface RuntimeElement extends SkinElement {
+    // id: string;
 
-    element: SkinElement;
+    element: Element;
 
-    node: Element | null;
+    // node: Element | null;
 }
