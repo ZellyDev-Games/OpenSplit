@@ -8,6 +8,17 @@ export function getElementRules(model: SkinModel, element: SkinElement): SkinCSS
 }
 
 function compareRules(a: SkinCSSRule, b: SkinCSSRule): number {
+    const aRuntime = a.file === "runtime";
+    const bRuntime = b.file === "runtime";
+
+    /*
+     * Runtime rules are generated from the current preview and are
+     * not editable source-file rules. Keep them after all skin rules.
+     */
+    if (aRuntime !== bRuntime) {
+        return aRuntime ? 1 : -1;
+    }
+
     if (a.file !== b.file) {
         return a.file.localeCompare(b.file);
     }
