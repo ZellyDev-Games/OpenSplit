@@ -1,7 +1,7 @@
 import type { SkinModel } from "../../../models/skin/editor";
 import type { SkinElement } from "../../../models/skin/element";
-import { selectorMatches } from "../utils/selectorMatch";
-import { sortLayers } from "./layerOrder";
+import { sortLayers } from "./utils/layerOrder";
+import { selectorMatches } from "./utils/selectorMatch";
 
 export interface SkinControlsInfo {
     selector: string;
