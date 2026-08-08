@@ -33,7 +33,7 @@ export interface PreviewMetrics {
     /**
      * Runtime ids of overflowing elements.
      */
-    overflowingIds: ReadonlySet<string>;
+    overflowingIds: Set<string>;
 }
 
 export interface PreviewUpdate {
