@@ -8,6 +8,7 @@ export interface SkinEditorTarget {
     file: string | null;
     selector: string | null;
     ruleId: string | null;
+    parentId: string | null;
     mode: SkinEditorMode;
 }
 

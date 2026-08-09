@@ -12,6 +12,7 @@ export function cssRuleToEditor(rule: SkinCSSRule): CSSRuleEditor {
         selector: rule.selector,
         layer: rule.layer,
         body: rule.body,
+        parentId: rule.parentId,
         parents: rule.parents ?? [],
     };
 }

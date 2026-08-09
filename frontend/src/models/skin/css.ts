@@ -22,6 +22,7 @@ export interface SkinCSSRule {
     body: string;
     line: number;
     order: number;
+    parentId: string;
     children?: SkinCSSRule[];
     parents?: CSSAtRule[];
 }
@@ -40,6 +41,7 @@ export interface CSSRuleEditor {
     layer: string;
     body: string;
 
+    parentId: string;
     parents: CSSAtRule[];
 
     originalFile: string;

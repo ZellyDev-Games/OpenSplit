@@ -78,6 +78,7 @@ function ElementRule({ rule, selected, onFileSelected, onRuleSelected }: Element
             selector: rule.selector,
             layer: rule.layer,
             body: rule.body,
+            parentId: rule.parentId,
             parents: rule.parents ?? [],
             originalFile: rule.file,
             originalId: rule.id,

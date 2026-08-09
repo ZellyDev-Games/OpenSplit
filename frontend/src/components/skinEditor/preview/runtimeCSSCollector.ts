@@ -1,4 +1,4 @@
-import { CSSAtRule, SkinCSSRule } from "../../../models/skin/css";
+import type { CSSAtRule, SkinCSSRule } from "../../../models/skin/css";
 
 export function collectRuntimeCSS(): SkinCSSRule[] {
     const rules: SkinCSSRule[] = [];
@@ -53,6 +53,8 @@ function collectRules(cssRules: CSSRuleList, output: SkinCSSRule[], source: stri
                 selector,
 
                 body: formatStyleDeclaration(rule.style),
+
+                parentId: "",
 
                 parents,
 

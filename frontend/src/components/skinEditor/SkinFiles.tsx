@@ -29,6 +29,8 @@ interface Props {
 
     selector: string | null;
 
+    layer: string | null;
+
     onElementSelected(id: string): void;
 
     onSelectFile(path: string): Promise<void>;
@@ -60,6 +62,7 @@ export default function SkinFiles({
     selectedFile,
     mode,
     selector,
+    layer,
     revision,
     dirty,
     onElementSelected,
@@ -126,6 +129,7 @@ export default function SkinFiles({
                     rules={cssRules}
                     mode={mode}
                     selector={selector}
+                    layer={layer}
                     body={body}
                     onBodyChange={(value) => {
                         setBody(value);

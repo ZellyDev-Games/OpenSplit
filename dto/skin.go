@@ -154,6 +154,8 @@ type SkinEditorTarget struct {
 
 	RuleID string `json:"ruleId"`
 
+	ParentID string `json:"parentId"`
+
 	Mode string `json:"mode"`
 }
 

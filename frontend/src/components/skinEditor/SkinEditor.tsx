@@ -81,6 +81,7 @@ export default function SkinEditor({ model }: Props) {
                     selectedFile={editor.target.file}
                     mode={editor.target.mode}
                     selector={editor.target.selector}
+                    layer={editor.activeRule?.layer ?? null}
                     revision={model.revision}
                     dirty={editor.dirty}
                     onElementSelected={editor.selectElement}

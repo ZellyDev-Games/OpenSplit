@@ -22,6 +22,7 @@ const EMPTY_TARGET: SkinEditorTarget = {
     file: null,
     selector: null,
     ruleId: null,
+    parentId: null,
     mode: "file",
 };
 
