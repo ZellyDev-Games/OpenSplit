@@ -1,13 +1,10 @@
-package skin
+package editor
 
 import (
 	"github.com/zellydev-games/opensplit/skin/parser"
 )
 
 // UpdateRule replaces an existing top-level rule.
-//
-// Rules nested inside at-rules should be updated with
-// UpdateRuleRecursive.
 func (e *EditorState) UpdateRule(
 	rule parser.Rule,
 ) bool {
@@ -19,7 +16,7 @@ func (e *EditorState) UpdateRule(
 			continue
 		}
 
-		e.Rules[i] = cloneRules(
+		e.Rules[i] = CloneRules(
 			[]parser.Rule{
 				rule,
 			},
@@ -41,12 +38,6 @@ func (e *EditorState) UpdateRule(
 
 // UpdateRuleRecursive replaces the declarations of a rule anywhere in the
 // working rule tree.
-//
-// The rule identity, selector, file, and hierarchy are preserved.
-//
-// When the updated rule is also the active rule, its editor body is updated
-// at the same time. This keeps ActiveRule synchronized with the parser rule
-// tree so frontend revision updates cannot restore stale editor contents.
 func (e *EditorState) UpdateRuleRecursive(
 	id string,
 	declarations []parser.Declaration,
@@ -75,10 +66,6 @@ func (e *EditorState) UpdateRuleRecursive(
 
 // syncActiveRuleDeclarations keeps the active editor rule synchronized with
 // the parser rule tree.
-//
-// ActiveRule is a frontend-facing representation while parser.Rule is the
-// working-copy representation. Both must be updated together when the
-// declarations change.
 func (e *EditorState) syncActiveRuleDeclarations(
 	id string,
 	declarations []parser.Declaration,
@@ -91,7 +78,7 @@ func (e *EditorState) syncActiveRuleDeclarations(
 		return
 	}
 
-	e.ActiveRule.Body = formatRuleDeclarations(
+	e.ActiveRule.Body = FormatRuleDeclarations(
 		declarations,
 	)
 }
@@ -105,7 +92,7 @@ func updateRuleDeclarationsRecursive(
 ) bool {
 	for i := range rules {
 		if rules[i].ID == id {
-			rules[i].Declarations = cloneDeclarations(
+			rules[i].Declarations = CloneDeclarations(
 				declarations,
 			)
 
@@ -125,9 +112,6 @@ func updateRuleDeclarationsRecursive(
 }
 
 // AddRule adds a new rule to the working copy.
-//
-// The caller is responsible for constructing the rule hierarchy required
-// by the editor operation.
 func (e *EditorState) AddRule(
 	rule parser.Rule,
 ) {
@@ -136,7 +120,7 @@ func (e *EditorState) AddRule(
 
 	e.Rules = append(
 		e.Rules,
-		cloneRules(
+		CloneRules(
 			[]parser.Rule{
 				rule,
 			},
@@ -174,9 +158,6 @@ func (e *EditorState) DeleteRule(
 }
 
 // DeleteRuleRecursive deletes a rule anywhere in the working rule tree.
-//
-// Parent containers are preserved. If the deleted rule was the only child
-// of an at-rule, the at-rule itself remains in the tree.
 func (e *EditorState) DeleteRuleRecursive(
 	id string,
 ) bool {
@@ -202,9 +183,6 @@ func (e *EditorState) DeleteRuleRecursive(
 
 // deleteRuleRecursive returns an updated rule slice and whether a rule was
 // removed.
-//
-// Returning the slice is important because recursive deletion may change
-// the slice header of a nested Children field.
 func deleteRuleRecursive(
 	rules []parser.Rule,
 	id string,

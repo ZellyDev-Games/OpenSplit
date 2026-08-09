@@ -1,15 +1,12 @@
-package skin
+package editor
 
 import (
 	"github.com/zellydev-games/opensplit/dto"
 	"github.com/zellydev-games/opensplit/skin/parser"
 )
 
-// cloneFiles returns an independent copy of the file slice.
-//
-// CSSFile currently contains value fields, so copying each element is
-// sufficient.
-func cloneFiles(
+// CloneFiles returns an independent copy of the file slice.
+func CloneFiles(
 	files []dto.CSSFile,
 ) []dto.CSSFile {
 	if files == nil {
@@ -29,8 +26,8 @@ func cloneFiles(
 	return out
 }
 
-// clonePreviewElements returns an independent copy of preview elements.
-func clonePreviewElements(
+// ClonePreviewElements returns an independent copy of preview elements.
+func ClonePreviewElements(
 	elements []dto.SkinPreviewElement,
 ) []dto.SkinPreviewElement {
 	if elements == nil {
@@ -50,8 +47,8 @@ func clonePreviewElements(
 	return out
 }
 
-// cloneDeclarations returns a deep copy of declaration data.
-func cloneDeclarations(
+// CloneDeclarations returns a deep copy of declaration data.
+func CloneDeclarations(
 	declarations []parser.Declaration,
 ) []parser.Declaration {
 	if declarations == nil {
@@ -85,8 +82,8 @@ func cloneDeclarations(
 	return out
 }
 
-// cloneRules returns a deep copy of the complete rule tree.
-func cloneRules(
+// CloneRules returns a deep copy of the complete rule tree.
+func CloneRules(
 	rules []parser.Rule,
 ) []parser.Rule {
 	if rules == nil {
@@ -101,11 +98,11 @@ func cloneRules(
 	for i, rule := range rules {
 		out[i] = rule
 
-		out[i].Declarations = cloneDeclarations(
+		out[i].Declarations = CloneDeclarations(
 			rule.Declarations,
 		)
 
-		out[i].Children = cloneRules(
+		out[i].Children = CloneRules(
 			rule.Children,
 		)
 	}

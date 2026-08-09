@@ -2,6 +2,7 @@ package skin
 
 import (
 	"github.com/zellydev-games/opensplit/dto"
+	"github.com/zellydev-games/opensplit/skin/editor"
 	"github.com/zellydev-games/opensplit/skin/parser"
 )
 
@@ -49,7 +50,7 @@ func convertDTOEditorRule(
 
 		Selector: rule.Selector,
 
-		Body: formatRuleDeclarations(
+		Body: editor.FormatRuleDeclarations(
 			rule.Declarations,
 		),
 

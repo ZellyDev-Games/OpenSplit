@@ -1,4 +1,4 @@
-package skin
+package editor
 
 import (
 	"strings"
@@ -11,7 +11,7 @@ import (
 //
 // Comments, raw declarations, multiline values, semicolons, and inline
 // comments are preserved as far as the parser representation allows.
-func formatRuleDeclarations(
+func FormatRuleDeclarations(
 	declarations []parser.Declaration,
 ) string {
 	var out strings.Builder

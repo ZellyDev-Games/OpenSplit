@@ -1,4 +1,4 @@
-package skin
+package editor
 
 import (
 	"github.com/zellydev-games/opensplit/dto"
@@ -23,8 +23,6 @@ func (e *EditorState) AddFile(
 }
 
 // UpdateFile replaces an existing file in the working copy.
-//
-// The file must already exist in the working copy.
 func (e *EditorState) UpdateFile(
 	file dto.CSSFile,
 ) bool {
@@ -49,9 +47,6 @@ func (e *EditorState) UpdateFile(
 
 // UpdateFileContents updates the text contents of an existing working-copy
 // file.
-//
-// No mutation occurs when the supplied contents are identical to the
-// current contents.
 func (e *EditorState) UpdateFileContents(
 	path string,
 	contents string,

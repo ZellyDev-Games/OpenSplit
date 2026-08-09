@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/zellydev-games/opensplit/dto"
+	"github.com/zellydev-games/opensplit/skin/editor"
 	"github.com/zellydev-games/opensplit/skin/parser"
 )
 
@@ -83,7 +84,7 @@ func newCSSRuleEditor(
 
 		ParentID: rule.ParentID,
 
-		Body: formatRuleDeclarations(
+		Body: editor.FormatRuleDeclarations(
 			rule.Declarations,
 		),
 

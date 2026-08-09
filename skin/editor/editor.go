@@ -1,4 +1,4 @@
-package skin
+package editor
 
 import (
 	"sync"
@@ -75,7 +75,7 @@ func (e *EditorState) SetPreviewElements(
 	e.m.Lock()
 	defer e.m.Unlock()
 
-	e.PreviewElements = clonePreviewElements(
+	e.PreviewElements = ClonePreviewElements(
 		elements,
 	)
 }
@@ -86,17 +86,13 @@ func (e *EditorState) GetPreviewElements() []dto.SkinPreviewElement {
 	e.m.RLock()
 	defer e.m.RUnlock()
 
-	return clonePreviewElements(
+	return ClonePreviewElements(
 		e.PreviewElements,
 	)
 }
 
 // ReplaceWorkingCopyFromDisk replaces the complete working copy with
 // freshly loaded filesystem state.
-//
-// This is the disk -> editor boundary.
-//
-// Reloading clears dirty state and advances the working-copy revision.
 func (e *EditorState) ReplaceWorkingCopyFromDisk(
 	files []dto.CSSFile,
 	rules []parser.Rule,
@@ -104,8 +100,8 @@ func (e *EditorState) ReplaceWorkingCopyFromDisk(
 	e.m.Lock()
 	defer e.m.Unlock()
 
-	e.Files = cloneFiles(files)
-	e.Rules = cloneRules(rules)
+	e.Files = CloneFiles(files)
+	e.Rules = CloneRules(rules)
 
 	e.Dirty = false
 	e.Revision++
@@ -123,16 +119,14 @@ func (e *EditorState) ReplaceWorkingCopy(
 	e.m.Lock()
 	defer e.m.Unlock()
 
-	e.Files = cloneFiles(files)
-	e.Rules = cloneRules(rules)
+	e.Files = CloneFiles(files)
+	e.Rules = CloneRules(rules)
 
 	e.Dirty = true
 	e.Revision++
 }
 
 // Snapshot returns isolated copies of the current editor state.
-//
-// Callers may modify the returned values without affecting EditorState.
 func (e *EditorState) Snapshot() (
 	[]dto.CSSFile,
 	[]parser.Rule,
@@ -151,8 +145,8 @@ func (e *EditorState) Snapshot() (
 		active = &copy
 	}
 
-	return cloneFiles(e.Files),
-		cloneRules(e.Rules),
+	return CloneFiles(e.Files),
+		CloneRules(e.Rules),
 		e.Dirty,
 		e.Target,
 		active,
@@ -160,8 +154,6 @@ func (e *EditorState) Snapshot() (
 }
 
 // SetTarget changes the current editor selection.
-//
-// Selection changes do not modify the working copy.
 func (e *EditorState) SetTarget(
 	target dto.SkinEditorTarget,
 ) {
@@ -180,9 +172,6 @@ func (e *EditorState) GetTarget() dto.SkinEditorTarget {
 }
 
 // SetActiveRule changes the rule currently displayed by the rule editor.
-//
-// Active-rule selection is editor UI state and does not itself modify
-// the working copy.
 func (e *EditorState) SetActiveRule(
 	rule *dto.CSSRuleEditor,
 ) {
@@ -213,8 +202,6 @@ func (e *EditorState) GetActiveRule() *dto.CSSRuleEditor {
 }
 
 // MarkDirty marks the working copy as modified.
-//
-// No content is changed by this operation, so Revision is unchanged.
 func (e *EditorState) MarkDirty() {
 	e.m.Lock()
 	defer e.m.Unlock()
