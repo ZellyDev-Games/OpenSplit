@@ -1,0 +1,322 @@
+package skin
+
+import (
+	"errors"
+	"fmt"
+	"net/url"
+	"os"
+	"path"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/zellydev-games/opensplit/logger"
+)
+
+// GetAvailableSkins walks the skins folder and returns folders containing a
+// valid skin entry point.
+func (s *Service) GetAvailableSkins() []string {
+	s.m.RLock()
+	skinDir := s.skinDir
+	s.m.RUnlock()
+
+	entries, err := os.ReadDir(skinDir)
+	if err != nil {
+		logger.Errorf(
+			logModule,
+			"failed to read skins directory: %s",
+			err.Error(),
+		)
+
+		return []string{}
+	}
+
+	availableSkins := make(
+		[]string,
+		0,
+		len(entries),
+	)
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+
+		cssPath := filepath.Join(
+			skinDir,
+			name,
+			EntryPoint,
+		)
+
+		info, err := os.Stat(cssPath)
+		if err != nil || info.IsDir() {
+			continue
+		}
+
+		availableSkins = append(
+			availableSkins,
+			name,
+		)
+	}
+
+	sort.Strings(
+		availableSkins,
+	)
+
+	return availableSkins
+}
+
+// SetSkin switches the active skin.
+//
+// When writeConfig is true, the selected skin is persisted to the configuration
+// file.
+func (s *Service) SetSkin(
+	name string,
+	writeConfig bool,
+) error {
+	if !s.skinExists(name) {
+		logger.Errorf(
+			logModule,
+			"skin %s not found",
+			name,
+		)
+
+		return errors.New("skin not found")
+	}
+
+	s.setSelectedSkin(name)
+
+	logger.Infof(
+		logModule,
+		"skin changed to %s",
+		name,
+	)
+
+	s.watcher.ChangeRoot(
+		filepath.Join(
+			s.skinDir,
+			name,
+		),
+	)
+
+	if err := s.ReloadEditor(); err != nil {
+		return err
+	}
+
+	s.editor.ClearSelection()
+
+	if writeConfig {
+		s.configService.SelectedSkin = name
+
+		if err := s.repoService.SaveConfig(
+			s.configService,
+		); err != nil {
+			logger.Errorf(
+				logModule,
+				"failed to save config: %s",
+				err.Error(),
+			)
+
+			return err
+		}
+	}
+
+	return nil
+}
+
+// skinExists reports whether name identifies an installed skin.
+func (s *Service) skinExists(name string) bool {
+	for _, skin := range s.GetAvailableSkins() {
+		if skin == name {
+			return true
+		}
+	}
+
+	return false
+}
+
+// SelectedSkin returns the currently active skin.
+func (s *Service) SelectedSkin() string {
+	s.m.RLock()
+	defer s.m.RUnlock()
+
+	return s.selectedSkin
+}
+
+// GetSkinPath returns the filesystem root of the active skin.
+//
+// An empty string is returned when no skin is currently available.
+func (s *Service) GetSkinPath() string {
+	return s.skinRootOrEmpty()
+}
+
+func (s *Service) skinRootOrEmpty() string {
+	root, err := s.skinRoot()
+	if err != nil {
+		return ""
+	}
+
+	return root
+}
+
+// GetSkinAddress returns the URL to the active skin's stylesheet.
+func (s *Service) GetSkinAddress() string {
+	s.m.RLock()
+
+	address := s.address
+	selected := s.selectedSkin
+
+	s.m.RUnlock()
+
+	return s.getSkinAddressFor(
+		address,
+		selected,
+	)
+}
+
+// skinUpdated handles a filesystem change to the active skin.
+//
+// The editor working copy is rebuilt from disk before either UI notification
+// is sent. This keeps the parsed editor model and the stylesheet preview in
+// sync with the actual files on disk.
+func (s *Service) skinUpdated() {
+	logger.Debug(
+		logModule,
+		"skin changed on disk, reloading editor",
+	)
+
+	if s.editor.IsDirty() {
+		logger.Debug(
+			logModule,
+			"skin changed on disk while editor has unsaved changes; keeping working copy",
+		)
+
+		return
+	}
+
+	if err := s.ReloadEditor(); err != nil {
+		logger.Errorf(
+			logModule,
+			"failed to reload editor after skin change: %v",
+			err,
+		)
+
+		return
+	}
+
+	if err := s.EmitSkinModel(); err != nil {
+		logger.Errorf(
+			logModule,
+			"failed to emit skin model after skin change: %v",
+			err,
+		)
+
+		return
+	}
+
+	s.notifySkinUpdated()
+}
+
+// notifySkinUpdated notifies the frontend that the active skin stylesheet
+// changed on disk.
+//
+// A cache-busting query parameter is appended so the browser reloads the
+// stylesheet instead of serving a cached copy.
+func (s *Service) notifySkinUpdated() {
+	address := s.GetSkinAddress()
+
+	address += "?v=" + strconv.FormatInt(
+		time.Now().UnixNano(),
+		10,
+	)
+
+	select {
+	case <-s.skinUpdatedCh:
+	default:
+	}
+
+	select {
+	case s.skinUpdatedCh <- address:
+	default:
+		logger.Debug(
+			logModule,
+			"skin update already pending",
+		)
+	}
+}
+
+// GetSkinAddressFor returns the stylesheet URL for a specific installed skin.
+//
+// This helper is intentionally kept private because the public API only needs
+// to expose the currently selected skin.
+func (s *Service) getSkinAddressFor(
+	address string,
+	selected string,
+) string {
+	if address == "" || selected == "" {
+		return ""
+	}
+
+	u, err := url.Parse(address)
+	if err != nil {
+		return ""
+	}
+
+	u.Path = path.Join(
+		u.Path,
+		selected,
+		EntryPoint,
+	)
+
+	return u.String()
+}
+
+// formatSkinPath constructs a filesystem path within the configured skin
+// directory.
+func (s *Service) formatSkinPath(
+	name string,
+	parts ...string,
+) string {
+	root := filepath.Join(
+		s.skinDir,
+		name,
+	)
+
+	if len(parts) == 0 {
+		return root
+	}
+
+	return filepath.Join(
+		append([]string{root}, parts...)...,
+	)
+}
+
+// validateSkinName validates a skin name before it is used as a filesystem
+// component.
+func validateSkinName(name string) error {
+	name = strings.TrimSpace(name)
+
+	if name == "" {
+		return fmt.Errorf(
+			"skin name cannot be empty",
+		)
+	}
+
+	if name == "." ||
+		name == ".." ||
+		strings.ContainsAny(
+			name,
+			`\/`,
+		) {
+		return fmt.Errorf(
+			"invalid skin name %q",
+			name,
+		)
+	}
+
+	return nil
+}

@@ -11,29 +11,86 @@ import (
 	"github.com/zellydev-games/opensplit/skin/parser"
 )
 
-func (s *Service) SkinFiles() ([]string, error) {
+// skinRoot returns the absolute filesystem path of the currently selected skin.
+func (s *Service) skinRoot() (string, error) {
 	s.m.RLock()
-	defer s.m.RUnlock()
+	selected := s.selectedSkin
+	s.m.RUnlock()
 
-	if s.selectedSkin == "" {
-		return nil, errors.New("no skin selected")
+	if selected == "" {
+		return "", errors.New("no skin selected")
 	}
 
-	root := filepath.Join(
+	return filepath.Join(
 		s.skinDir,
-		s.selectedSkin,
+		selected,
+	), nil
+}
+
+// resolveSkinPath resolves a path relative to the selected skin while ensuring
+// that the resulting path remains inside the selected skin directory.
+//
+// All filesystem access to skin files should pass through this boundary.
+func (s *Service) resolveSkinPath(
+	file string,
+) (string, error) {
+	root, err := s.skinRoot()
+	if err != nil {
+		return "", err
+	}
+
+	clean := filepath.Clean(file)
+
+	if clean == "." ||
+		clean == ".." ||
+		strings.HasPrefix(
+			clean,
+			".."+string(os.PathSeparator),
+		) {
+		return "", errors.New("invalid skin path")
+	}
+
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return "", err
+	}
+
+	target := filepath.Join(
+		root,
+		clean,
 	)
+
+	absTarget, err := filepath.Abs(target)
+	if err != nil {
+		return "", err
+	}
+
+	if absTarget != absRoot &&
+		!strings.HasPrefix(
+			absTarget,
+			absRoot+string(os.PathSeparator),
+		) {
+		return "", errors.New("file outside skin directory")
+	}
+
+	return target, nil
+}
+
+func (s *Service) SkinFiles() ([]string, error) {
+	root, err := s.skinRoot()
+	if err != nil {
+		return nil, err
+	}
 
 	var files []string
 
-	err := filepath.Walk(
+	err = filepath.Walk(
 		root,
 		func(
 			path string,
 			info os.FileInfo,
 			err error,
 		) error {
-
 			if err != nil {
 				return err
 			}
@@ -46,7 +103,6 @@ func (s *Service) SkinFiles() ([]string, error) {
 				root,
 				path,
 			)
-
 			if err != nil {
 				return err
 			}
@@ -90,7 +146,9 @@ func (s *Service) CSSRules(
 }
 
 // CSSRuleHierarchy returns every matching rule in skin load order.
-func (s *Service) CSSRuleHierarchy(selector string) ([]parser.Rule, error) {
+func (s *Service) CSSRuleHierarchy(
+	selector string,
+) ([]parser.Rule, error) {
 	files, err := s.SkinFiles()
 	if err != nil {
 		return nil, err
@@ -99,60 +157,33 @@ func (s *Service) CSSRuleHierarchy(selector string) ([]parser.Rule, error) {
 	var out []parser.Rule
 
 	for _, file := range files {
-
 		if filepath.Ext(file) != ".css" {
 			continue
 		}
 
-		rules, err := s.CSSRules(file, selector)
-
+		rules, err := s.CSSRules(
+			file,
+			selector,
+		)
 		if err != nil {
 			return nil, err
 		}
 
-		out = append(out, rules...)
+		out = append(
+			out,
+			rules...,
+		)
 	}
 
 	return out, nil
 }
 
-func (s *Service) ReadFile(file string) (string, error) {
-	s.m.RLock()
-	selected := s.selectedSkin
-	s.m.RUnlock()
-
-	if selected == "" {
-		return "", errors.New("no skin selected")
-	}
-
-	clean := filepath.Clean(file)
-
-	if strings.HasPrefix(clean, "..") {
-		return "", errors.New("invalid skin path")
-	}
-
-	root := filepath.Join(
-		s.skinDir,
-		selected,
-	)
-
-	target := filepath.Join(root, clean)
-
-	absRoot, err := filepath.Abs(root)
+func (s *Service) ReadFile(
+	file string,
+) (string, error) {
+	target, err := s.resolveSkinPath(file)
 	if err != nil {
 		return "", err
-	}
-
-	absTarget, err := filepath.Abs(target)
-	if err != nil {
-		return "", err
-	}
-
-	if !strings.HasPrefix(
-		absTarget,
-		absRoot+string(os.PathSeparator),
-	) {
-		return "", errors.New("file outside skin directory")
 	}
 
 	data, err := os.ReadFile(target)
@@ -163,49 +194,21 @@ func (s *Service) ReadFile(file string) (string, error) {
 	return string(data), nil
 }
 
-func (s *Service) ReadCSS(file string) (string, error) {
-
-	s.m.RLock()
-	selected := s.selectedSkin
-	s.m.RUnlock()
-
-	if selected == "" {
-		return "", errors.New("no skin selected")
+func (s *Service) ReadCSS(
+	file string,
+) (string, error) {
+	if !strings.EqualFold(
+		filepath.Ext(file),
+		".css",
+	) {
+		return "", errors.New(
+			"only css files may be read",
+		)
 	}
 
-	if !strings.EqualFold(filepath.Ext(file), ".css") {
-		return "", errors.New("only css files may be read")
-	}
-
-	clean := filepath.Clean(file)
-
-	if strings.HasPrefix(clean, "..") {
-		return "", errors.New("invalid css path")
-	}
-
-	root := filepath.Join(
-		s.skinDir,
-		selected,
-	)
-
-	target := filepath.Join(
-		root,
-		clean,
-	)
-
-	absRoot, err := filepath.Abs(root)
+	target, err := s.resolveSkinPath(file)
 	if err != nil {
 		return "", err
-	}
-
-	absTarget, err := filepath.Abs(target)
-	if err != nil {
-		return "", err
-	}
-
-	if absTarget != absRoot &&
-		!strings.HasPrefix(absTarget, absRoot+string(os.PathSeparator)) {
-		return "", errors.New("css path outside skin directory")
 	}
 
 	data, err := os.ReadFile(target)

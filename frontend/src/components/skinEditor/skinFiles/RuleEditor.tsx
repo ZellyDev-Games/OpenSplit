@@ -12,6 +12,8 @@ interface Props {
 
     body: string;
 
+    layer: string | null;
+
     onBodyChange(value: string): void;
 
     onSelectRule(rule: CSSRuleEditor): void;
@@ -25,6 +27,7 @@ export default function RuleEditor({
     mode,
     selector,
     body,
+    layer,
     onBodyChange,
     onSelectRule,
     onCreateRule,
@@ -49,6 +52,14 @@ export default function RuleEditor({
             <h4>Selector</h4>
 
             <code>{selector}</code>
+
+            {layer && (
+                <>
+                    <h4>Layer</h4>
+
+                    <code>{layer}</code>
+                </>
+            )}
 
             {rules.length > 0 && (
                 <>

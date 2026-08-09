@@ -7,297 +7,148 @@ import (
 	"github.com/zellydev-games/opensplit/skin/parser"
 )
 
+// SelectFile selects a CSS file in the editor.
+//
+// Selecting a file clears the active rule and puts the editor into file
+// mode. An empty file clears the selection entirely.
 func (s *Service) SelectFile(
 	file string,
 ) error {
-
 	if file == "" {
-		target := s.editor.GetTarget()
-
-		target.File = ""
-		target.RuleID = ""
-		target.Mode = "file"
-
-		s.editor.SetTarget(target)
-
-		s.editor.SetActiveRule(nil)
+		s.clearFileSelection()
 
 		return s.EmitSkinModel()
 	}
 
-	files,
-		_,
-		_,
-		_,
-		_,
-		_ :=
-		s.editor.Snapshot()
-
-	for _, f := range files {
-
-		if f.Path == file {
-
-			target := s.editor.GetTarget()
-
-			target.File = file
-			target.Mode = "file"
-			target.RuleID = ""
-
-			s.editor.SetTarget(
-				target,
-			)
-
-			s.editor.SetActiveRule(
-				nil,
-			)
-
-			return s.EmitSkinModel()
-		}
-	}
-
-	return fmt.Errorf(
-		"unknown css file %q",
-		file,
-	)
-}
-
-func (s *Service) SelectElement(
-	id string,
-) error {
-
-	elements :=
-		s.GetSkinElements()
-
-	var selected *dto.SkinElement
-
-	for _, element := range elements {
-
-		if element.ID == id {
-
-			copy := element
-			selected = &copy
-
-			break
-		}
-	}
-
-	if selected == nil {
-
+	if !s.cssFileExists(file) {
 		return fmt.Errorf(
-			"unknown element %q",
-			id,
+			"unknown css file %q",
+			file,
 		)
 	}
 
-	_,
-		rules,
-		_,
-		_,
-		_,
-		_ :=
-		s.editor.Snapshot()
+	target := s.editor.GetTarget()
 
-	target :=
-		dto.SkinEditorTarget{
+	target.File = file
+	target.RuleID = ""
+	target.ParentID = ""
+	target.Mode = "file"
 
-			ElementID: id,
-
-			Selector: selected.Selector,
-
-			Mode: "create",
-		}
-
-	var active *dto.CSSRuleEditor
-
-	walkRules(
-		rules,
-		func(rule parser.Rule) bool {
-			// Ignore:
-			//
-			// @media
-			// @supports
-			// @font-face
-			// @import
-			//
-			// They do not directly style elements.
-			// if len(rule.Selectors) == 0 {
-			// 	return false
-			// }
-			if rule.Selector == "" {
-				return false
-			}
-
-			if !parser.SelectorMatch(
-				rule.Selector,
-				selected.Selector,
-			) {
-				return false
-			}
-
-			target.File =
-				rule.File
-
-			target.RuleID =
-				rule.ID
-
-			target.Mode =
-				"existing"
-
-			active =
-				&dto.CSSRuleEditor{
-
-					ID: rule.ID,
-
-					File: rule.File,
-
-					Selector: rule.Selector,
-
-					Layer: rule.Layer,
-
-					Body: formatRuleDeclarations(
-						rule.Declarations,
-					),
-
-					OriginalFile: rule.File,
-
-					OriginalID: rule.ID,
-				}
-
-			return true
-		},
-	)
-
-	s.editor.SetTarget(
-		target,
-	)
-
-	s.editor.SetActiveRule(
-		active,
-	)
+	s.editor.SetTarget(target)
+	s.editor.SetActiveRule(nil)
 
 	return s.EmitSkinModel()
 }
 
+// SelectElement selects a preview element.
+//
+// Element selection establishes the element's selector as the target and
+// searches the complete parsed rule tree for an existing matching rule.
+//
+// If a matching rule is found, the editor enters "existing" mode.
+// Otherwise it remains in "create" mode so the frontend can create a new
+// rule for the selected element.
+func (s *Service) SelectElement(
+	id string,
+) error {
+	selected, err := s.findSkinElement(id)
+	if err != nil {
+		return err
+	}
+
+	_, rules, _, _, _, _ := s.editor.Snapshot()
+
+	target := dto.SkinEditorTarget{
+		ElementID: id,
+		Selector:  selected.Selector,
+		Mode:      "create",
+	}
+
+	active := s.findMatchingRuleEditor(
+		rules,
+		selected.Selector,
+		&target,
+	)
+
+	s.editor.SetTarget(target)
+	s.editor.SetActiveRule(active)
+
+	return s.EmitSkinModel()
+}
+
+// SelectRule selects a specific parsed CSS rule.
 func (s *Service) SelectRule(
 	file string,
 	ruleID string,
 ) error {
+	_, rules, _, _, _, _ := s.editor.Snapshot()
 
-	_,
+	selected, ok := findRule(
 		rules,
-		_,
-		_,
-		_,
-		_ :=
-		s.editor.Snapshot()
-
-	var selected *parser.Rule
-
-	walkRules(
-		rules,
-		func(rule parser.Rule) bool {
-
-			if rule.File != file ||
-				rule.ID != ruleID {
-
-				return false
-			}
-
-			copy := rule
-			selected = &copy
-
-			return true
-		},
+		file,
+		ruleID,
 	)
 
-	if selected == nil {
-
+	if !ok {
 		return fmt.Errorf(
 			"rule %s not found",
 			ruleID,
 		)
 	}
 
-	editor :=
-		dto.CSSRuleEditor{
+	target := s.editor.GetTarget()
 
-			ID: selected.ID,
+	target.File = file
+	target.RuleID = ruleID
+	target.ParentID = selected.ParentID
+	target.Selector = selected.Selector
+	target.Mode = "existing"
 
-			File: selected.File,
-
-			Layer: selected.Layer,
-
-			Body: formatRuleDeclarations(
-				selected.Declarations,
-			),
-
-			OriginalFile: selected.File,
-
-			OriginalID: selected.ID,
-		}
-
-	editor.Selector =
-		selected.Selector
-
-	target :=
-		s.editor.GetTarget()
-
-	target.File =
-		file
-
-	target.RuleID =
-		ruleID
-
-	target.Mode =
-		"existing"
-
-	s.editor.SetTarget(
-		target,
-	)
-
+	s.editor.SetTarget(target)
 	s.editor.SetActiveRule(
-		&editor,
+		newCSSRuleEditor(selected),
 	)
 
 	return s.EmitSkinModel()
 }
 
+// UpdateActiveRule updates the declarations of the currently selected rule.
+//
+// This method is used both for existing rules and for rules that were just
+// created during the current editor session. A newly created rule already
+// exists in the working rule tree, so its declarations can be updated in
+// exactly the same way as an existing rule.
+//
+// The parser rule receives the parsed declarations while the active editor
+// rule retains the exact body text supplied by the frontend. This keeps the
+// textarea stable while the user is typing while still giving the CSS writer
+// structured declarations to persist.
 func (s *Service) UpdateActiveRule(
 	updated dto.CSSRuleEditor,
 ) error {
+	if err := validateActiveRuleUpdate(updated); err != nil {
+		return err
+	}
 
-	files,
-		rules,
-		_,
-		_,
-		_,
-		_ :=
-		s.editor.Snapshot()
-
-	if !updateRuleRecursive(
-		rules,
-		updated.ID,
+	declarations := parseDeclarations(
 		updated.Body,
-	) {
+	)
 
+	if !s.editor.UpdateRuleRecursive(
+		updated.ID,
+		declarations,
+	) {
 		return fmt.Errorf(
 			"rule %s not found",
 			updated.ID,
 		)
 	}
 
-	s.editor.ReplaceWorkingCopy(
-		files,
-		rules,
-	)
-
-	updated.Body =
-		formatRuleDeclarations(
-			parseDeclarations(
-				updated.Body,
-			),
-		)
-
+	// Preserve the exact text entered by the user in the active editor.
+	//
+	// The parser representation above contains the structured version used
+	// by the CSS writer. ActiveRule is UI state and should not unexpectedly
+	// reformat the textarea on every keystroke.
 	s.editor.SetActiveRule(
 		&updated,
 	)
@@ -305,29 +156,29 @@ func (s *Service) UpdateActiveRule(
 	return s.EmitSkinModel()
 }
 
-func updateRuleRecursive(
-	rules []parser.Rule,
-	id string,
-	body string,
+// clearFileSelection resets the editor selection to file mode without
+// selecting a specific file.
+func (s *Service) clearFileSelection() {
+	target := s.editor.GetTarget()
+
+	target.File = ""
+	target.RuleID = ""
+	target.ParentID = ""
+	target.Mode = "file"
+
+	s.editor.SetTarget(target)
+	s.editor.SetActiveRule(nil)
+}
+
+// cssFileExists reports whether the working copy contains the requested
+// CSS file.
+func (s *Service) cssFileExists(
+	file string,
 ) bool {
+	files, _, _, _, _, _ := s.editor.Snapshot()
 
-	for i := range rules {
-
-		if rules[i].ID == id {
-
-			rules[i].Declarations =
-				parseDeclarations(
-					body,
-				)
-
-			return true
-		}
-
-		if updateRuleRecursive(
-			rules[i].Children,
-			id,
-			body,
-		) {
+	for _, candidate := range files {
+		if candidate.Path == file {
 			return true
 		}
 	}
@@ -335,23 +186,68 @@ func updateRuleRecursive(
 	return false
 }
 
-// parseDeclarations converts editor body text into parser declarations.
+// findMatchingRuleEditor searches the complete rule tree for a concrete
+// selector matching the requested element selector.
 //
-// This keeps the frontend editor as a simple text editor while the backend
-// maintains structured CSS.
-func parseDeclarations(
-	body string,
-) []parser.Declaration {
-
-	rule :=
-		parser.Parse(
-			"editor",
-			".temporary {\n"+body+"\n}",
-		)
-
-	if len(rule) == 0 {
+// When a match is found, target is updated with the matching rule's file,
+// ID, parent ID, and existing mode.
+func (s *Service) findMatchingRuleEditor(
+	rules []parser.Rule,
+	selector string,
+	target *dto.SkinEditorTarget,
+) *dto.CSSRuleEditor {
+	if target == nil {
 		return nil
 	}
 
-	return rule[0].Declarations
+	var active *dto.CSSRuleEditor
+
+	walkRules(
+		rules,
+		func(rule parser.Rule) bool {
+			// Only concrete selector rules can directly style an
+			// element. At-rules such as @media, @supports, and
+			// @layer are represented by their children.
+			if rule.Selector == "" {
+				return false
+			}
+
+			if !parser.SelectorMatch(
+				rule.Selector,
+				selector,
+			) {
+				return false
+			}
+
+			target.File = rule.File
+			target.RuleID = rule.ID
+			target.ParentID = rule.ParentID
+			target.Mode = "existing"
+
+			active = newCSSRuleEditor(&rule)
+
+			return true
+		},
+	)
+
+	return active
+}
+
+// validateActiveRuleUpdate validates the editor state before a rule is
+// modified.
+//
+// Both existing rules and rules created during the current editor session
+// are valid here. Create only describes how the rule originally entered the
+// working copy; it does not prevent the rule from subsequently receiving
+// declaration updates.
+func validateActiveRuleUpdate(
+	updated dto.CSSRuleEditor,
+) error {
+	if updated.ID == "" {
+		return fmt.Errorf(
+			"cannot update rule without an id",
+		)
+	}
+
+	return nil
 }

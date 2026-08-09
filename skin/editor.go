@@ -7,13 +7,23 @@ import (
 	"github.com/zellydev-games/opensplit/skin/parser"
 )
 
-// EditorState contains the active skin editor working copy.
+// EditorState owns the in-memory working copy used by the skin editor.
 //
-// Filesystem is the persisted source.
-// EditorState is the editable in-memory copy.
+// The filesystem remains the persisted source of truth.
 //
-// Changes are committed only by SaveWorkingCopy.
-// ReloadEditor discards this state and rebuilds from disk.
+// EditorState owns:
+//   - editable files
+//   - parsed CSS rules
+//   - preview elements
+//   - current selection
+//   - active rule editor
+//   - dirty state
+//   - working-copy revision
+//
+// Changes are committed to disk only by the save operation.
+//
+// Reloading the editor replaces the working copy with the current
+// filesystem contents and clears the dirty state.
 type EditorState struct {
 	m sync.RWMutex
 
@@ -31,10 +41,23 @@ type EditorState struct {
 	Revision uint64
 }
 
+// NewEditorState creates an empty editor working copy.
 func NewEditorState() *EditorState {
 	return &EditorState{
-		Files: make([]dto.CSSFile, 0),
-		Rules: make([]parser.Rule, 0),
+		Files: make(
+			[]dto.CSSFile,
+			0,
+		),
+
+		Rules: make(
+			[]parser.Rule,
+			0,
+		),
+
+		PreviewElements: make(
+			[]dto.SkinPreviewElement,
+			0,
+		),
 
 		Target: dto.SkinEditorTarget{
 			Mode: "file",
@@ -42,109 +65,38 @@ func NewEditorState() *EditorState {
 	}
 }
 
-func cloneFiles(
-	files []dto.CSSFile,
-) []dto.CSSFile {
-
-	if files == nil {
-		return nil
-	}
-
-	out := make(
-		[]dto.CSSFile,
-		len(files),
-	)
-
-	copy(
-		out,
-		files,
-	)
-
-	return out
-}
-
-func cloneDeclarations(
-	declarations []parser.Declaration,
-) []parser.Declaration {
-
-	if declarations == nil {
-		return nil
-	}
-
-	out := make(
-		[]parser.Declaration,
-		len(declarations),
-	)
-
-	for i, declaration := range declarations {
-
-		out[i] = declaration
-
-		out[i].Value =
-			append(
-				[]string{},
-				declaration.Value...,
-			)
-
-		out[i].Raw =
-			append(
-				[]string{},
-				declaration.Raw...,
-			)
-
-		out[i].LeadingComment =
-			append(
-				[]string{},
-				declaration.LeadingComment...,
-			)
-	}
-
-	return out
-}
-
-func cloneRules(
-	rules []parser.Rule,
-) []parser.Rule {
-
-	if rules == nil {
-		return nil
-	}
-
-	out := make(
-		[]parser.Rule,
-		len(rules),
-	)
-
-	for i, rule := range rules {
-
-		out[i] = rule
-
-		out[i].Declarations =
-			cloneDeclarations(
-				rule.Declarations,
-			)
-
-		out[i].Children =
-			cloneRules(
-				rule.Children,
-			)
-	}
-
-	return out
-}
-
+// SetPreviewElements replaces the cached preview elements.
+//
+// Preview elements are derived editor data and do not make the working
+// copy dirty.
 func (e *EditorState) SetPreviewElements(
 	elements []dto.SkinPreviewElement,
 ) {
 	e.m.Lock()
 	defer e.m.Unlock()
 
-	e.PreviewElements = append(
-		[]dto.SkinPreviewElement{},
-		elements...,
+	e.PreviewElements = clonePreviewElements(
+		elements,
 	)
 }
 
+// GetPreviewElements returns an independent copy of the cached preview
+// elements.
+func (e *EditorState) GetPreviewElements() []dto.SkinPreviewElement {
+	e.m.RLock()
+	defer e.m.RUnlock()
+
+	return clonePreviewElements(
+		e.PreviewElements,
+	)
+}
+
+// ReplaceWorkingCopyFromDisk replaces the complete working copy with
+// freshly loaded filesystem state.
+//
+// This is the disk -> editor boundary.
+//
+// Reloading clears dirty state and advances the working-copy revision.
 func (e *EditorState) ReplaceWorkingCopyFromDisk(
 	files []dto.CSSFile,
 	rules []parser.Rule,
@@ -152,42 +104,35 @@ func (e *EditorState) ReplaceWorkingCopyFromDisk(
 	e.m.Lock()
 	defer e.m.Unlock()
 
-	e.Files =
-		cloneFiles(
-			files,
-		)
-
-	e.Rules =
-		cloneRules(
-			rules,
-		)
+	e.Files = cloneFiles(files)
+	e.Rules = cloneRules(rules)
 
 	e.Dirty = false
-
 	e.Revision++
 }
 
+// ReplaceWorkingCopy replaces the complete working copy with another
+// in-memory working copy.
+//
+// This operation represents an editor mutation and therefore marks the
+// state dirty.
 func (e *EditorState) ReplaceWorkingCopy(
 	files []dto.CSSFile,
 	rules []parser.Rule,
 ) {
-
 	e.m.Lock()
 	defer e.m.Unlock()
 
-	e.Files =
-		cloneFiles(
-			files,
-		)
-
-	e.Rules =
-		cloneRules(
-			rules,
-		)
+	e.Files = cloneFiles(files)
+	e.Rules = cloneRules(rules)
 
 	e.Dirty = true
+	e.Revision++
 }
 
+// Snapshot returns isolated copies of the current editor state.
+//
+// Callers may modify the returned values without affecting EditorState.
 func (e *EditorState) Snapshot() (
 	[]dto.CSSFile,
 	[]parser.Rule,
@@ -202,7 +147,6 @@ func (e *EditorState) Snapshot() (
 	var active *dto.CSSRuleEditor
 
 	if e.ActiveRule != nil {
-
 		copy := *e.ActiveRule
 		active = &copy
 	}
@@ -215,33 +159,37 @@ func (e *EditorState) Snapshot() (
 		e.Revision
 }
 
+// SetTarget changes the current editor selection.
+//
+// Selection changes do not modify the working copy.
 func (e *EditorState) SetTarget(
 	target dto.SkinEditorTarget,
 ) {
-
 	e.m.Lock()
 	defer e.m.Unlock()
 
 	e.Target = target
 }
 
+// GetTarget returns the current editor selection.
 func (e *EditorState) GetTarget() dto.SkinEditorTarget {
-
 	e.m.RLock()
 	defer e.m.RUnlock()
 
 	return e.Target
 }
 
+// SetActiveRule changes the rule currently displayed by the rule editor.
+//
+// Active-rule selection is editor UI state and does not itself modify
+// the working copy.
 func (e *EditorState) SetActiveRule(
 	rule *dto.CSSRuleEditor,
 ) {
-
 	e.m.Lock()
 	defer e.m.Unlock()
 
 	if rule == nil {
-
 		e.ActiveRule = nil
 		return
 	}
@@ -250,8 +198,8 @@ func (e *EditorState) SetActiveRule(
 	e.ActiveRule = &copy
 }
 
+// GetActiveRule returns an isolated copy of the active rule.
 func (e *EditorState) GetActiveRule() *dto.CSSRuleEditor {
-
 	e.m.RLock()
 	defer e.m.RUnlock()
 
@@ -264,32 +212,34 @@ func (e *EditorState) GetActiveRule() *dto.CSSRuleEditor {
 	return &copy
 }
 
+// MarkDirty marks the working copy as modified.
+//
+// No content is changed by this operation, so Revision is unchanged.
 func (e *EditorState) MarkDirty() {
-
 	e.m.Lock()
 	defer e.m.Unlock()
 
 	e.Dirty = true
 }
 
+// ClearDirty marks the current working copy as persisted.
 func (e *EditorState) ClearDirty() {
-
 	e.m.Lock()
 	defer e.m.Unlock()
 
 	e.Dirty = false
 }
 
+// IsDirty reports whether the working copy contains unsaved changes.
 func (e *EditorState) IsDirty() bool {
-
 	e.m.RLock()
 	defer e.m.RUnlock()
 
 	return e.Dirty
 }
 
+// ClearSelection resets the editor selection to file mode.
 func (e *EditorState) ClearSelection() {
-
 	e.m.Lock()
 	defer e.m.Unlock()
 
@@ -300,143 +250,17 @@ func (e *EditorState) ClearSelection() {
 	e.ActiveRule = nil
 }
 
-func (e *EditorState) UpdateFile(
-	file dto.CSSFile,
-) {
-
-	e.m.Lock()
-	defer e.m.Unlock()
-
-	for i := range e.Files {
-
-		if e.Files[i].Path == file.Path {
-
-			e.Files[i] = file
-			e.Dirty = true
-
-			return
-		}
-	}
-}
-
-func (e *EditorState) AddFile(
-	file dto.CSSFile,
-) {
-
-	e.m.Lock()
-	defer e.m.Unlock()
-
-	e.Files =
-		append(
-			e.Files,
-			file,
-		)
-
-	e.Dirty = true
-}
-
-func (e *EditorState) UpdateRule(
-	rule parser.Rule,
-) bool {
-
-	e.m.Lock()
-	defer e.m.Unlock()
-
-	for i := range e.Rules {
-
-		if e.Rules[i].ID == rule.ID {
-
-			e.Rules[i] =
-				cloneRules(
-					[]parser.Rule{rule},
-				)[0]
-
-			e.Dirty = true
-
-			return true
-		}
-	}
-
-	return false
-}
-
-func (e *EditorState) AddRule(
-	rule parser.Rule,
-) {
-
-	e.m.Lock()
-	defer e.m.Unlock()
-
-	e.Rules =
-		append(
-			e.Rules,
-			cloneRules(
-				[]parser.Rule{rule},
-			)[0],
-		)
-
-	e.Dirty = true
-}
-
-func (e *EditorState) DeleteRule(
-	id string,
-) bool {
-
-	e.m.Lock()
-	defer e.m.Unlock()
-
-	for i := range e.Rules {
-
-		if e.Rules[i].ID == id {
-
-			e.Rules =
-				append(
-					e.Rules[:i],
-					e.Rules[i+1:]...,
-				)
-
-			e.Dirty = true
-
-			return true
-		}
-	}
-
-	return false
-}
-
+// NewRule creates the editor representation for a rule that has not yet
+// been inserted into the working rule tree.
 func (e *EditorState) NewRule(
 	file string,
 	selector string,
+	layer string,
 ) dto.CSSRuleEditor {
-
 	return dto.CSSRuleEditor{
 		File:     file,
 		Selector: selector,
+		Layer:    layer,
 		Create:   true,
-	}
-}
-
-func (e *EditorState) UpdateFileContents(
-	path string,
-	contents string,
-) {
-
-	e.m.Lock()
-	defer e.m.Unlock()
-
-	for i := range e.Files {
-
-		if e.Files[i].Path != path {
-			continue
-		}
-
-		e.Files[i].Contents =
-			contents
-
-		e.Dirty = true
-
-		e.Revision++
-
-		return
 	}
 }

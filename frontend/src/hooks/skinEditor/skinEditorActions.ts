@@ -1,7 +1,7 @@
 import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
 import { Command } from "../../models/command";
-import { CSSRuleEditor } from "../../models/skin/css";
-import { SkinEditorTarget } from "../../models/skin/editor";
+import type { CSSRuleEditor } from "../../models/skin/css";
+import type { SkinEditorTarget } from "../../models/skin/editor";
 
 export async function selectElement(id: string): Promise<void> {
     if (!id) {
@@ -53,8 +53,13 @@ export async function createRule(target: SkinEditorTarget): Promise<void> {
                 file: target.file,
                 selector: target.selector,
                 layer: "",
+                parentId: target.parentId ?? "",
+                parentAtRule: "",
                 body: "",
-                parents: [],
+                create: true,
+                delete: false,
+                originalFile: "",
+                originalId: "",
             },
         }),
     );

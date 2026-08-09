@@ -1,9 +1,6 @@
 package parser
 
-import (
-	"strings"
-	"unicode"
-)
+import "strings"
 
 type parseState struct {
 	parens   int
@@ -15,105 +12,88 @@ type parseState struct {
 	inComment bool
 }
 
+// ParseDeclarations parses the contents of a CSS declaration block.
+//
+// The parser preserves:
+//
+//   - declaration names and values
+//   - multiline values
+//   - leading comments
+//   - inline comments
+//   - raw/unsupported constructs
+//
+// Declaration boundaries are determined while respecting strings, comments,
+// parentheses, and attribute brackets.
 func ParseDeclarations(
 	body string,
 ) []Declaration {
-
-	body = strings.ReplaceAll(
-		body,
-		"\r\n",
-		"\n",
-	)
+	body = normalizeLineEndings(body)
 
 	var declarations []Declaration
 	var pendingComments []string
 
-	i := 0
+	index := 0
 
-	for i < len(body) {
+	for index < len(body) {
+		index = skipDeclarationWhitespace(
+			body,
+			index,
+		)
 
-		// Skip whitespace between declarations.
-		for i < len(body) {
-
-			switch body[i] {
-
-			case ' ', '\t', '\r', '\n':
-				i++
-
-			default:
-				goto begin
-			}
-		}
-
-	begin:
-
-		if i >= len(body) {
+		if index >= len(body) {
 			break
 		}
 
-		// Standalone comment.
-		if strings.HasPrefix(body[i:], "/*") {
-
-			end := strings.Index(
-				body[i+2:],
-				"*/",
+		if isDeclarationCommentStart(
+			body,
+			index,
+		) {
+			comment, next, ok := readComment(
+				body,
+				index,
 			)
 
-			if end < 0 {
-
+			if !ok {
 				pendingComments = append(
 					pendingComments,
-					strings.TrimSpace(body[i:]),
+					strings.TrimSpace(
+						body[index:],
+					),
 				)
 
 				break
 			}
 
-			end += i + 4
-
 			pendingComments = append(
 				pendingComments,
-				strings.TrimSpace(body[i:end]),
+				comment,
 			)
 
-			i = end
+			index = next
 			continue
 		}
 
-		nameStart := i
-
 		colon := findDeclarationColon(
 			body,
-			i,
+			index,
 		)
 
 		if colon < 0 {
-
-			raw := strings.TrimSpace(
-				body[nameStart:],
+			appendRawDeclaration(
+				&declarations,
+				pendingComments,
+				body[index:],
 			)
-
-			if raw != "" {
-
-				declarations = append(
-					declarations,
-					Declaration{
-						LeadingComment: pendingComments,
-						Raw:            []string{raw},
-					},
-				)
-			}
 
 			break
 		}
 
 		name := strings.TrimSpace(
-			body[nameStart:colon],
+			body[index:colon],
 		)
 
 		if name == "" {
-
-			i = colon + 1
+			index = colon + 1
 			continue
 		}
 
@@ -124,26 +104,13 @@ func ParseDeclarations(
 			valueStart,
 		)
 
-		var value string
+		value, next := declarationValue(
+			body,
+			valueStart,
+			valueEnd,
+		)
 
-		if valueEnd < 0 {
-
-			value = strings.TrimSpace(
-				body[valueStart:],
-			)
-
-			i = len(body)
-
-		} else {
-
-			value = strings.TrimSpace(
-				body[valueStart : valueEnd+1],
-			)
-
-			i = valueEnd + 1
-		}
-
-		inline := extractInlineComment(
+		inlineComment := extractInlineComment(
 			value,
 		)
 
@@ -154,56 +121,191 @@ func ParseDeclarations(
 		declarations = append(
 			declarations,
 			Declaration{
-				Name:           name,
-				Value:          splitValueLines(value),
-				InlineComment:  inline,
+				Name: name,
+
+				Value: splitValueLines(
+					value,
+				),
+
+				InlineComment: inlineComment,
+
 				LeadingComment: pendingComments,
 			},
 		)
 
 		pendingComments = nil
+		index = next
 	}
 
 	return declarations
 }
 
+// normalizeLineEndings converts all supported line endings to LF.
+func normalizeLineEndings(
+	text string,
+) string {
+	text = strings.ReplaceAll(
+		text,
+		"\r\n",
+		"\n",
+	)
+
+	return strings.ReplaceAll(
+		text,
+		"\r",
+		"\n",
+	)
+}
+
+// skipDeclarationWhitespace advances over whitespace between declarations.
+func skipDeclarationWhitespace(
+	body string,
+	start int,
+) int {
+	for start < len(body) {
+		switch body[start] {
+		case ' ', '\t', '\r', '\n':
+			start++
+
+		default:
+			return start
+		}
+	}
+
+	return start
+}
+
+// isDeclarationCommentStart reports whether a block comment begins at index.
+//
+// This helper is intentionally declaration-parser-specific because parser.go
+// owns the generic CSS comment scanner used by the rule parser.
+func isDeclarationCommentStart(
+	text string,
+	index int,
+) bool {
+	return index >= 0 &&
+		index+1 < len(text) &&
+		text[index] == '/' &&
+		text[index+1] == '*'
+}
+
+// readComment reads one CSS block comment.
+//
+// The returned next index points immediately after the closing */.
+func readComment(
+	text string,
+	start int,
+) (string, int, bool) {
+	if !isDeclarationCommentStart(
+		text,
+		start,
+	) {
+		return "", start, false
+	}
+
+	end := strings.Index(
+		text[start+2:],
+		"*/",
+	)
+
+	if end < 0 {
+		return "", start, false
+	}
+
+	end += start + 4
+
+	return strings.TrimSpace(
+		text[start:end],
+	), end, true
+}
+
+// appendRawDeclaration preserves an unsupported or malformed declaration
+// construct as raw CSS.
+func appendRawDeclaration(
+	declarations *[]Declaration,
+	leadingComments []string,
+	raw string,
+) {
+	raw = strings.TrimSpace(
+		raw,
+	)
+
+	if raw == "" {
+		return
+	}
+
+	*declarations = append(
+		*declarations,
+		Declaration{
+			LeadingComment: leadingComments,
+
+			Raw: []string{
+				raw,
+			},
+		},
+	)
+}
+
+// declarationValue returns the normalized value and the next parser index.
+//
+// A declaration terminated by ';' resumes immediately after the semicolon.
+// An unterminated declaration consumes the remainder of the block.
+func declarationValue(
+	body string,
+	valueStart int,
+	valueEnd int,
+) (string, int) {
+	if valueEnd < 0 {
+		return strings.TrimSpace(
+			body[valueStart:],
+		), len(body)
+	}
+
+	return strings.TrimSpace(
+		body[valueStart : valueEnd+1],
+	), valueEnd + 1
+}
+
+// findDeclarationColon finds the colon separating a declaration name from
+// its value.
+//
+// Colons inside:
+//
+//   - strings
+//   - comments
+//   - parentheses
+//   - attribute brackets
+//
+// are ignored.
 func findDeclarationColon(
 	text string,
 	start int,
 ) int {
-
 	state := parseState{}
 
-	for i := start; i < len(text); i++ {
-
+	for index := start; index < len(text); index++ {
 		advanceState(
 			&state,
 			text,
-			&i,
+			&index,
 		)
 
 		if state.inComment ||
 			state.inString {
-
 			continue
 		}
 
 		if state.parens != 0 ||
 			state.brackets != 0 {
-
 			continue
 		}
 
-		switch text[i] {
-
+		switch text[index] {
 		case ':':
-			return i
+			return index
 
-		case ';':
-			// malformed declaration
-			return -1
-
-		case '{',
+		case ';',
+			'{',
 			'}':
 			return -1
 		}
@@ -212,54 +314,54 @@ func findDeclarationColon(
 	return -1
 }
 
+// findDeclarationEnd finds the semicolon terminating a declaration.
+//
+// The closing brace is treated as the end of the declaration body and is
+// not included in the returned index.
 func findDeclarationEnd(
 	text string,
 	start int,
 ) int {
-
 	state := parseState{}
 
-	for i := start; i < len(text); i++ {
-
+	for index := start; index < len(text); index++ {
 		advanceState(
 			&state,
 			text,
-			&i,
+			&index,
 		)
 
 		if state.inComment ||
 			state.inString {
-
 			continue
 		}
 
 		if state.parens != 0 ||
 			state.brackets != 0 {
-
 			continue
 		}
 
-		switch text[i] {
-
+		switch text[index] {
 		case ';':
-			return i
+			return index
 
 		case '}':
-			return i - 1
+			return index - 1
 		}
 	}
 
 	return -1
 }
 
+// splitValueLines normalizes a declaration value into logical lines.
+//
+// Empty lines are removed because indentation and formatting are regenerated
+// by the CSS writer.
 func splitValueLines(
 	value string,
 ) []string {
-
-	value = strings.ReplaceAll(
+	value = normalizeLineEndings(
 		value,
-		"\r\n",
-		"\n",
 	)
 
 	lines := strings.Split(
@@ -274,15 +376,8 @@ func splitValueLines(
 	)
 
 	for _, line := range lines {
-
-		line = strings.TrimRightFunc(
+		line = strings.TrimSpace(
 			line,
-			unicode.IsSpace,
-		)
-
-		line = strings.TrimLeftFunc(
-			line,
-			unicode.IsSpace,
 		)
 
 		if line == "" {
@@ -302,62 +397,58 @@ func splitValueLines(
 	return out
 }
 
+// advanceState consumes the current character and updates the scanner state.
+//
+// When an escaped character occurs inside a string, the next character is
+// consumed by incrementing the caller's loop index.
 func advanceState(
 	state *parseState,
 	text string,
-	i *int,
+	index *int,
 ) {
-
-	c := text[*i]
+	char := text[*index]
 
 	if state.inComment {
-
-		if c == '*' &&
-			*i+1 < len(text) &&
-			text[*i+1] == '/' {
-
+		if char == '*' &&
+			*index+1 < len(text) &&
+			text[*index+1] == '/' {
 			state.inComment = false
-			*i++
+			(*index)++
 		}
 
 		return
 	}
 
 	if state.inString {
-
-		if c == '\\' &&
-			*i+1 < len(text) {
-
-			*i++
+		if char == '\\' &&
+			*index+1 < len(text) {
+			(*index)++
 			return
 		}
 
-		if c == state.quote {
+		if char == state.quote {
 			state.inString = false
 		}
 
 		return
 	}
 
-	if c == '/' &&
-		*i+1 < len(text) &&
-		text[*i+1] == '*' {
-
+	if char == '/' &&
+		*index+1 < len(text) &&
+		text[*index+1] == '*' {
 		state.inComment = true
-		*i++
+		(*index)++
 		return
 	}
 
-	if c == '"' ||
-		c == '\'' {
-
+	if char == '"' ||
+		char == '\'' {
 		state.inString = true
-		state.quote = c
+		state.quote = char
 		return
 	}
 
-	switch c {
-
+	switch char {
 	case '(':
 		state.parens++
 
@@ -376,56 +467,79 @@ func advanceState(
 	}
 }
 
+// extractInlineComment returns the first top-level block comment in a
+// declaration value.
+//
+// Comments inside strings, functions, or attribute expressions are ignored.
 func extractInlineComment(
 	value string,
 ) string {
-
 	state := parseState{}
 
-	for i := 0; i < len(value); i++ {
-
-		if !state.inComment &&
-			!state.inString &&
-			value[i] == '/' &&
-			i+1 < len(value) &&
-			value[i+1] == '*' {
-
-			return strings.TrimSpace(value[i:])
+	for index := 0; index < len(value); index++ {
+		if isTopLevelCommentStart(
+			state,
+			value,
+			index,
+		) {
+			return strings.TrimSpace(
+				value[index:],
+			)
 		}
 
 		advanceState(
 			&state,
 			value,
-			&i,
+			&index,
 		)
 	}
 
 	return ""
 }
 
+// removeInlineComment removes the first top-level block comment from a
+// declaration value.
 func removeInlineComment(
 	value string,
 ) string {
-
 	state := parseState{}
 
-	for i := 0; i < len(value); i++ {
-
-		if !state.inComment &&
-			!state.inString &&
-			value[i] == '/' &&
-			i+1 < len(value) &&
-			value[i+1] == '*' {
-
-			return strings.TrimSpace(value[:i])
+	for index := 0; index < len(value); index++ {
+		if isTopLevelCommentStart(
+			state,
+			value,
+			index,
+		) {
+			return strings.TrimSpace(
+				value[:index],
+			)
 		}
 
 		advanceState(
 			&state,
 			value,
-			&i,
+			&index,
 		)
 	}
 
-	return strings.TrimSpace(value)
+	return strings.TrimSpace(
+		value,
+	)
+}
+
+// isTopLevelCommentStart reports whether a block comment starts at index
+// outside strings, comments, parentheses, and attribute selectors.
+func isTopLevelCommentStart(
+	state parseState,
+	text string,
+	index int,
+) bool {
+	return !state.inComment &&
+		!state.inString &&
+		state.parens == 0 &&
+		state.brackets == 0 &&
+		isDeclarationCommentStart(
+			text,
+			index,
+		)
 }

@@ -3,7 +3,6 @@ package skin
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/zellydev-games/opensplit/dto"
 	"github.com/zellydev-games/opensplit/logger"
@@ -22,36 +21,25 @@ import (
 //
 // and replaces them with the current skin files on disk.
 func (s *Service) ReloadEditor() error {
+	logger.Infof(
+		logModule,
+		"ReloadEditor called",
+	)
 
-	files, err :=
-		s.buildEditorFiles()
-
+	files, err := s.buildEditorFiles()
 	if err != nil {
 		return err
 	}
 
-	var rules []parser.Rule
+	rules := parseEditorRules(files)
 
-	for _, file := range files {
+	logger.Infof(
+		logModule,
+		"ReloadEditor loaded %d rules from disk",
+		len(rules),
+	)
 
-		if filepath.Ext(file.Path) != ".css" {
-			continue
-		}
-
-		parsed :=
-			parser.Parse(
-				file.Path,
-				file.Contents,
-			)
-
-		rules =
-			append(
-				rules,
-				parsed...,
-			)
-	}
-	oldTarget :=
-		s.editor.GetTarget()
+	oldTarget := s.editor.GetTarget()
 
 	s.editor.ReplaceWorkingCopyFromDisk(
 		files,
@@ -66,51 +54,31 @@ func (s *Service) ReloadEditor() error {
 		len(snapshotRules),
 	)
 
-	for i, rule := range rules {
-		logger.Infof(
-			logModule,
-			"rule[%d] selectors=%v children=%d atRule=%q prelude=%t",
-			i,
-			rule.Selector,
-			len(rule.Children),
-			rule.AtRule,
-			rule.Prelude,
-		)
-	}
-
-	for i, rule := range rules {
-		logger.Infof(logModule,
-			"rule[%d] children=%d",
-			i,
-			len(rule.Children),
-		)
-
-		for j, child := range rule.Children {
-			logger.Infof(logModule,
-				" child[%d] selectors=%v atRule=%q children=%d",
-				j,
-				child.Selector,
-				child.AtRule,
-				len(child.Children),
-			)
-		}
-	}
+	logEditorRules(rules)
 
 	switch {
 	case oldTarget.RuleID != "":
-		if err := s.restoreRuleSelection(oldTarget, rules); err != nil {
-			s.editor.SetTarget(dto.SkinEditorTarget{
-				Mode: "file",
-				File: oldTarget.File,
-			})
+		if err := s.restoreRuleSelection(
+			oldTarget,
+			rules,
+		); err != nil {
+			s.editor.SetTarget(
+				dto.SkinEditorTarget{
+					Mode: "file",
+					File: oldTarget.File,
+				},
+			)
+
 			s.editor.SetActiveRule(nil)
 		}
 
 	case oldTarget.File != "":
-		s.editor.SetTarget(dto.SkinEditorTarget{
-			Mode: "file",
-			File: oldTarget.File,
-		})
+		s.editor.SetTarget(
+			dto.SkinEditorTarget{
+				Mode: "file",
+				File: oldTarget.File,
+			},
+		)
 	}
 
 	return nil
@@ -121,7 +89,6 @@ func (s *Service) GetSkinEditorModel() (
 	SkinModel,
 	error,
 ) {
-
 	files,
 		rules,
 		dirty,
@@ -130,10 +97,15 @@ func (s *Service) GetSkinEditorModel() (
 		revision :=
 		s.editor.Snapshot()
 
-	logger.Infof(logModule, "editor elements: %d", len(s.GetSkinElements()))
+	elements := s.GetSkinElements()
+
+	logger.Infof(
+		logModule,
+		"editor elements: %d",
+		len(elements),
+	)
 
 	return SkinModel{
-
 		Name: s.SelectedSkin(),
 
 		Skins: s.GetAvailableSkins(),
@@ -144,7 +116,7 @@ func (s *Service) GetSkinEditorModel() (
 
 		Files: files,
 
-		Elements: s.GetSkinElements(),
+		Elements: elements,
 
 		Rules: convertDTOEditorRules(
 			rules,
@@ -160,375 +132,134 @@ func (s *Service) GetSkinEditorModel() (
 	}, nil
 }
 
-// EmitSkinModel sends the current cached editor state.
+// EmitSkinModel sends the current backend-owned editor state.
+//
+// The model channel is buffered so a model update is not lost when the UI
+// pump is between receives. If an older model is already waiting, replace it
+// with the newest model because only the latest editor state is meaningful.
 func (s *Service) EmitSkinModel() error {
-
-	model, err :=
-		s.GetSkinEditorModel()
-
+	model, err := s.GetSkinEditorModel()
 	if err != nil {
 		return err
 	}
 
 	select {
-
-	case s.skinModelCh <- model:
-
+	case <-s.skinModelCh:
 	default:
-
 	}
+
+	s.skinModelCh <- model
 
 	return nil
 }
 
+// restoreRuleSelection restores a previously selected rule after the editor
+// working copy has been rebuilt.
+//
+// The rule ID is used as the stable identity. If the rule no longer exists,
+// the caller can fall back to file selection.
 func (s *Service) restoreRuleSelection(
 	target dto.SkinEditorTarget,
 	rules []parser.Rule,
 ) error {
-
-	var found *parser.Rule
-
-	walkRules(
+	selected, ok := findRuleByID(
 		rules,
-		func(rule parser.Rule) bool {
-
-			if rule.ID == target.RuleID {
-
-				copy := rule
-				found = &copy
-
-				return true
-			}
-
-			return false
-		},
+		target.RuleID,
 	)
 
-	if found == nil {
-
+	if !ok {
 		return fmt.Errorf(
 			"rule %s no longer exists",
 			target.RuleID,
 		)
 	}
 
-	editor :=
-		dto.CSSRuleEditor{
-
-			ID: found.ID,
-
-			File: found.File,
-
-			Selector: "",
-
-			Layer: found.Layer,
-
-			Body: formatRuleDeclarations(
-				found.Declarations,
-			),
-
-			OriginalFile: found.File,
-
-			OriginalID: found.ID,
-		}
-
-	editor.Selector =
-		found.Selector
-
-	s.editor.SetTarget(
-		target,
+	editor := newCSSRuleEditor(
+		selected,
 	)
 
-	s.editor.SetActiveRule(
-		&editor,
-	)
+	if editor == nil {
+		return fmt.Errorf(
+			"rule %s could not be converted to editor state",
+			target.RuleID,
+		)
+	}
+
+	s.editor.SetTarget(target)
+	s.editor.SetActiveRule(editor)
 
 	return nil
 }
 
-// buildEditorFiles reads editable files from the selected skin.
-func (s *Service) buildEditorFiles() (
-	[]dto.CSSFile,
-	error,
-) {
-
-	files, err :=
-		s.SkinFiles()
-
-	if err != nil {
-		return nil, err
-	}
-
-	out :=
-		make(
-			[]dto.CSSFile,
-			0,
-			len(files),
-		)
+// parseEditorRules parses all CSS files in the editor working copy.
+//
+// Each parsed file contributes its top-level rules to the single working-copy
+// rule tree. Nested at-rules remain nested within their parser Rule values.
+func parseEditorRules(
+	files []dto.CSSFile,
+) []parser.Rule {
+	var rules []parser.Rule
 
 	for _, file := range files {
-
-		contents := ""
-
-		text :=
-			isTextFile(file)
-
-		if text {
-
-			contents, err =
-				s.ReadFile(file)
-
-			logger.Infof(
-				logModule,
-				"%s length=%d",
-				file,
-				len(contents),
-			)
-
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		base :=
-			strings.TrimSuffix(
-				s.GetSkinAddress(),
-				"/"+EntryPoint,
-			)
-
-		rel :=
-			filepath.ToSlash(file)
-
-		out =
-			append(
-				out,
-				dto.CSSFile{
-
-					Name: filepath.Base(rel),
-
-					Path: rel,
-
-					Contents: contents,
-
-					OriginalContents: contents,
-
-					Text: text,
-
-					URL: base + "/" + rel,
-
-					Type: fileType(rel),
-				},
-			)
-	}
-
-	return out, nil
-}
-
-func convertDTOEditorRules(
-	rules []parser.Rule,
-) []dto.CSSRule {
-
-	out :=
-		make(
-			[]dto.CSSRule,
-			0,
-			len(rules),
-		)
-
-	for _, rule := range rules {
-
-		out =
-			append(
-				out,
-				dto.CSSRule{
-
-					ID: rule.ID,
-
-					File: rule.File,
-
-					Layer: rule.Layer,
-
-					Selector: rule.Selector,
-
-					Body: formatRuleDeclarations(
-						rule.Declarations,
-					),
-
-					AtRule: rule.AtRule,
-
-					Block: rule.Block,
-
-					Prelude: rule.Prelude,
-
-					Children: convertDTOEditorRules(
-						rule.Children,
-					),
-
-					Line: rule.Line,
-
-					Order: rule.Order,
-				},
-			)
-	}
-
-	return out
-}
-
-func formatRuleDeclarations(
-	declarations []parser.Declaration,
-) string {
-
-	var out strings.Builder
-
-	for _, declaration := range declarations {
-
-		for _, comment := range declaration.LeadingComment {
-
-			out.WriteString(
-				comment,
-			)
-
-			out.WriteString(
-				"\n",
-			)
-		}
-
-		if declaration.Name == "" {
-
-			for _, raw := range declaration.Raw {
-
-				out.WriteString(
-					raw,
-				)
-
-				out.WriteString(
-					"\n",
-				)
-			}
-
+		if filepath.Ext(file.Path) != ".css" {
 			continue
 		}
 
-		out.WriteString(
-			declaration.Name,
-		)
-
-		out.WriteString(
-			": ",
-		)
-
-		if len(declaration.Value) > 0 {
-
-			out.WriteString(
-				strings.Join(
-					declaration.Value,
-					"\n",
-				),
-			)
-
-			if !strings.HasSuffix(
-				strings.TrimSpace(
-					declaration.Value[len(declaration.Value)-1],
-				),
-				";",
-			) {
-				out.WriteString(";")
-			}
-		}
-
-		if declaration.InlineComment != "" {
-
-			out.WriteString(
-				" ",
-			)
-
-			out.WriteString(
-				declaration.InlineComment,
-			)
-		}
-
-		out.WriteString(
-			"\n",
+		rules = append(
+			rules,
+			parser.Parse(
+				file.Path,
+				file.Contents,
+			)...,
 		)
 	}
 
-	return strings.TrimSpace(
-		out.String(),
-	)
+	return rules
 }
 
-func fileType(
-	path string,
-) string {
-
-	ext :=
-		strings.ToLower(
-			filepath.Ext(path),
-		)
-
-	switch ext {
-
-	case ".css":
-		return "css"
-
-	case ".png",
-		".jpg",
-		".jpeg",
-		".gif",
-		".webp":
-		return "image"
-
-	case ".svg":
-		return "svg"
-
-	case ".txt",
-		".md",
-		".html",
-		".js",
-		".json":
-		return "text"
-	}
-
-	return "binary"
-}
-
-func isTextFile(
-	path string,
-) bool {
-
-	switch strings.ToLower(filepath.Ext(path)) {
-
-	case ".css",
-		".txt",
-		".md",
-		".html",
-		".js",
-		".json":
-
-		return true
-	}
-
-	return false
-}
-
-func walkRules(
+// logEditorRules logs the complete parsed rule tree for debugging.
+func logEditorRules(
 	rules []parser.Rule,
-	fn func(parser.Rule) bool,
-) bool {
+) {
+	for i := range rules {
+		logEditorRule(
+			&rules[i],
+			0,
+			i,
+		)
+	}
+}
 
-	for _, rule := range rules {
+// logEditorRule logs one rule and recursively logs its children.
+func logEditorRule(
+	rule *parser.Rule,
+	depth int,
+	index int,
+) {
+	indent := ""
 
-		if fn(rule) {
-			return true
-		}
-
-		if walkRules(
-			rule.Children,
-			fn,
-		) {
-			return true
-		}
+	for i := 0; i < depth; i++ {
+		indent += " "
 	}
 
-	return false
+	logger.Infof(
+		logModule,
+		"%srule[%d] file=%q selector=%q layer=%q atRule=%q children=%d prelude=%t",
+		indent,
+		index,
+		rule.File,
+		rule.Selector,
+		rule.Layer,
+		rule.AtRule,
+		len(rule.Children),
+		rule.Prelude,
+	)
+
+	for i := range rule.Children {
+		logEditorRule(
+			&rule.Children[i],
+			depth+2,
+			i,
+		)
+	}
 }
