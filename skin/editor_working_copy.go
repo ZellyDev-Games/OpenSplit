@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-
 	"github.com/zellydev-games/opensplit/dto"
 	"github.com/zellydev-games/opensplit/logger"
+	"github.com/zellydev-games/opensplit/skin/editor"
 	"github.com/zellydev-games/opensplit/skin/parser"
 )
 
@@ -43,7 +43,7 @@ func (s *Service) CreateCSSRule(
 
 	var inserted bool
 
-	rules, inserted = insertRuleRecursive(
+	rules, inserted = editor.InsertRuleRecursive(
 		rules,
 		rule.ParentID,
 		cssRule,
@@ -222,45 +222,4 @@ func (s *Service) replaceWorkingCopy(
 		files,
 		rules,
 	)
-}
-
-// insertRuleRecursive inserts rule into the requested parent.
-//
-// An empty parent ID means the rule belongs at the root of the rule tree.
-func insertRuleRecursive(
-	rules []parser.Rule,
-	parentID string,
-	rule parser.Rule,
-) ([]parser.Rule, bool) {
-	if parentID == "" {
-		return append(
-			rules,
-			rule,
-		), true
-	}
-
-	for i := range rules {
-		if rules[i].ID == parentID {
-			rules[i].Children = append(
-				rules[i].Children,
-				rule,
-			)
-
-			return rules, true
-		}
-
-		updated, inserted := insertRuleRecursive(
-			rules[i].Children,
-			parentID,
-			rule,
-		)
-
-		if inserted {
-			rules[i].Children = updated
-
-			return rules, true
-		}
-	}
-
-	return rules, false
 }
