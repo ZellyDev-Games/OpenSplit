@@ -22,7 +22,7 @@ import (
 
 const logModule = "statemachine"
 
-// machine is a private singleton instance of a *Service that represents a state machine.
+// machine is a private singleton instance of a *Service that represents the state machine.
 var machine *Service
 
 // StateID is a compact identifier for a State
@@ -226,7 +226,11 @@ func (s *Service) changeState(newState StateID, _ ...interface{}) {
 
 func (s *Service) updateWorldRecord() {
 	logger.Debug(logModule, "Updating World Record")
+
 	sf, ok := s.sessionService.SplitFile()
+	if !ok {
+		return
+	}
 
 	logger.Debugf(
 		logModule,
@@ -234,9 +238,6 @@ func (s *Service) updateWorldRecord() {
 		sf.GameID,
 		sf.CategoryID,
 	)
-	if !ok {
-		return
-	}
 
 	logger.Debugf(
 		logModule,
@@ -251,18 +252,30 @@ func (s *Service) updateWorldRecord() {
 	}
 
 	logger.Debug(logModule, "Searching for New World Record")
+
 	wr, err := s.speedrunService.SearchWR(sf.CategoryID)
 	if err != nil {
 		logger.Error(logModule, err.Error())
 		return
 	}
+
 	logger.Infof(
 		logModule,
 		"loaded WR for category %s",
 		sf.CategoryID,
 	)
 
+	// Preserve the user's split-file setting while refreshing
+	// the world record data from speedrun.com.
+	showWorldRecord := sf.WR.Show
 	sf.WR = s.speedrunService.ToWorldRecord(wr)
+	sf.WR.Show = showWorldRecord
+
+	logger.Debugf(
+		logModule,
+		"world record display=%v",
+		sf.WR.Show,
+	)
 
 	s.sessionService.SetLoadedSplitFile(sf)
 
@@ -280,18 +293,22 @@ func (s *Service) updateWorldRecord() {
 func (s *Service) saveSplitFile() error {
 	s.splitfileLock.Lock()
 	defer s.splitfileLock.Unlock()
+
 	sf, loaded := s.sessionService.SplitFile()
 	if !loaded {
 		msg := "save called without loaded splitfile"
 		return errors.New(msg)
 	}
+
 	dto := adapters.DomainSplitFileToDTO(sf)
 
 	logger.Debug(logModule, "saving split file")
+
 	err := s.repoService.SaveSplitFile(dto)
 	if err != nil {
 		return err
 	}
+
 	logger.Info(logModule, "split file saved")
 
 	s.sessionService.ClearDirty()
@@ -328,6 +345,7 @@ func (s *Service) setupWindowDimensionListener() func() {
 			if err != nil {
 				logger.Errorf(logModule, "SaveSplitFileWindowDimensions failed: %v", err)
 			}
+
 			s.sessionService.UpdateWindowDimensions(x, y, w, h)
 		}
 	})
@@ -353,6 +371,7 @@ func (s *Service) promptPartialRun() error {
 			return nil
 		}
 	}
+
 	logger.Debug(logModule, "discarding partial run")
 	return nil
 }
@@ -377,9 +396,11 @@ func (s *Service) promptDirtySave() (bool, error) {
 	switch response {
 	case "Yes":
 		logger.Info(logModule, "saving unsaved runs before close")
+
 		if err := s.saveSplitFile(); err != nil {
 			return false, err
 		}
+
 		return true, nil
 
 	case "No":
