@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 
 	"github.com/zellydev-games/opensplit/logger"
-	"github.com/zellydev-games/opensplit/skin/parser"
 )
 
 // SaveWorkingCopy persists the current editor working copy to disk.
@@ -31,6 +30,15 @@ func (s *Service) SaveWorkingCopy() error {
 		active != nil,
 	)
 
+	if !dirty {
+		logger.Infof(
+			logModule,
+			"SaveWorkingCopy: working copy is clean; nothing to write",
+		)
+
+		return nil
+	}
+
 	// Filesystem writes performed below can generate asynchronous watcher
 	// events. Suppress those events before starting the write.
 	s.suppressSaveWatcherEvents()
@@ -52,76 +60,22 @@ func (s *Service) SaveWorkingCopy() error {
 
 // saveEditor writes the current editor working copy to the selected skin.
 //
-// Text files are written using their current working-copy contents.
-// CSS files are regenerated from the parser rule tree so mutations made
-// through the CSS editor are persisted consistently.
+// CSS and other text files are written using their current working-copy
+// contents. CSSFile.Contents is kept synchronized with the parser rule tree
+// by the editor mutation methods.
 func (s *Service) saveEditor() error {
-	files, rules, _, _, _, _ := s.editor.Snapshot()
+	files,
+		_,
+		_,
+		_,
+		_,
+		_ := s.editor.Snapshot()
 
 	root := s.GetSkinPath()
-
-	rulesByFile := make(
-		map[string][]parser.Rule,
-	)
-
-	for _, rule := range rules {
-		if rule.File == "" {
-			continue
-		}
-
-		rulesByFile[rule.File] = append(
-			rulesByFile[rule.File],
-			rule,
-		)
-	}
 
 	for _, file := range files {
 		if !file.Text {
 			continue
-		}
-
-		contents := file.Contents
-
-		if filepath.Ext(file.Path) == ".css" {
-			fileRules := rulesByFile[file.Path]
-
-			logger.Infof(
-				logModule,
-				"saveEditor: formatting CSS file=%q topLevelRules=%d",
-				file.Path,
-				len(fileRules),
-			)
-
-			for i, rule := range fileRules {
-				logger.Infof(
-					logModule,
-					"saveEditor: rule[%d] id=%q selector=%q layer=%q atRule=%q children=%d parent=%q",
-					i,
-					rule.ID,
-					rule.Selector,
-					rule.Layer,
-					rule.AtRule,
-					len(rule.Children),
-					rule.ParentID,
-				)
-
-				logRuleTree(
-					rule,
-					"  ",
-				)
-			}
-
-			contents = parser.FormatCSS(
-				fileRules,
-			)
-
-			logger.Infof(
-				logModule,
-				"saveEditor: formatted %q length=%d contents:\n%s",
-				file.Path,
-				len(contents),
-				contents,
-			)
 		}
 
 		filename := filepath.Join(
@@ -140,12 +94,12 @@ func (s *Service) saveEditor() error {
 			logModule,
 			"saveEditor: writing %q length=%d",
 			filename,
-			len(contents),
+			len(file.Contents),
 		)
 
 		if err := os.WriteFile(
 			filename,
-			[]byte(contents),
+			[]byte(file.Contents),
 			0o644,
 		); err != nil {
 			return err
@@ -155,32 +109,4 @@ func (s *Service) saveEditor() error {
 	s.editor.ClearDirty()
 
 	return nil
-}
-
-// logRuleTree logs a rule and all descendants.
-//
-// This is intentionally kept local to the save path while debugging the
-// working-copy -> CSS writer boundary.
-func logRuleTree(
-	rule parser.Rule,
-	indent string,
-) {
-	logger.Infof(
-		logModule,
-		"%srule id=%q selector=%q layer=%q atRule=%q children=%d parent=%q",
-		indent,
-		rule.ID,
-		rule.Selector,
-		rule.Layer,
-		rule.AtRule,
-		len(rule.Children),
-		rule.ParentID,
-	)
-
-	for _, child := range rule.Children {
-		logRuleTree(
-			child,
-			indent+"  ",
-		)
-	}
 }

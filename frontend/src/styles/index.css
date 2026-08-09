@@ -43,3 +43,5 @@
 @import "skinEditor/files.css";
 @import "skinEditor/ruleEditor.css";
 @import "skinEditor/actions.css";
+@import "skinEditor/newSkin.css";
+@import "skinEditor/editSkin.css";

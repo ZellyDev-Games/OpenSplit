@@ -2,6 +2,7 @@ package skin
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/zellydev-games/opensplit/dto"
 	"github.com/zellydev-games/opensplit/skin/parser"
@@ -114,15 +115,15 @@ func (s *Service) SelectRule(
 
 // UpdateActiveRule updates the declarations of the currently selected rule.
 //
-// This method is used both for existing rules and for rules that were just
-// created during the current editor session. A newly created rule already
-// exists in the working rule tree, so its declarations can be updated in
-// exactly the same way as an existing rule.
+// Both existing rules and rules created during the current editor session
+// are valid here.
 //
-// The parser rule receives the parsed declarations while the active editor
-// rule retains the exact body text supplied by the frontend. This keeps the
-// textarea stable while the user is typing while still giving the CSS writer
-// structured declarations to persist.
+// The parser rule is updated first. The complete CSS file is then regenerated
+// into CSSFile.Contents so the file working copy and rule working copy remain
+// synchronized.
+//
+// CSSFile.Contents is the representation that SaveWorkingCopy persists to
+// disk.
 func (s *Service) UpdateActiveRule(
 	updated dto.CSSRuleEditor,
 ) error {
@@ -144,13 +145,103 @@ func (s *Service) UpdateActiveRule(
 		)
 	}
 
+	files,
+		rules,
+		_,
+		_,
+		_,
+		_ := s.editor.Snapshot()
+
+	if err := synchronizeCSSFileContents(
+		files,
+		rules,
+		updated.File,
+	); err != nil {
+		return err
+	}
+
+	s.replaceWorkingCopy(
+		files,
+		rules,
+	)
+
 	// Preserve the exact text entered by the user in the active editor.
 	//
-	// The parser representation above contains the structured version used
-	// by the CSS writer. ActiveRule is UI state and should not unexpectedly
-	// reformat the textarea on every keystroke.
+	// The parser representation contains the structured declarations used by
+	// the CSS writer, while ActiveRule is UI state.
 	s.editor.SetActiveRule(
 		&updated,
+	)
+
+	return s.EmitSkinModel()
+}
+
+// UpdateFileContents updates the contents of one working-copy file.
+//
+// CSS files are reparsed immediately so that direct text edits and structured
+// rule editing continue to operate on the same working copy.
+//
+// Non-CSS text files only require their file contents to be updated.
+func (s *Service) UpdateFileContents(
+	file string,
+	contents string,
+) error {
+	files,
+		rules,
+		_,
+		_,
+		_,
+		_ := s.editor.Snapshot()
+
+	found := false
+
+	for i := range files {
+		if files[i].Path != file {
+			continue
+		}
+
+		files[i].Contents = contents
+		found = true
+
+		break
+	}
+
+	if !found {
+		return fmt.Errorf(
+			"file %s not found",
+			file,
+		)
+	}
+
+	if filepath.Ext(file) == ".css" {
+		updatedRules := parseCSSFileContents(
+			file,
+			contents,
+		)
+
+		rules = replaceRulesForFile(
+			rules,
+			file,
+			updatedRules,
+		)
+
+		// Direct file editing invalidates the previously selected parsed
+		// rule because parser IDs may have changed.
+		target := s.editor.GetTarget()
+
+		if target.File == file {
+			target.RuleID = ""
+			target.ParentID = ""
+			target.Mode = "file"
+
+			s.editor.SetTarget(target)
+			s.editor.SetActiveRule(nil)
+		}
+	}
+
+	s.replaceWorkingCopy(
+		files,
+		rules,
 	)
 
 	return s.EmitSkinModel()
@@ -250,4 +341,115 @@ func validateActiveRuleUpdate(
 	}
 
 	return nil
+}
+
+// parseCSSFileContents parses one CSS file into the editor rule tree.
+func parseCSSFileContents(
+	file string,
+	contents string,
+) []parser.Rule {
+	if filepath.Ext(file) != ".css" {
+		return nil
+	}
+
+	return parser.Parse(
+		file,
+		contents,
+	)
+}
+
+// replaceRulesForFile replaces the top-level rules belonging to one CSS file.
+//
+// Rules belonging to other files remain untouched.
+func replaceRulesForFile(
+	rules []parser.Rule,
+	file string,
+	replacement []parser.Rule,
+) []parser.Rule {
+	out := make(
+		[]parser.Rule,
+		0,
+		len(rules),
+	)
+
+	inserted := false
+
+	for _, rule := range rules {
+		if rule.File == file {
+			if !inserted {
+				out = append(
+					out,
+					replacement...,
+				)
+
+				inserted = true
+			}
+
+			continue
+		}
+
+		out = append(
+			out,
+			rule,
+		)
+	}
+
+	if !inserted {
+		out = append(
+			out,
+			replacement...,
+		)
+	}
+
+	return out
+}
+
+// synchronizeCSSFileContents regenerates the working-copy contents for one
+// CSS file from its current parser rule tree.
+//
+// This is used after a structured rule edit so the raw file representation
+// remains synchronized with the parsed rule representation.
+func synchronizeCSSFileContents(
+	files []dto.CSSFile,
+	rules []parser.Rule,
+	file string,
+) error {
+	if filepath.Ext(file) != ".css" {
+		return nil
+	}
+
+	fileRules := make(
+		[]parser.Rule,
+		0,
+	)
+
+	for _, rule := range rules {
+		if rule.File != file {
+			continue
+		}
+
+		fileRules = append(
+			fileRules,
+			rule,
+		)
+	}
+
+	contents := parser.FormatCSS(
+		fileRules,
+	)
+
+	for i := range files {
+		if files[i].Path != file {
+			continue
+		}
+
+		files[i].Contents = contents
+
+		return nil
+	}
+
+	return fmt.Errorf(
+		"file %s not found",
+		file,
+	)
 }

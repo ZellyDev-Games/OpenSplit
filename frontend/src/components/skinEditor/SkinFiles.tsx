@@ -104,6 +104,16 @@ export default function SkinFiles({
 
     const cssFile = selectedFileData && isCSSFile(selectedFileData);
 
+    /*
+     * A selected file is edited directly as text when the editor is in
+     * file mode.
+     *
+     * Rule editing remains available when an element/rule has been selected.
+     * This keeps raw file editing and structured rule editing as separate
+     * operations against the same backend working copy.
+     */
+    const showRuleEditor = cssFile && (mode !== "file" || activeRule !== null);
+
     return (
         <div className="panel skin-files">
             <ElementSelector
@@ -123,7 +133,11 @@ export default function SkinFiles({
 
             {imageFile && <ImagePreview file={imageFile} />}
 
-            {cssFile && (
+            {selectedFileData?.text && !showRuleEditor && (
+                <TextFileEditor file={selectedFileData} onChangeFile={onChangeFile} />
+            )}
+
+            {showRuleEditor && (
                 <RuleEditor
                     activeRule={activeRule}
                     rules={cssRules}
@@ -148,7 +162,7 @@ export default function SkinFiles({
                 />
             )}
 
-            {selectedFileData?.text && !cssFile && (
+            {selectedFileData?.text && !cssFile && !imageFile && (
                 <TextFileEditor file={selectedFileData} onChangeFile={onChangeFile} />
             )}
 
