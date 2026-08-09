@@ -3,6 +3,8 @@ package skin
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/zellydev-games/opensplit/dto"
@@ -109,50 +111,6 @@ func (s *Service) CreateCSSRule(
 	return s.EmitSkinModel()
 }
 
-// buildCSSRule converts an editor rule into the parser representation used by
-// the working copy while preserving the editor representation for the
-// frontend.
-//
-// Rules created during an editor session do not yet have a source location,
-// so they cannot use the normal parser ID format of:
-//
-//	file:line:sibling-index
-//
-// They receive a unique working-copy ID instead. Once the file is saved and
-// reparsed, assignRuleIDs will replace that temporary identity with the
-// source-based parser ID.
-func buildCSSRule(
-	rule dto.CSSRuleEditor,
-) (dto.CSSRuleEditor, parser.Rule) {
-	id := rule.ID
-
-	if id == "" {
-		id = fmt.Sprintf(
-			"%s:new:%s",
-			rule.File,
-			uuid.NewString(),
-		)
-	}
-
-	editorRule := rule
-	editorRule.ID = id
-
-	declarations := editor.ParseDeclarations(
-		rule.Body,
-	)
-
-	cssRule := parser.Rule{
-		ID:           id,
-		File:         rule.File,
-		Layer:        rule.Layer,
-		Selector:     rule.Selector,
-		ParentID:     rule.ParentID,
-		Declarations: declarations,
-	}
-
-	return editorRule, cssRule
-}
-
 // ClearElement clears the currently selected editor element.
 func (s *Service) ClearElement() error {
 	s.editor.ClearSelection()
@@ -222,4 +180,117 @@ func (s *Service) replaceWorkingCopy(
 		files,
 		rules,
 	)
+}
+
+// buildEditorFiles reads the files belonging to the selected skin and converts
+// them into the editor's working-copy representation.
+//
+// Files are loaded from disk only. This function does not mutate EditorState.
+func (s *Service) buildEditorFiles() (
+	[]dto.CSSFile,
+	error,
+) {
+	files, err := s.SkinFiles()
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(
+		[]dto.CSSFile,
+		0,
+		len(files),
+	)
+
+	base := strings.TrimSuffix(
+		s.GetSkinAddress(),
+		"/"+EntryPoint,
+	)
+
+	for _, file := range files {
+		contents := ""
+
+		text := editor.IsTextFile(file)
+
+		if text {
+			contents, err = s.ReadFile(file)
+			if err != nil {
+				return nil, err
+			}
+
+			logger.Infof(
+				logModule,
+				"%s length=%d",
+				file,
+				len(contents),
+			)
+		}
+
+		relative := filepath.ToSlash(file)
+
+		out = append(
+			out,
+			editor.FileInfo(file, contents, text, base+"/"+relative),
+		// 	dto.CSSFile{
+		// 		Name: filepath.Base(relative),
+
+		// 		Path: relative,
+
+		// 		Contents: contents,
+
+		// 		OriginalContents: contents,
+
+		// 		Text: text,
+
+		// 		URL: base + "/" + relative,
+
+		// 		Type: editor.FileType(relative),
+		// 	},
+		)
+	}
+
+	return out, nil
+}
+
+// buildCSSRule converts an editor rule into the parser representation used by
+// the working copy while preserving the editor representation for the
+// frontend.
+//
+// Rules created during an editor session do not yet have a source location,
+// so they cannot use the normal parser ID format of:
+//
+//	file:line:sibling-index
+//
+// They receive a unique working-copy ID instead. Once the file is saved and
+// reparsed, assignRuleIDs will replace that temporary identity with the
+// source-based parser ID.
+func buildCSSRule(
+	rule dto.CSSRuleEditor,
+) (dto.CSSRuleEditor, parser.Rule) {
+	id := rule.ID
+
+	if id == "" {
+		id = fmt.Sprintf(
+			"%s:new:%s",
+			rule.File,
+			uuid.NewString(),
+		)
+	}
+
+	editorRule := rule
+	editorRule.ID = id
+
+	declarations := editor.ParseDeclarations(
+		rule.Body,
+	)
+
+	cssRule := parser.Rule{
+		ID:           id,
+		File:         rule.File,
+		Layer:        rule.Layer,
+		Selector:     rule.Selector,
+		ParentID:     rule.ParentID,
+		Declarations: declarations,
+	}
+
+	return editorRule, cssRule
 }

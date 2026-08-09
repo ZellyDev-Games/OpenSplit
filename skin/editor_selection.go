@@ -325,6 +325,34 @@ func (s *Service) findMatchingRuleEditor(
 	return active
 }
 
+// findSkinElement returns the editor element with the requested ID.
+func (s *Service) findSkinElement(
+	id string,
+) (*dto.SkinElement, error) {
+	if id == "" {
+		return nil, fmt.Errorf(
+			"element id cannot be empty",
+		)
+	}
+
+	elements := s.GetSkinElements()
+
+	for _, element := range elements {
+		if element.ID != id {
+			continue
+		}
+
+		copy := element
+
+		return &copy, nil
+	}
+
+	return nil, fmt.Errorf(
+		"unknown element %q",
+		id,
+	)
+}
+
 // validateActiveRuleUpdate validates the editor state before a rule is
 // modified.
 //
