@@ -1,11 +1,11 @@
-package skin
+package editor
 
 import "github.com/zellydev-games/opensplit/skin/parser"
 
 // walkRules recursively visits every rule in a parsed CSS rule tree.
 //
 // Returning true from fn stops traversal immediately.
-func walkRules(
+func WalkRules(
 	rules []parser.Rule,
 	fn func(parser.Rule) bool,
 ) bool {
@@ -14,7 +14,7 @@ func walkRules(
 			return true
 		}
 
-		if walkRules(
+		if WalkRules(
 			rule.Children,
 			fn,
 		) {

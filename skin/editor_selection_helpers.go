@@ -45,7 +45,7 @@ func findRule(
 ) (*parser.Rule, bool) {
 	var found *parser.Rule
 
-	walkRules(
+	editor.WalkRules(
 		rules,
 		func(rule parser.Rule) bool {
 			if rule.File != file ||

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/zellydev-games/opensplit/dto"
+	"github.com/zellydev-games/opensplit/skin/editor"
 	"github.com/zellydev-games/opensplit/skin/parser"
 )
 
@@ -293,7 +294,7 @@ func (s *Service) findMatchingRuleEditor(
 
 	var active *dto.CSSRuleEditor
 
-	walkRules(
+	editor.WalkRules(
 		rules,
 		func(rule parser.Rule) bool {
 			// Only concrete selector rules can directly style an

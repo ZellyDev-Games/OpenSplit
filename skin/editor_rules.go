@@ -86,7 +86,7 @@ func findRuleByID(
 
 	var found *parser.Rule
 
-	walkRules(
+	editor.WalkRules(
 		rules,
 		func(rule parser.Rule) bool {
 			if rule.ID != ruleID {
