@@ -16,12 +16,8 @@ func (s *Service) CreateSkin(
 	name string,
 	base string,
 ) error {
-
-	name =
-		strings.TrimSpace(name)
-
-	base =
-		strings.TrimSpace(base)
+	name = strings.TrimSpace(name)
+	base = strings.TrimSpace(base)
 
 	if name == "" {
 		return errors.New(
@@ -42,93 +38,87 @@ func (s *Service) CreateSkin(
 		base = "default"
 	}
 
-	available :=
-		s.GetAvailableSkins()
+	available := s.GetAvailableSkins()
 
 	if !slices.Contains(
 		available,
 		base,
 	) {
-
 		return fmt.Errorf(
 			"base skin %q does not exist",
 			base,
 		)
 	}
 
-	target :=
-		filepath.Join(
-			s.skinDir,
-			name,
-		)
+	target := filepath.Join(
+		s.skinDir,
+		name,
+	)
 
 	if _, err := os.Stat(target); err == nil {
-
 		return fmt.Errorf(
 			"skin %q already exists",
 			name,
 		)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
 	}
 
-	source :=
-		filepath.Join(
-			s.skinDir,
-			base,
-		)
+	source := filepath.Join(
+		s.skinDir,
+		base,
+	)
 
-	err :=
-		filepath.Walk(
-			source,
-			func(
-				path string,
-				info os.FileInfo,
-				err error,
-			) error {
+	err := filepath.Walk(
+		source,
+		func(
+			path string,
+			info os.FileInfo,
+			err error,
+		) error {
+			if err != nil {
+				return err
+			}
 
-				if err != nil {
-					return err
-				}
+			relative, err := filepath.Rel(
+				source,
+				path,
+			)
+			if err != nil {
+				return err
+			}
 
-				relative, err :=
-					filepath.Rel(
-						source,
-						path,
-					)
+			destination := filepath.Join(
+				target,
+				relative,
+			)
 
-				if err != nil {
-					return err
-				}
-
-				destination :=
-					filepath.Join(
-						target,
-						relative,
-					)
-
-				if info.IsDir() {
-
-					return os.MkdirAll(
-						destination,
-						0755,
-					)
-				}
-
-				data, err :=
-					os.ReadFile(
-						path,
-					)
-
-				if err != nil {
-					return err
-				}
-
-				return os.WriteFile(
+			if info.IsDir() {
+				return os.MkdirAll(
 					destination,
-					data,
-					0644,
+					0o755,
 				)
-			},
-		)
+			}
+
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+
+			if err := os.MkdirAll(
+				filepath.Dir(destination),
+				0o755,
+			); err != nil {
+				return err
+			}
+
+			return os.WriteFile(
+				destination,
+				data,
+				0o644,
+			)
+		},
+	)
 
 	if err != nil {
 		return err
@@ -155,9 +145,7 @@ Disk changes are committed only by SKIN_SAVE.
 func (s *Service) CreateCSSFile(
 	name string,
 ) error {
-
-	name =
-		strings.TrimSpace(name)
+	name = strings.TrimSpace(name)
 
 	if name == "" {
 		return errors.New(
@@ -169,47 +157,46 @@ func (s *Service) CreateCSSFile(
 		name += ".css"
 	}
 
-	clean :=
-		filepath.ToSlash(
-			filepath.Clean(name),
-		)
+	clean := filepath.ToSlash(
+		filepath.Clean(name),
+	)
 
-	if strings.HasPrefix(
-		clean,
-		"..",
-	) {
+	if clean == "." ||
+		clean == ".." ||
+		strings.HasPrefix(
+			clean,
+			"../",
+		) {
 		return errors.New(
 			"invalid css file path",
 		)
 	}
 
-	selected :=
-		s.SelectedSkin()
-
-	if selected == "" {
+	if filepath.IsAbs(clean) {
 		return errors.New(
-			"no skin selected",
+			"invalid css file path",
 		)
 	}
 
-	files,
-		_,
-		_,
-		_,
-		_,
-		_ :=
-		s.editor.Snapshot()
+	if _, err := s.skinRoot(); err != nil {
+		return err
+	}
+
+	files, _, _, _, _, _ := s.editor.Snapshot()
 
 	for _, file := range files {
-
 		if file.Path == clean {
-
 			return fmt.Errorf(
 				"css file %q already exists",
 				clean,
 			)
 		}
 	}
+
+	base := strings.TrimSuffix(
+		s.GetSkinAddress(),
+		"/"+EntryPoint,
+	)
 
 	s.editor.AddFile(
 		dto.CSSFile{
@@ -221,10 +208,7 @@ func (s *Service) CreateCSSFile(
 
 			Text: true,
 
-			URL: strings.TrimSuffix(
-				s.GetSkinAddress(),
-				"/"+EntryPoint,
-			) + "/" + clean,
+			URL: base + "/" + clean,
 
 			Type: "css",
 		},
