@@ -3,6 +3,7 @@ package skin
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/zellydev-games/opensplit/dto"
 	"github.com/zellydev-games/opensplit/logger"
@@ -21,6 +22,11 @@ import (
 //   - pending deletions
 //
 // and replaces them with the current skin files on disk.
+//
+// The current editor selection is preserved whenever possible. Existing rules
+// are restored by their parser ID. Rules created during the current editor
+// session use temporary IDs, so after a save/reload they are restored using
+// their file, selector, and parent instead.
 func (s *Service) ReloadEditor() error {
 	logger.Infof(
 		logModule,
@@ -40,7 +46,13 @@ func (s *Service) ReloadEditor() error {
 		len(rules),
 	)
 
+	// Capture the complete selection before replacing the working copy.
+	//
+	// This is important because ReplaceWorkingCopyFromDisk replaces the
+	// parsed rule tree and may invalidate temporary IDs belonging to rules
+	// created during the previous editor session.
 	oldTarget := s.editor.GetTarget()
+	oldActiveRule := s.editor.GetActiveRule()
 
 	s.editor.ReplaceWorkingCopyFromDisk(
 		files,
@@ -61,12 +73,23 @@ func (s *Service) ReloadEditor() error {
 	case oldTarget.RuleID != "":
 		if err := s.restoreRuleSelection(
 			oldTarget,
+			oldActiveRule,
 			rules,
 		); err != nil {
+			logger.Infof(
+				logModule,
+				"unable to restore rule selection: %v",
+				err,
+			)
+
+			// The selected file still exists, so preserve file selection
+			// rather than clearing the entire editor selection.
 			s.editor.SetTarget(
 				dto.SkinEditorTarget{
-					Mode: "file",
-					File: oldTarget.File,
+					ElementID: oldTarget.ElementID,
+					File:      oldTarget.File,
+					Selector:  oldTarget.Selector,
+					Mode:      "file",
 				},
 			)
 
@@ -76,8 +99,10 @@ func (s *Service) ReloadEditor() error {
 	case oldTarget.File != "":
 		s.editor.SetTarget(
 			dto.SkinEditorTarget{
-				Mode: "file",
-				File: oldTarget.File,
+				ElementID: oldTarget.ElementID,
+				File:      oldTarget.File,
+				Selector:  oldTarget.Selector,
+				Mode:      "file",
 			},
 		)
 	}
@@ -157,39 +182,168 @@ func (s *Service) EmitSkinModel() error {
 // restoreRuleSelection restores a previously selected rule after the editor
 // working copy has been rebuilt.
 //
-// The rule ID is used as the stable identity. If the rule no longer exists,
-// the caller can fall back to file selection.
+// Normal parsed rules retain their parser-generated ID, so ID is the preferred
+// identity.
+//
+// Rules created during an editor session receive temporary IDs such as:
+//
+//	complete.css:new:<uuid>
+//
+// Once those rules are saved and reparsed, their temporary IDs no longer
+// exist. In that case, restore the rule using its stable editor properties:
+// file, selector, and parent.
+//
+// The original target is preserved so the selected preview element remains
+// selected as well.
 func (s *Service) restoreRuleSelection(
 	target dto.SkinEditorTarget,
+	oldActiveRule *dto.CSSRuleEditor,
 	rules []parser.Rule,
 ) error {
-	selected, ok := editor.FindRuleByID(
-		rules,
-		target.RuleID,
-	)
+	var selected *parser.Rule
 
-	if !ok {
+	// First try the exact parser ID. This is the normal path for rules that
+	// already existed on disk before the reload.
+	if target.RuleID != "" {
+		if rule, ok := editor.FindRuleByID(
+			rules,
+			target.RuleID,
+		); ok {
+			selected = rule
+		}
+	}
+
+	// A newly-created rule receives a temporary ":new:" ID. After save and
+	// reload that ID is gone, so find the corresponding parsed rule using the
+	// stable properties that survived the save.
+	if selected == nil {
+		selected = findRuleForRestoration(
+			rules,
+			target,
+			oldActiveRule,
+		)
+	}
+
+	if selected == nil {
 		return fmt.Errorf(
-			"rule %s no longer exists",
+			"rule %q could not be restored",
 			target.RuleID,
 		)
 	}
 
-	editor := editor.NewCSSRuleEditor(
+	active := editor.NewCSSRuleEditor(
 		selected,
 	)
 
-	if editor == nil {
+	if active == nil {
 		return fmt.Errorf(
-			"rule %s could not be converted to editor state",
-			target.RuleID,
+			"rule %q could not be converted to editor state",
+			selected.ID,
 		)
 	}
 
-	s.editor.SetTarget(target)
-	s.editor.SetActiveRule(editor)
+	// Preserve the selected element while updating the rule identity to the
+	// newly parsed rule ID.
+	restoredTarget := target
+
+	restoredTarget.File = selected.File
+	restoredTarget.RuleID = selected.ID
+	restoredTarget.ParentID = selected.ParentID
+	restoredTarget.Selector = selected.Selector
+	restoredTarget.Mode = "existing"
+
+	s.editor.SetTarget(
+		restoredTarget,
+	)
+
+	s.editor.SetActiveRule(
+		active,
+	)
+
+	logger.Infof(
+		logModule,
+		"restored rule selection: oldID=%q newID=%q file=%q selector=%q element=%q",
+		target.RuleID,
+		selected.ID,
+		selected.File,
+		selected.Selector,
+		restoredTarget.ElementID,
+	)
 
 	return nil
+}
+
+// findRuleForRestoration finds the parsed rule corresponding to an editor
+// selection whose original rule ID may no longer exist.
+//
+// Matching is intentionally conservative:
+//
+//   - file must match
+//   - selector must match
+//   - parent must match when the previous target had a parent
+//
+// The active rule is used as a fallback source for selector/file information
+// when the target does not contain enough information.
+func findRuleForRestoration(
+	rules []parser.Rule,
+	target dto.SkinEditorTarget,
+	oldActiveRule *dto.CSSRuleEditor,
+) *parser.Rule {
+	file := target.File
+	selector := strings.TrimSpace(target.Selector)
+	parentID := target.ParentID
+
+	if oldActiveRule != nil {
+		if file == "" {
+			file = oldActiveRule.File
+		}
+
+		if selector == "" {
+			selector = strings.TrimSpace(
+				oldActiveRule.Selector,
+			)
+		}
+
+		if parentID == "" {
+			parentID = oldActiveRule.ParentID
+		}
+	}
+
+	if file == "" || selector == "" {
+		return nil
+	}
+
+	var match *parser.Rule
+
+	editor.WalkRules(
+		rules,
+		func(rule parser.Rule) bool {
+			if rule.Selector == "" {
+				return false
+			}
+
+			if rule.File != file {
+				return false
+			}
+
+			if strings.TrimSpace(rule.Selector) != selector {
+				return false
+			}
+
+			// ParentID is the strongest additional identity available for
+			// rules nested inside the same container.
+			if parentID != "" && rule.ParentID != parentID {
+				return false
+			}
+
+			copy := rule
+			match = &copy
+
+			return true
+		},
+	)
+
+	return match
 }
 
 // parseEditorRules parses all CSS files in the editor working copy.

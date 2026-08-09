@@ -18,12 +18,16 @@ const (
 	EntryPoint = "index.css"
 
 	// skinSaveWatcherSuppressDuration is the amount of time filesystem
-	// watcher events are ignored after a successful editor save.
+	// watcher events are ignored after an editor save.
 	//
-	// The save itself writes the working copy to disk. Those writes can
-	// generate asynchronous filesystem events which must not cause the
-	// editor to reload its working copy.
-	skinSaveWatcherSuppressDuration = 500 * time.Millisecond
+	// SaveWorkingCopy can produce filesystem events asynchronously after the
+	// files have actually been written. The watcher event observed in
+	// practice can arrive several hundred milliseconds after SaveWorkingCopy
+	// returns, so this window must be longer than a single filesystem write.
+	//
+	// ReloadEditor also preserves the current selection, so this suppression
+	// is only an optimization that prevents an unnecessary disk reload.
+	skinSaveWatcherSuppressDuration = 2 * time.Second
 )
 
 // SkinProvider defines the public skin service API exposed to the rest of the
