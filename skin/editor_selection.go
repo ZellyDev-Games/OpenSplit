@@ -85,7 +85,7 @@ func (s *Service) SelectRule(
 ) error {
 	_, rules, _, _, _, _ := s.editor.Snapshot()
 
-	selected, ok := findRule(
+	selected, ok := editor.FindRule(
 		rules,
 		file,
 		ruleID,
@@ -108,7 +108,7 @@ func (s *Service) SelectRule(
 
 	s.editor.SetTarget(target)
 	s.editor.SetActiveRule(
-		newCSSRuleEditor(selected),
+		editor.NewCSSRuleEditor(selected),
 	)
 
 	return s.EmitSkinModel()
@@ -132,7 +132,7 @@ func (s *Service) UpdateActiveRule(
 		return err
 	}
 
-	declarations := parseDeclarations(
+	declarations := editor.ParseDeclarations(
 		updated.Body,
 	)
 
@@ -316,7 +316,7 @@ func (s *Service) findMatchingRuleEditor(
 			target.ParentID = rule.ParentID
 			target.Mode = "existing"
 
-			active = newCSSRuleEditor(&rule)
+			active = editor.NewCSSRuleEditor(&rule)
 
 			return true
 		},

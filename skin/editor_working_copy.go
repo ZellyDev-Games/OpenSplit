@@ -137,7 +137,7 @@ func buildCSSRule(
 	editorRule := rule
 	editorRule.ID = id
 
-	declarations := parseDeclarations(
+	declarations := editor.ParseDeclarations(
 		rule.Body,
 	)
 
@@ -173,7 +173,7 @@ func (s *Service) DeleteCSSRule(
 		_,
 		_ := s.editor.Snapshot()
 
-	selected, ok := findRuleByID(
+	selected, ok := editor.FindRuleByID(
 		rules,
 		id,
 	)

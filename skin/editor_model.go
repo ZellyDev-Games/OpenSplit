@@ -6,6 +6,7 @@ import (
 
 	"github.com/zellydev-games/opensplit/dto"
 	"github.com/zellydev-games/opensplit/logger"
+	"github.com/zellydev-games/opensplit/skin/editor"
 	"github.com/zellydev-games/opensplit/skin/parser"
 )
 
@@ -118,7 +119,7 @@ func (s *Service) GetSkinEditorModel() (
 
 		Elements: elements,
 
-		Rules: convertDTOEditorRules(
+		Rules: editor.ConvertRules(
 			rules,
 		),
 
@@ -162,7 +163,7 @@ func (s *Service) restoreRuleSelection(
 	target dto.SkinEditorTarget,
 	rules []parser.Rule,
 ) error {
-	selected, ok := findRuleByID(
+	selected, ok := editor.FindRuleByID(
 		rules,
 		target.RuleID,
 	)
@@ -174,7 +175,7 @@ func (s *Service) restoreRuleSelection(
 		)
 	}
 
-	editor := newCSSRuleEditor(
+	editor := editor.NewCSSRuleEditor(
 		selected,
 	)
 
