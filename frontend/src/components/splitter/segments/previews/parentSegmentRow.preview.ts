@@ -15,6 +15,7 @@ const elements: SkinElement[] = [
         id: "parent_name",
         label: "Parent Name",
         selector: ".splitName",
+        stateful: true,
     },
     {
         id: "parent_icon",
@@ -25,16 +26,19 @@ const elements: SkinElement[] = [
         id: "parent_delta",
         label: "Parent Delta",
         selector: ".splitDelta",
+        stateful: true,
     },
     {
         id: "parent_comparison",
         label: "Parent Comparison",
         selector: ".splitComparison",
+        stateful: true,
     },
     {
         id: "parent_time",
         label: "Parent Time",
         selector: ".splitTime",
+        stateful: true,
     },
 ];
 

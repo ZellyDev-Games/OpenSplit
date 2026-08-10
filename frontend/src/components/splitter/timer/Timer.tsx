@@ -69,21 +69,25 @@ export default function Timer({ offset, wr }: TimerParams) {
                     <small>{formattedTimeParts.centisText}</small>
                 </span>
             </div>
+
             {wr?.show && (
                 <div id="world-record">
-                    <div>
-                        <strong>WR</strong> {players}
+                    <div id="world-record-player">
+                        <strong id="world-record-label">WR</strong>
+                        <span id="world-record-players">{players}</span>
                     </div>
 
-                    <div>
-                        RT {rt![0]}
-                        <small>{rt![1]}</small>
+                    <div id="world-record-real-time">
+                        <strong id="world-record-rt-label">RT</strong>
+                        <span id="world-record-rt-time">{rt![0]}</span>
+                        <small id="world-record-rt-centiseconds">{rt![1]}</small>
                     </div>
 
                     {wr.in_game_time > 0 && (
-                        <div>
-                            IGT {igt![0]}
-                            <small>{igt![1]}</small>
+                        <div id="world-record-in-game-time">
+                            <strong id="world-record-igt-label">IGT</strong>
+                            <span id="world-record-igt-time">{igt![0]}</span>
+                            <small id="world-record-igt-centiseconds">{igt![1]}</small>
                         </div>
                     )}
                 </div>

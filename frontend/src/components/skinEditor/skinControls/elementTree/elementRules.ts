@@ -1,10 +1,15 @@
 import type { SkinCSSRule } from "../../../../models/skin/css";
 import type { SkinModel } from "../../../../models/skin/editor";
 import type { SkinElement } from "../../../../models/skin/element";
+import { getElementSelectors } from "../utils/elementSelectors";
 import { selectorMatches } from "../utils/selectorMatch";
 
 export function getElementRules(model: SkinModel, element: SkinElement): SkinCSSRule[] {
-    return model.rules.filter((rule) => selectorMatches(rule.selector, element.selector)).sort(compareRules);
+    const selectors = getElementSelectors(element);
+
+    return model.rules
+        .filter((rule) => selectors.some((selector) => selectorMatches(rule.selector, selector)))
+        .sort(compareRules);
 }
 
 function compareRules(a: SkinCSSRule, b: SkinCSSRule): number {

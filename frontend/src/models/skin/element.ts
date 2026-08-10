@@ -1,18 +1,16 @@
 export interface SkinElement {
     id: string;
-
     label: string;
 
     selector: string;
 
+    stateful?: boolean;
+
     description?: string;
 
     file?: string;
-
     line?: number;
-
     layer?: string;
-
     order?: number;
 }
 

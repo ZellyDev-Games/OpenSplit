@@ -25,6 +25,7 @@ export function useSegmentCompletion(sessionPayload: SessionPayload) {
                 pb: className.includes("pb"),
                 totalSplits: leaves.length,
             });
+
             if (pb) {
                 const finalSplit = leaves[leaves.length - 1];
                 const finalTime = run.splits[finalSplit.id].current_cumulative;
@@ -35,8 +36,8 @@ export function useSegmentCompletion(sessionPayload: SessionPayload) {
             }
 
             log.info("[SegmentList] Run completed", {
-                totalSplits: leaves.length,
                 pb: className.includes("pb"),
+                totalSplits: leaves.length,
             });
         }
 
