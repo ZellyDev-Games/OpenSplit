@@ -8,6 +8,7 @@ import { previewConfig } from "../../components/skinEditor/preview/sessions/prev
 import { previewSession as completedPreview } from "../../components/skinEditor/preview/sessions/previewCompletedSession";
 import { previewSession as emptyPreview } from "../../components/skinEditor/preview/sessions/previewEmptySession";
 import { previewSession as inProgressPreview } from "../../components/skinEditor/preview/sessions/previewInProgressSession";
+import { selectorMatches } from "../../components/skinEditor/skinControls/utils/selectorMatch";
 import type { SkinCSSRule } from "../../models/skin/css";
 import type { SkinModel } from "../../models/skin/editor";
 import type { RuntimeElement, SkinElement } from "../../models/skin/element";
@@ -33,7 +34,7 @@ export interface SkinEditorPreview {
 
     elements: SkinElement[];
 
-    availableIds: Set<string>;
+    styledIds: Set<string>;
 
     selectedRuntime: RuntimeElement | null;
 
@@ -104,6 +105,14 @@ ${rule.body}
         .join("\n");
 }
 
+function getStyledIds(elements: SkinElement[], rules: SkinCSSRule[]): Set<string> {
+    return new Set(
+        elements
+            .filter((element) => rules.some((rule) => selectorMatches(rule.selector, element.selector)))
+            .map((element) => element.id),
+    );
+}
+
 export function useSkinEditorPreview(model: SkinModel, editor: SkinEditorState): SkinEditorPreview {
     const [mode, setMode] = useState<PreviewMode>("running");
 
@@ -126,7 +135,14 @@ export function useSkinEditorPreview(model: SkinModel, editor: SkinEditorState):
         [model.elements, runtimeElements],
     );
 
-    const availableIds = useMemo(() => new Set(runtimeElements.map((element) => element.id)), [runtimeElements]);
+    /*
+     * This represents whether the skin contains a CSS rule that matches
+     * the element's registered selector.
+     *
+     * It intentionally does not use runtimeElements: runtime presence and
+     * skin coverage are separate concepts.
+     */
+    const styledIds = useMemo(() => getStyledIds(elements, model.rules), [elements, model.rules]);
 
     const selectedRuntime = editor.target.elementId
         ? (runtimeElements.find((element) => element.id === editor.target.elementId) ?? null)
@@ -160,7 +176,7 @@ export function useSkinEditorPreview(model: SkinModel, editor: SkinEditorState):
 
         elements,
 
-        availableIds,
+        styledIds,
 
         selectedRuntime,
 

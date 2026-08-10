@@ -29,7 +29,6 @@ export default function SkinEditor({ model }: Props) {
                 <SkinControls
                     model={preview.combinedModel}
                     elements={preview.elements}
-                    availableIds={preview.availableIds}
                     selectedElement={editor.target.elementId}
                     selectedFile={editor.target.file}
                     activeRule={editor.activeRule}
@@ -72,10 +71,10 @@ export default function SkinEditor({ model }: Props) {
 
             <section className="skin-editor-files skin-editor-column">
                 <SkinFiles
+                    model={preview.combinedModel}
                     activeRule={editor.activeRule}
                     rules={editor.rules}
                     elements={preview.elements}
-                    availableIds={preview.availableIds}
                     selectedElement={editor.target.elementId}
                     files={editor.files}
                     selectedFile={editor.target.file}

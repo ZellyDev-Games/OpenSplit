@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { CSSFile, CSSRuleEditor } from "../../models/skin/css";
-import type { SkinEditorTarget } from "../../models/skin/editor";
+import type { SkinEditorTarget, SkinModel } from "../../models/skin/editor";
 import type { SkinElement } from "../../models/skin/element";
 import ElementSelector from "./skinFiles/ElementSelector";
 import FileSelector from "./skinFiles/FileSelector";
@@ -11,11 +11,11 @@ import RuleEditor from "./skinFiles/RuleEditor";
 import TextFileEditor from "./skinFiles/TextFileEditor";
 
 interface Props {
+    model: SkinModel;
+
     activeRule: CSSRuleEditor | null;
 
     rules: CSSRuleEditor[];
-
-    availableIds: Set<string>;
 
     elements: SkinElement[];
 
@@ -53,9 +53,9 @@ interface Props {
 }
 
 export default function SkinFiles({
+    model,
     activeRule,
     rules,
-    availableIds,
     elements,
     selectedElement,
     files,
@@ -117,8 +117,8 @@ export default function SkinFiles({
     return (
         <div className="panel skin-files">
             <ElementSelector
+                model={model}
                 elements={elements}
-                availableIds={availableIds}
                 overflowingIds={overflowingIds}
                 selectedElement={selectedElement}
                 onElementSelected={onElementSelected}

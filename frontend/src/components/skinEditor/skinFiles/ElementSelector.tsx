@@ -1,9 +1,12 @@
+import type { SkinModel } from "../../../models/skin/editor";
 import type { SkinElement } from "../../../models/skin/element";
+import { log } from "../../../utils/logger";
+import { getSkinElementRules } from "../skinControls/elementTree/elementRules";
 
 interface Props {
-    elements: SkinElement[];
+    model: SkinModel;
 
-    availableIds: Set<string>;
+    elements: SkinElement[];
 
     overflowingIds: Set<string>;
 
@@ -13,14 +16,12 @@ interface Props {
 }
 
 export default function ElementSelector({
+    model,
     elements,
-    availableIds,
     overflowingIds,
     selectedElement,
     onElementSelected,
 }: Props) {
-    const overflowing = new Set(overflowingIds);
-
     return (
         <>
             <h3>Element</h3>
@@ -29,11 +30,24 @@ export default function ElementSelector({
                 <option value="">Select Element</option>
 
                 {elements.map((element) => {
-                    const available = availableIds.has(element.id);
+                    const rules = getSkinElementRules(model, element);
+                    const inSkin = rules.length > 0;
+                    const overflowing = overflowingIds.has(element.id);
+                    const icon = getElementStatusIcon(inSkin, overflowing);
+
+                    log.debug("[SkinFiles] Element dropdown", {
+                        id: element.id,
+                        label: element.label,
+                        selector: element.selector,
+                        inSkin,
+                        ruleCount: rules.length,
+                        overflowing,
+                        icon: icon.trim(),
+                    });
 
                     return (
                         <option key={element.id} value={element.id}>
-                            {overflowing.has(element.id) ? "🔴 " : available ? "✓ " : "✗ "}
+                            {icon}
                             {element.label}
                         </option>
                     );
@@ -41,4 +55,12 @@ export default function ElementSelector({
             </select>
         </>
     );
+}
+
+function getElementStatusIcon(inSkin: boolean, overflowing: boolean): string {
+    if (overflowing) {
+        return "🔴 ";
+    }
+
+    return inSkin ? "✓ " : "✗ ";
 }

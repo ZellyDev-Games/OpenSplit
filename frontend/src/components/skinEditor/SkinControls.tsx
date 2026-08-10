@@ -10,8 +10,6 @@ interface Props {
 
     elements: SkinElement[];
 
-    availableIds: Set<string>;
-
     selectedElement: string | null;
 
     selectedFile: string | null;
@@ -30,7 +28,6 @@ interface Props {
 export default function SkinControls({
     model,
     elements,
-    availableIds,
     selectedElement,
     selectedFile,
     activeRule,
@@ -52,8 +49,8 @@ export default function SkinControls({
             <h3>Preview Element</h3>
 
             <PreviewElementSelect
+                model={model}
                 elements={elements}
-                availableIds={availableIds}
                 selectedElement={selectedElement}
                 overflowingIds={overflowingIds}
                 onElementSelected={onElementSelected}
@@ -78,7 +75,6 @@ export default function SkinControls({
             <ElementTree
                 model={model}
                 elements={elements}
-                availableIds={availableIds}
                 selectedElement={selectedElement}
                 selectedFile={selectedFile}
                 activeRule={activeRule}

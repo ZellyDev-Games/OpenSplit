@@ -1,22 +1,25 @@
+import type { SkinModel } from "../../../models/skin/editor";
 import type { SkinElement } from "../../../models/skin/element";
+import { log } from "../../../utils/logger";
+import { getSkinElementRules } from "./elementTree/elementRules";
 
 interface Props {
+    model: SkinModel;
+
     elements: SkinElement[];
 
-    availableIds: Set<string>;
+    overflowingIds: Set<string>;
 
     selectedElement: string | null;
-
-    overflowingIds: Set<string>;
 
     onElementSelected(id: string): void;
 }
 
 export default function PreviewElementSelect({
+    model,
     elements,
-    availableIds,
-    selectedElement,
     overflowingIds,
+    selectedElement,
     onElementSelected,
 }: Props) {
     return (
@@ -24,12 +27,24 @@ export default function PreviewElementSelect({
             <option value="">Select element…</option>
 
             {elements.map((element) => {
-                const available = availableIds.has(element.id);
+                const rules = getSkinElementRules(model, element);
+                const inSkin = rules.length > 0;
                 const overflowing = overflowingIds.has(element.id);
+                const icon = getElementStatusIcon(inSkin, overflowing);
+
+                log.debug("[SkinControls] Preview element dropdown", {
+                    id: element.id,
+                    label: element.label,
+                    selector: element.selector,
+                    inSkin,
+                    ruleCount: rules.length,
+                    overflowing,
+                    icon: icon.trim(),
+                });
 
                 return (
-                    <option key={element.id} value={element.id} disabled={!available}>
-                        {getElementStatusIcon(available, overflowing)}
+                    <option key={element.id} value={element.id} disabled={!inSkin}>
+                        {icon}
                         {element.label}
                     </option>
                 );
@@ -38,10 +53,10 @@ export default function PreviewElementSelect({
     );
 }
 
-function getElementStatusIcon(available: boolean, overflowing: boolean): string {
+function getElementStatusIcon(inSkin: boolean, overflowing: boolean): string {
     if (overflowing) {
         return "🔴 ";
     }
 
-    return available ? "✓ " : "✗ ";
+    return inSkin ? "✓ " : "✗ ";
 }

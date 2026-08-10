@@ -4,8 +4,6 @@ export interface SkinElement {
 
     selector: string;
 
-    stateful?: boolean;
-
     description?: string;
 
     file?: string;

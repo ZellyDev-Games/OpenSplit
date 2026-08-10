@@ -1,15 +1,21 @@
 import type { SkinCSSRule } from "../../../../models/skin/css";
 import type { SkinModel } from "../../../../models/skin/editor";
 import type { SkinElement } from "../../../../models/skin/element";
-import { getElementSelectors } from "../utils/elementSelectors";
 import { selectorMatches } from "../utils/selectorMatch";
 
 export function getElementRules(model: SkinModel, element: SkinElement): SkinCSSRule[] {
-    const selectors = getElementSelectors(element);
+    return model.rules.filter((rule) => selectorMatches(rule.selector, element.selector)).sort(compareRules);
+}
 
-    return model.rules
-        .filter((rule) => selectors.some((selector) => selectorMatches(rule.selector, selector)))
-        .sort(compareRules);
+/**
+ * Returns only rules that originate from the actual skin files.
+ *
+ * Runtime rules describe the CSS currently present in the preview. They are
+ * useful for showing what affects an element, but they must not cause an
+ * element to be considered styled by the skin.
+ */
+export function getSkinElementRules(model: SkinModel, element: SkinElement): SkinCSSRule[] {
+    return getElementRules(model, element).filter((rule) => rule.file !== "runtime");
 }
 
 function compareRules(a: SkinCSSRule, b: SkinCSSRule): number {

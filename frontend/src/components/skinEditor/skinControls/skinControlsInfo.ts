@@ -1,6 +1,5 @@
 import type { SkinModel } from "../../../models/skin/editor";
 import type { SkinElement } from "../../../models/skin/element";
-import { getElementSelectors } from "./utils/elementSelectors";
 import { sortLayers } from "./utils/layerOrder";
 import { selectorMatches } from "./utils/selectorMatch";
 
@@ -25,11 +24,7 @@ export function getSkinControlsInfo(
         };
     }
 
-    const selectors = getElementSelectors(currentElement);
-
-    const currentRules = model.rules.filter((rule) =>
-        selectors.some((selector) => selectorMatches(rule.selector, selector)),
-    );
+    const currentRules = model.rules.filter((rule) => selectorMatches(rule.selector, currentElement.selector));
 
     const layers = sortLayers([...new Set(currentRules.map((rule) => rule.layer).filter((layer) => layer.length > 0))]);
 

@@ -30,7 +30,7 @@ export default function ParentSegmentRow({
     return (
         <tr className="parentRow">
             <td
-                className={"splitName " + completeClassName}
+                className={"splitName parentName " + completeClassName}
                 style={{
                     paddingLeft: depth * 16,
                 }}
@@ -54,11 +54,11 @@ export default function ParentSegmentRow({
                 <strong>{segment.name}</strong>
             </td>
 
-            <td className={"splitDelta " + completeClassName}>{parentDelta}</td>
+            <td className={"splitDelta parentDelta " + completeClassName}>{parentDelta}</td>
 
-            <td className={"splitComparison " + completeClassName}>{parentSegmentDelta}</td>
+            <td className={"splitComparison parentComparison " + completeClassName}>{parentSegmentDelta}</td>
 
-            <td className={"splitTime " + completeClassName}>{parentComparison}</td>
+            <td className={"splitTime parentTime " + completeClassName}>{parentComparison}</td>
         </tr>
     );
 }
