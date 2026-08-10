@@ -7,10 +7,10 @@ import { formatCSSClosingBraces, formatCSSParents, formatCSSRule } from "./eleme
 interface Props {
     model: SkinModel;
     elements: SkinElement[];
-    availableIds: Set<string>;
     selectedElement: string | null;
     selectedFile: string | null;
     activeRule: CSSRuleEditor | null;
+    availableIds: Set<string>;
     onFileSelected(file: string): Promise<void>;
     onRuleSelected(rule: CSSRuleEditor): Promise<void>;
 }
@@ -18,10 +18,10 @@ interface Props {
 export default function ElementTree({
     model,
     elements,
-    availableIds,
     selectedElement,
     selectedFile,
     activeRule,
+    availableIds,
     onFileSelected,
     onRuleSelected,
 }: Props) {
@@ -34,25 +34,25 @@ export default function ElementTree({
     const available = availableIds.has(element.id);
     const rules = getElementRules(model, element);
 
-    if (rules.length === 0) {
-        return <div className="element-tree">No CSS rules affect this element.</div>;
-    }
-
     return (
         <div className="element-tree">
             {!available && (
                 <div className="element-unavailable">✗ This element is not present in the current preview session.</div>
             )}
 
-            {rules.map((rule) => (
-                <ElementRule
-                    key={rule.id}
-                    rule={rule}
-                    selected={isRuleSelected(rule, activeRule, selectedFile)}
-                    onFileSelected={onFileSelected}
-                    onRuleSelected={onRuleSelected}
-                />
-            ))}
+            {rules.length === 0 ? (
+                <div>No CSS rules affect this element.</div>
+            ) : (
+                rules.map((rule) => (
+                    <ElementRule
+                        key={rule.id}
+                        rule={rule}
+                        selected={isRuleSelected(rule, activeRule, selectedFile)}
+                        onFileSelected={onFileSelected}
+                        onRuleSelected={onRuleSelected}
+                    />
+                ))
+            )}
         </div>
     );
 }

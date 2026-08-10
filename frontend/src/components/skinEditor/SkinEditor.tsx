@@ -36,6 +36,7 @@ export default function SkinEditor({ model }: Props) {
                     onFileSelected={editor.selectFile}
                     onRuleSelected={editor.selectRule}
                     overflowingIds={preview.previewUpdate.metrics.overflowingIds}
+                    availableIds={preview.availableIds}
                 />
             </section>
 

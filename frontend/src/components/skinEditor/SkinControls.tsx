@@ -23,6 +23,8 @@ interface Props {
     onRuleSelected(rule: CSSRuleEditor): Promise<void>;
 
     overflowingIds: Set<string>;
+
+    availableIds: Set<string>;
 }
 
 export default function SkinControls({
@@ -35,6 +37,7 @@ export default function SkinControls({
     onFileSelected,
     onRuleSelected,
     overflowingIds,
+    availableIds,
 }: Props) {
     const info = getSkinControlsInfo(model, elements, selectedElement);
 
@@ -78,6 +81,7 @@ export default function SkinControls({
                 selectedElement={selectedElement}
                 selectedFile={selectedFile}
                 activeRule={activeRule}
+                availableIds={availableIds}
                 onFileSelected={onFileSelected}
                 onRuleSelected={onRuleSelected}
             />

@@ -34,6 +34,8 @@ export interface SkinEditorPreview {
 
     elements: SkinElement[];
 
+    availableIds: Set<string>;
+
     styledIds: Set<string>;
 
     selectedRuntime: RuntimeElement | null;
@@ -105,6 +107,10 @@ ${rule.body}
         .join("\n");
 }
 
+function getAvailableIds(elements: RuntimeElement[]): Set<string> {
+    return new Set(elements.map((element) => element.id));
+}
+
 function getStyledIds(elements: SkinElement[], rules: SkinCSSRule[]): Set<string> {
     return new Set(
         elements
@@ -134,6 +140,16 @@ export function useSkinEditorPreview(model: SkinModel, editor: SkinEditorState):
         () => mergeSkinElements(previewElements, model.elements, runtimeElements),
         [model.elements, runtimeElements],
     );
+
+    /*
+     * This represents which registered preview elements actually exist
+     * in the current preview DOM.
+     *
+     * It intentionally does not use model.elements or model.rules:
+     * an element can be defined by the skin but absent from the current
+     * preview session.
+     */
+    const availableIds = useMemo(() => getAvailableIds(runtimeElements), [runtimeElements]);
 
     /*
      * This represents whether the skin contains a CSS rule that matches
@@ -175,6 +191,8 @@ export function useSkinEditorPreview(model: SkinModel, editor: SkinEditorState):
         runtimeElements,
 
         elements,
+
+        availableIds,
 
         styledIds,
 
