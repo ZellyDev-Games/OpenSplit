@@ -230,21 +230,6 @@ func (s *Service) buildEditorFiles() (
 		out = append(
 			out,
 			editor.FileInfo(file, contents, text, base+"/"+relative),
-		// 	dto.CSSFile{
-		// 		Name: filepath.Base(relative),
-
-		// 		Path: relative,
-
-		// 		Contents: contents,
-
-		// 		OriginalContents: contents,
-
-		// 		Text: text,
-
-		// 		URL: base + "/" + relative,
-
-		// 		Type: editor.FileType(relative),
-		// 	},
 		)
 	}
 

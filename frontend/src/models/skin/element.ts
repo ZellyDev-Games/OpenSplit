@@ -13,9 +13,5 @@ export interface SkinElement {
 }
 
 export interface RuntimeElement extends SkinElement {
-    // id: string;
-
     element: Element;
-
-    // node: Element | null;
 }

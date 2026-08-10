@@ -309,17 +309,6 @@ func decodePayload(payload *string, target any) error {
 	return json.Unmarshal([]byte(*payload), target)
 }
 
-// func decodePayload(payload *string, target any) error {
-// 	if payload == nil {
-// 		return nil
-// 	}
-
-// 	return json.Unmarshal(
-// 		[]byte(*payload),
-// 		target,
-// 	)
-// }
-
 func successReply(
 	message string,
 ) (
