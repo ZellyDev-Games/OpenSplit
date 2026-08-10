@@ -20,29 +20,22 @@ export function useSegmentCompletion(sessionPayload: SessionPayload) {
             className = "complete";
 
             const pb = splitFile.pb;
+            const isPB = pb?.id === run.id;
 
-            log.info("[SegmentList] Run completed", {
-                pb: className.includes("pb"),
-                totalSplits: leaves.length,
-            });
-
-            if (pb) {
-                const finalSplit = leaves[leaves.length - 1];
-                const finalTime = run.splits[finalSplit.id].current_cumulative;
-
-                if (finalTime < pb.total_time) {
-                    className += " pb";
-                }
+            if (isPB) {
+                className += " pb";
             }
 
             log.info("[SegmentList] Run completed", {
-                pb: className.includes("pb"),
+                runId: run.id,
+                pbId: pb?.id ?? null,
+                pb: isPB,
                 totalSplits: leaves.length,
+                runTotal: run.total_time,
+                pbTotal: pb?.total_time ?? null,
             });
         }
 
-        log.debug(sessionPayload.loaded_split_file);
-        log.debug(sessionPayload.loaded_split_file?.variables);
         setCompleteClassName(className);
     }, [sessionPayload]);
 
