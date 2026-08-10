@@ -301,6 +301,14 @@ func (s *SkinEditor) reload() (dispatcher.DispatchReply, error) {
 	return successReply("editor reloaded")
 }
 
+func (s *SkinEditor) String() string {
+	return "Skin Editor"
+}
+
+func (s *SkinEditor) ID() StateID {
+	return SKINEDITOR
+}
+
 func decodePayload(payload *string, target any) error {
 	if payload == nil {
 		return errors.New("command requires a payload")
@@ -331,12 +339,4 @@ func errorReply(
 			Message: err.Error(),
 		},
 		err
-}
-
-func (s *SkinEditor) String() string {
-	return "Skin Editor"
-}
-
-func (s *SkinEditor) ID() StateID {
-	return SKINEDITOR
 }
