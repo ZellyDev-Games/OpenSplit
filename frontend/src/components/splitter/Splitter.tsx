@@ -11,11 +11,11 @@
 import { Dispatch, SetStateAction } from "react";
 
 import { CompareAgainst, Comparison, useComparison } from "../../hooks/splitter/useComparison";
-import { useContextMenu } from "../../hooks/splitter/useContextMenu";
 import { useSplitterMenu } from "../../hooks/splitter/useSplitterMenu";
+import { useContextMenu } from "../../hooks/useContextMenu";
 import { ConfigPayload } from "../../models/configPayload";
 import SessionPayload from "../../models/sessionPayload";
-import { ContextMenu } from "./ContextMenu";
+import { ContextMenu } from "../ContextMenu";
 import SegmentList from "./segments/SegmentList";
 import Timer from "./timer/Timer";
 

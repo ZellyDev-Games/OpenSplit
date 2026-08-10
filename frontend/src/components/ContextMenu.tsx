@@ -1,6 +1,6 @@
 import { MouseEvent, useLayoutEffect, useRef, useState } from "react";
 
-import { ContextMenuProps, MenuAction, MenuSeparator } from "../../hooks/splitter/useContextMenu";
+import { ContextMenuProps, MenuAction, MenuSeparator } from "../hooks/useContextMenu";
 
 const MENU_MARGIN = 8;
 const MIN_MENU_HEIGHT = 220;
