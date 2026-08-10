@@ -35,9 +35,9 @@ interface Props {
 
     onSelectFile(path: string): Promise<void>;
 
-    onSelectRule(rule: CSSRuleEditor): void;
-
     onCreateRule(): Promise<void>;
+
+    onSelectRule(rule: CSSRuleEditor): void;
 
     onCreateFile(name: string): Promise<void>;
 
@@ -67,9 +67,9 @@ export default function SkinFiles({
     dirty,
     onElementSelected,
     onSelectFile,
+    onCreateFile,
     onSelectRule,
     onCreateRule,
-    onCreateFile,
     onChangeRule,
     onChangeFile,
     overflowingIds,
@@ -105,14 +105,22 @@ export default function SkinFiles({
     const cssFile = selectedFileData && isCSSFile(selectedFileData);
 
     /*
-     * A selected file is edited directly as text when the editor is in
-     * file mode.
-     *
-     * Rule editing remains available when an element/rule has been selected.
-     * This keeps raw file editing and structured rule editing as separate
-     * operations against the same backend working copy.
+     * The element selector uses an empty string for "no element selected".
+     * Normalize that here so both null and "" represent the unselected state.
      */
-    const showRuleEditor = cssFile && (mode !== "file" || activeRule !== null);
+    const hasSelectedElement = selectedElement !== null && selectedElement !== "";
+
+    /*
+     * Raw file editing is the default when no element is selected.
+     *
+     * Once an element is selected, an existing rule, rule mode, or an
+     * available layer can switch the CSS file into the structured rule
+     * editor.
+     */
+    const fileHasLayer = cssRules.some((rule) => rule.layer !== null && rule.layer !== "");
+
+    const showRuleEditor =
+        cssFile && hasSelectedElement && (mode !== "file" || activeRule !== null || layer !== null || fileHasLayer);
 
     return (
         <div className="panel skin-files">

@@ -1,6 +1,5 @@
 import type { SkinModel } from "../../../models/skin/editor";
 import type { SkinElement } from "../../../models/skin/element";
-import { log } from "../../../utils/logger";
 import { getSkinElementRules } from "../skinControls/elementTree/elementRules";
 
 interface Props {
@@ -34,16 +33,6 @@ export default function ElementSelector({
                     const inSkin = rules.length > 0;
                     const overflowing = overflowingIds.has(element.id);
                     const icon = getElementStatusIcon(inSkin, overflowing);
-
-                    log.debug("[SkinFiles] Element dropdown", {
-                        id: element.id,
-                        label: element.label,
-                        selector: element.selector,
-                        inSkin,
-                        ruleCount: rules.length,
-                        overflowing,
-                        icon: icon.trim(),
-                    });
 
                     return (
                         <option key={element.id} value={element.id}>
