@@ -7,12 +7,15 @@ import { log } from "../../utils/logger";
 import { MenuItem } from "../useContextMenu";
 import { CompareAgainst, Comparison } from "./useComparison";
 
+export type SplitterLayout = "vertical" | "horizontal";
+
 type UseSplitterMenuParams = {
     disableContextMenu: boolean;
     globalHotkeysInitial: boolean;
     comparison: Comparison;
     setComparison: React.Dispatch<SetStateAction<Comparison>>;
     sessionPayload: SessionPayload;
+    initialLayout: SplitterLayout;
 };
 
 export function useSplitterMenu({
@@ -21,9 +24,22 @@ export function useSplitterMenu({
     comparison,
     setComparison,
     sessionPayload,
+    initialLayout,
 }: UseSplitterMenuParams) {
     const [items, setItems] = useState<MenuItem[]>([]);
     const [globalHotkeys, setGlobalHotkeys] = useState(globalHotkeysInitial);
+    const [layout, setLayout] = useState<SplitterLayout>(initialLayout);
+
+    useEffect(() => {
+        const savedLayout = sessionPayload.loaded_split_file?.layout;
+
+        if (savedLayout === "vertical" || savedLayout === "horizontal") {
+            setLayout(savedLayout);
+            return;
+        }
+
+        setLayout(initialLayout);
+    }, [initialLayout, sessionPayload.loaded_split_file?.layout]);
 
     useEffect(() => {
         if (disableContextMenu) {
@@ -33,16 +49,33 @@ export function useSplitterMenu({
         (async () => {
             setItems(await buildContextMenu());
         })();
-    }, [disableContextMenu, globalHotkeys, comparison, sessionPayload.loaded_split_file?.wr?.show]);
+    }, [disableContextMenu, globalHotkeys, comparison, layout, sessionPayload.loaded_split_file?.wr?.show]);
 
-    // regenerated whenever settings change
+    const setSplitterLayout = async (nextLayout: SplitterLayout) => {
+        if (layout === nextLayout) {
+            return;
+        }
+
+        log.debug("Splitter layout changed", nextLayout);
+
+        const result = await Dispatch(Command.SETLAYOUT, nextLayout);
+
+        if (result.code !== 0) {
+            log.error("Failed to save splitter layout", result.message);
+            return;
+        }
+
+        setLayout(nextLayout);
+    };
+
     const buildContextMenu = async (): Promise<MenuItem[]> => {
         const contextMenuItems: MenuItem[] = [];
+
         contextMenuItems.push({
             label: (globalHotkeys ? "✓ " : "") + "Global Hotkeys",
             onClick: async () => {
                 Dispatch(Command.TOGGLEGLOBAL, null).then((r) => {
-                    if (r.code == 0) {
+                    if (r.code === 0) {
                         setGlobalHotkeys(r.message === "true");
                     }
                 });
@@ -63,7 +96,35 @@ export function useSplitterMenu({
             },
         });
 
-        contextMenuItems.push({ type: "separator" });
+        contextMenuItems.push({
+            type: "separator",
+        });
+
+        /*
+         * Layout
+         */
+
+        contextMenuItems.push({
+            label: (layout === "vertical" ? "✓ " : "") + "Vertical Layout",
+            onClick: async () => {
+                await setSplitterLayout("vertical");
+            },
+        });
+
+        contextMenuItems.push({
+            label: (layout === "horizontal" ? "✓ " : "") + "Horizontal Layout",
+            onClick: async () => {
+                await setSplitterLayout("horizontal");
+            },
+        });
+
+        contextMenuItems.push({
+            type: "separator",
+        });
+
+        /*
+         * World record
+         */
 
         contextMenuItems.push({
             label: ((sessionPayload.loaded_split_file?.wr?.show ?? false) ? "✓ " : "") + "Display World Record",
@@ -72,10 +133,16 @@ export function useSplitterMenu({
             },
         });
 
-        contextMenuItems.push({ type: "separator" });
+        contextMenuItems.push({
+            type: "separator",
+        });
+
+        /*
+         * Comparison
+         */
 
         contextMenuItems.push({
-            label: (comparison == CompareAgainst.Average ? "✓ " : "") + "Compare Against Average",
+            label: (comparison === CompareAgainst.Average ? "✓ " : "") + "Compare Against Average",
             onClick: () => {
                 log.debug("Comparison mode changed", comparison);
                 setComparison(CompareAgainst.Average);
@@ -83,7 +150,7 @@ export function useSplitterMenu({
         });
 
         contextMenuItems.push({
-            label: (comparison == CompareAgainst.Best ? "✓ " : "") + "Compare Against Best Run",
+            label: (comparison === CompareAgainst.Best ? "✓ " : "") + "Compare Against Best Run",
             onClick: () => {
                 log.debug("Comparison mode changed", comparison);
                 setComparison(CompareAgainst.Best);
@@ -91,14 +158,20 @@ export function useSplitterMenu({
         });
 
         contextMenuItems.push({
-            label: (comparison == CompareAgainst.SumOfBest ? "✓ " : "") + "Compare Against Sum of Best Segments",
+            label: (comparison === CompareAgainst.SumOfBest ? "✓ " : "") + "Compare Against Sum of Best Segments",
             onClick: () => {
                 log.debug("Comparison mode changed", comparison);
                 setComparison(CompareAgainst.SumOfBest);
             },
         });
 
-        contextMenuItems.push({ type: "separator" });
+        contextMenuItems.push({
+            type: "separator",
+        });
+
+        /*
+         * Close / exit
+         */
 
         contextMenuItems.push({
             label: "Close Split File",
@@ -118,5 +191,6 @@ export function useSplitterMenu({
     return {
         items,
         globalHotkeys,
+        layout,
     };
 }

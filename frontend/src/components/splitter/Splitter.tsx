@@ -7,13 +7,24 @@
  *  - Split game information
  *  - Context menu
  *  - Comparison mode
+ *  - World record
+ *
+ * The splitter supports two layouts:
+ *
+ *  - vertical
+ *  - horizontal
+ *
+ * The active layout is exposed through:
+ *
+ *  data-layout="vertical"
+ *  data-layout="horizontal"
  */
 
-import { Dispatch, SetStateAction } from "react";
+import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 
 import { CompareAgainst, Comparison, useComparison } from "../../hooks/splitter/useComparison";
 import { useSegmentList } from "../../hooks/splitter/useSegmentList";
-import { useSplitterMenu } from "../../hooks/splitter/useSplitterMenu";
+import { SplitterLayout, useSplitterMenu } from "../../hooks/splitter/useSplitterMenu";
 import { useContextMenu } from "../../hooks/useContextMenu";
 import { ConfigPayload } from "../../models/configPayload";
 import SessionPayload from "../../models/sessionPayload";
@@ -32,6 +43,28 @@ type SplitterParams = {
     onComparisonChange?: Dispatch<SetStateAction<Comparison>>;
 };
 
+const DEFAULT_LAYOUT: SplitterLayout = "vertical";
+
+function getSkinDefaultLayout(element: HTMLElement): SplitterLayout {
+    const layout = getComputedStyle(element).getPropertyValue("--splitter-layout").trim();
+
+    if (layout === "horizontal" || layout === "vertical") {
+        return layout;
+    }
+
+    return DEFAULT_LAYOUT;
+}
+
+function getSavedLayout(sessionPayload: SessionPayload): SplitterLayout | null {
+    const layout = sessionPayload.loaded_split_file?.layout;
+
+    if (layout === "horizontal" || layout === "vertical") {
+        return layout;
+    }
+
+    return null;
+}
+
 export default function Splitter({
     sessionPayload,
     configPayload,
@@ -40,16 +73,47 @@ export default function Splitter({
     comparison: controlledComparison,
     onComparisonChange,
 }: SplitterParams) {
+    const splitterRef = useRef<HTMLDivElement>(null);
+    const [initialLayout, setInitialLayout] = useState<SplitterLayout>(DEFAULT_LAYOUT);
+
     const contextMenu = useContextMenu();
 
     const { comparison, setComparison } = useComparison(controlledComparison, onComparisonChange);
 
-    const { items: contextMenuItems } = useSplitterMenu({
+    /*
+     * The split file's saved layout takes precedence over the
+     * skin's preferred layout.
+     *
+     * If no layout has been saved yet, use:
+     *
+     *     --splitter-layout: vertical;
+     *
+     * or:
+     *
+     *     --splitter-layout: horizontal;
+     */
+    useEffect(() => {
+        const savedLayout = getSavedLayout(sessionPayload);
+
+        if (savedLayout !== null) {
+            setInitialLayout(savedLayout);
+            return;
+        }
+
+        if (!splitterRef.current) {
+            return;
+        }
+
+        setInitialLayout(getSkinDefaultLayout(splitterRef.current));
+    }, [sessionPayload.loaded_split_file?.layout]);
+
+    const { layout, items: contextMenuItems } = useSplitterMenu({
         disableContextMenu,
         globalHotkeysInitial: configPayload.global_hotkeys_active,
         comparison,
         setComparison,
         sessionPayload,
+        initialLayout,
     });
 
     const { completeClassName, rows, finalRow, containerRef } = useSegmentList({
@@ -65,7 +129,7 @@ export default function Splitter({
     };
 
     return (
-        <div {...(!disableContextMenu ? contextMenu.bind : {})} id="splitter">
+        <div ref={splitterRef} {...(!disableContextMenu ? contextMenu.bind : {})} id="splitter" data-layout={layout}>
             {!disableContextMenu && (
                 <ContextMenu state={contextMenu.state} close={contextMenu.close} items={contextMenuItems} />
             )}
@@ -89,6 +153,7 @@ export default function Splitter({
             <div className="comparison-mode">{comparisonLabel[comparison]}</div>
 
             <Timer offset={sessionPayload.loaded_split_file?.offset ?? 0} />
+
             <WorldRecordDisplay worldRecord={sessionPayload.loaded_split_file?.wr} />
         </div>
     );

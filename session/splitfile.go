@@ -31,6 +31,8 @@ type SplitFile struct {
 
 	WR WorldRecord
 
+	Layout string
+
 	WindowX      int
 	WindowY      int
 	WindowHeight int
@@ -95,6 +97,8 @@ func DeepCopySplitFile(inFile *SplitFile) SplitFile {
 		RollingAverageRuns: inFile.RollingAverageRuns,
 
 		WR: inFile.WR,
+
+		Layout: inFile.Layout,
 
 		WindowX:      inFile.WindowX,
 		WindowY:      inFile.WindowY,

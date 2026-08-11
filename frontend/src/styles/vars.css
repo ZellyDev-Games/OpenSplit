@@ -16,6 +16,23 @@
         /* Splitter */
         --splitlist-direction: column;
 
+        /*
+         * Splitter layout.
+         *
+         * Supported values:
+         *   vertical
+         *   horizontal
+         *
+         * The active layout is exposed to the splitter as:
+         *
+         *   [data-layout="vertical"]
+         *   [data-layout="horizontal"]
+         *
+         * Skins may override the default layout by changing this
+         * variable and/or style either layout explicitly.
+         */
+        --splitter-layout: vertical;
+
         --split-delta-text-align: right;
         --split-delta-font-family: Techna;
 

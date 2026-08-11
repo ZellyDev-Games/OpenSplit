@@ -206,6 +206,35 @@ func (s *Service) ToggleWorldRecordDisplay() (bool, error) {
 	return s.loadedSplitFile.WR.Show, nil
 }
 
+/**
+ * Sets the persisted splitter layout.
+ *
+ * The layout is part of the loaded split file and therefore survives
+ * closing and reopening the split file.
+ */
+func (s *Service) SetLayout(layout string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.loadedSplitFile == nil {
+		return errors.New("no split file loaded")
+	}
+
+	if layout != "vertical" && layout != "horizontal" {
+		return errors.New("invalid splitter layout")
+	}
+
+	s.loadedSplitFile.Layout = layout
+
+	logger.Debugf(
+		logModule,
+		"splitter layout=%s",
+		layout,
+	)
+
+	return nil
+}
+
 // SetRuntimeOffsetOverride replaces the configured splitfile offset
 // for the current session only.
 func (s *Service) SetRuntimeOffsetOverride(offset time.Duration) {

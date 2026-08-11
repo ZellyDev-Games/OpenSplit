@@ -232,6 +232,53 @@ func (r *Running) Receive(c command.Command, payload *string) (dispatcher.Dispat
 			"session:update",
 			adapters.DomainToDTO(machine.sessionService),
 		)
+	case command.SETLAYOUT:
+		if payload == nil {
+			return dispatcher.DispatchReply{
+				Code:    1,
+				Message: "missing layout payload",
+			}, nil
+		}
+
+		layout := *payload
+
+		if layout != "vertical" && layout != "horizontal" {
+			return dispatcher.DispatchReply{
+				Code:    2,
+				Message: "invalid layout payload",
+			}, nil
+		}
+
+		logger.Debugf(
+			logModule,
+			"splitter layout changed to %s",
+			layout,
+		)
+
+		if err := machine.sessionService.SetLayout(layout); err != nil {
+			return dispatcher.DispatchReply{
+				Code:    3,
+				Message: err.Error(),
+			}, nil
+		}
+
+		if err := machine.repoService.SaveSplitFileLayout(layout); err != nil {
+			logger.Errorf(
+				logModule,
+				"failed saving splitter layout: %v",
+				err,
+			)
+
+			return dispatcher.DispatchReply{
+				Code:    4,
+				Message: err.Error(),
+			}, nil
+		}
+
+		machine.runtimeProvider.EventsEmit(
+			"session:update",
+			adapters.DomainToDTO(machine.sessionService),
+		)
 	default:
 		logger.Warnf(logModule, "unhandled default case in Running: %d", c)
 	}

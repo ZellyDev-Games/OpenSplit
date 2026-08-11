@@ -181,6 +181,47 @@ func (s *Service) SaveWorldRecordDisplay(show bool) error {
 	)
 }
 
+// SaveSplitFileLayout updates only the persisted splitter layout.
+func (s *Service) SaveSplitFileLayout(layout string) error {
+	if layout != "vertical" && layout != "horizontal" {
+		return errors.New("invalid splitter layout")
+	}
+
+	s.splitFileLock.Lock()
+	defer s.splitFileLock.Unlock()
+
+	existingBytes, err := s.repository.GetLoadedSplitFile()
+	if err != nil {
+		return err
+	}
+
+	dto, err := adapters.JSONSplitFileToDTO(string(existingBytes))
+	if err != nil {
+		return err
+	}
+
+	dto.Layout = layout
+
+	payload, err := adapters.SplitFileToFrontEnd(dto)
+	if err != nil {
+		return err
+	}
+
+	identifier := buildSplitFileName(dto)
+
+	logger.Debugf(
+		logModule,
+		"saving splitter layout: %s",
+		layout,
+	)
+
+	return s.repository.SaveSplitFile(
+		payload,
+		identifier,
+		false,
+	)
+}
+
 func (s *Service) Export() error {
 	logger.Info(logModule,
 		"exporting cleaned split file",

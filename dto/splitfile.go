@@ -49,6 +49,8 @@ type SplitFile struct {
 
 	WR WorldRecord `json:"wr"`
 
+	Layout string `json:"layout"`
+
 	WindowX      int `json:"window_x"`
 	WindowY      int `json:"window_y"`
 	WindowWidth  int `json:"window_width"`

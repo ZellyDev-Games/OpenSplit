@@ -14,6 +14,8 @@ import RunPayload from "./runPayload";
 import SegmentPayload from "./segmentPayload";
 import WorldRecord from "./worldRecord";
 
+export type SplitterLayout = "vertical" | "horizontal";
+
 export type SplitVariable = {
     id: string;
     name: string;
@@ -43,6 +45,15 @@ export default class SplitFilePayload {
     platform: string = "SNES";
 
     wr: WorldRecord = new WorldRecord();
+
+    /**
+     * Persisted splitter layout.
+     *
+     * An empty value means that the split file has not explicitly
+     * selected a layout and the skin's --splitter-layout value should
+     * be used as the default.
+     */
+    layout: SplitterLayout | "" = "";
 
     window_x: number = 100;
     window_y: number = 100;

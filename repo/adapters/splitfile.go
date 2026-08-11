@@ -43,6 +43,8 @@ func DomainSplitFileToDTO(sf session.SplitFile) dto.SplitFile {
 
 		WR: dto.WorldRecord(sf.WR),
 
+		Layout: sf.Layout,
+
 		WindowX:      sf.WindowX,
 		WindowY:      sf.WindowY,
 		WindowWidth:  sf.WindowWidth,
@@ -109,6 +111,8 @@ func DTOSplitFileToDomain(payload dto.SplitFile) (session.SplitFile, error) {
 	newSplitFile.Platform = payload.Platform
 
 	newSplitFile.WR = session.WorldRecord(payload.WR)
+
+	newSplitFile.Layout = payload.Layout
 
 	newSplitFile.WindowX = payload.WindowX
 	newSplitFile.WindowY = payload.WindowY

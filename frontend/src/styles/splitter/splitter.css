@@ -11,13 +11,162 @@
 
         overflow: hidden;
 
+        /*
+         * The actual layout is selected by data-layout.
+         *
+         * Vertical is the default so the splitter remains usable
+         * before a layout has been selected.
+         */
         flex-direction: column;
     }
 
+    /*
+     * ============================================================
+     * Vertical layout
+     * ============================================================
+     *
+     *  ------------------------
+     *  | gameInfo             |
+     *  ------------------------
+     *  | splitList            |
+     *  |                      |
+     *  | comparison           |
+     *  | timer                |
+     *  | worldRecord           |
+     *  ------------------------
+     */
+    #splitter[data-layout="vertical"] {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #splitter[data-layout="vertical"] #gameInfo {
+        flex: 0 0 auto;
+    }
+
+    #splitter[data-layout="vertical"] #splitList {
+        flex: 1 1 auto;
+        min-width: 0;
+        min-height: 0;
+    }
+
+    #splitter[data-layout="vertical"] .comparison-mode {
+        flex: 0 0 auto;
+    }
+
+    #splitter[data-layout="vertical"] #time-container {
+        flex: 0 0 auto;
+    }
+
+    #splitter[data-layout="vertical"] #world-record {
+        flex: 0 0 auto;
+    }
+
+    /*
+     * ============================================================
+     * Horizontal layout
+     * ============================================================
+     *
+     *  ------------------------------------------------------------
+     *  | gameInfo | splitList | comparison | timer | worldRecord |
+     *  ------------------------------------------------------------
+     */
+    #splitter[data-layout="horizontal"] {
+        display: grid;
+
+        grid-template-columns:
+            minmax(150px, 1fr)
+            minmax(250px, 3fr)
+            minmax(120px, 0.8fr)
+            minmax(180px, 1.4fr)
+            minmax(150px, 1fr);
+
+        grid-template-rows: minmax(0, 1fr);
+
+        grid-template-areas: "gameInfo splitList comparison timer worldRecord";
+
+        align-items: stretch;
+    }
+
+    #splitter[data-layout="horizontal"] #gameInfo {
+        grid-area: gameInfo;
+
+        min-width: 0;
+        min-height: 0;
+
+        overflow: hidden;
+    }
+
+    #splitter[data-layout="horizontal"] #splitList {
+        grid-area: splitList;
+
+        display: flex;
+        flex-direction: column;
+
+        min-width: 0;
+        min-height: 0;
+
+        overflow: hidden;
+    }
+
+    #splitter[data-layout="horizontal"] .comparison-mode {
+        grid-area: comparison;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        min-width: 0;
+        min-height: 0;
+
+        padding: 8px;
+
+        text-align: center;
+    }
+
+    #splitter[data-layout="horizontal"] #time-container {
+        grid-area: timer;
+
+        width: 100%;
+        height: 100%;
+
+        min-width: 0;
+        min-height: 0;
+
+        padding: 8px;
+
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    #splitter[data-layout="horizontal"] #world-record {
+        grid-area: worldRecord;
+
+        width: 100%;
+        height: 100%;
+
+        min-width: 0;
+        min-height: 0;
+
+        padding: 8px;
+
+        justify-content: center;
+    }
+
+    /*
+     * ============================================================
+     * Split list
+     * ============================================================
+     */
+
     #splitContainer {
         flex: 1;
+
+        min-width: 0;
         min-height: 0;
+
         overflow-y: auto;
+        overflow-x: hidden;
     }
 
     #splitContainer::-webkit-scrollbar {
@@ -43,15 +192,21 @@
 
     #splitList {
         display: flex;
+
         flex: 1;
+
+        min-width: 0;
         min-height: 0;
+
         flex-direction: column;
     }
 
     #splitList table {
         width: 100%;
+
         margin: 0;
         padding: 0;
+
         border-collapse: collapse;
     }
 
@@ -59,4 +214,17 @@
         border-left: 0;
         border-right: 0;
     }
+
+    /*
+     * ============================================================
+     * Layout variable
+     * ============================================================
+     *
+     * Skins can use --splitter-layout as their preferred layout.
+     *
+     * The variable itself does not select the React data-layout
+     * attribute; React owns the active runtime layout. This keeps
+     * layout switching deterministic while allowing skins to define
+     * layout-specific styling.
+     */
 }
