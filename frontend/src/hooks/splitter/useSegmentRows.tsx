@@ -109,7 +109,6 @@ export function useSegmentRows({
                         completeClassName={completeClassName}
                         isExpanded={isExpanded}
                         hasChildren={segmentData.hasChildren}
-                        lastLeafSplit={lastLeafSplit}
                         parentComparison={parentComparison}
                         parentDelta={parentDelta}
                         parentSegmentDelta={parentSegmentDelta}

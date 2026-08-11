@@ -30,11 +30,14 @@
      *  ------------------------
      *  | splitList            |
      *  |                      |
+     *  | finalSegment         |
+     *  ------------------------
      *  | comparison           |
      *  | timer                |
-     *  | worldRecord           |
+     *  | worldRecord          |
      *  ------------------------
      */
+
     #splitter[data-layout="vertical"] {
         display: flex;
         flex-direction: column;
@@ -46,6 +49,7 @@
 
     #splitter[data-layout="vertical"] #splitList {
         flex: 1 1 auto;
+
         min-width: 0;
         min-height: 0;
     }
@@ -67,23 +71,31 @@
      * Horizontal layout
      * ============================================================
      *
-     *  ------------------------------------------------------------
-     *  | gameInfo | splitList | comparison | timer | worldRecord |
-     *  ------------------------------------------------------------
+     *  ---------------------------------------------------------------------------
+     *  | gameInfo | split list | final | comparison | timer | world record       |
+     *  ---------------------------------------------------------------------------
+     *
+     * The split list itself contains horizontally scrolling
+     * segment columns.
+     *
+     * The final segment is a separate grid column immediately
+     * after the scrolling split list.
      */
+
     #splitter[data-layout="horizontal"] {
         display: grid;
 
         grid-template-columns:
             minmax(150px, 1fr)
-            minmax(250px, 3fr)
+            minmax(0, 3fr)
+            minmax(120px, 150px)
             minmax(120px, 0.8fr)
             minmax(180px, 1.4fr)
             minmax(150px, 1fr);
 
         grid-template-rows: minmax(0, 1fr);
 
-        grid-template-areas: "gameInfo splitList comparison timer worldRecord";
+        grid-template-areas: "gameInfo splitList finalSegment comparison timer worldRecord";
 
         align-items: stretch;
     }
@@ -97,11 +109,275 @@
         overflow: hidden;
     }
 
+    /*
+     * ------------------------------------------------------------
+     * Horizontal split list
+     * ------------------------------------------------------------
+     *
+     * #splitList is only a wrapper around #splitContainer and
+     * #finalSegment in the React hierarchy.
+     *
+     * display: contents removes the wrapper's own grid box and
+     * allows both children to become direct grid items of
+     * #splitter.
+     */
+
     #splitter[data-layout="horizontal"] #splitList {
+        display: contents;
+    }
+
+    /*
+     * ------------------------------------------------------------
+     * Horizontal scrolling segment container
+     * ------------------------------------------------------------
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer {
         grid-area: splitList;
+
+        display: block;
+
+        min-width: 0;
+        min-height: 0;
+
+        overflow-x: auto;
+        overflow-y: hidden;
+
+        scroll-behavior: smooth;
+        overscroll-behavior-x: contain;
+    }
+
+    /*
+     * Hide the horizontal scrollbar until the container is hovered.
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer::-webkit-scrollbar {
+        height: 0;
+    }
+
+    #splitter[data-layout="horizontal"] #splitContainer:hover::-webkit-scrollbar {
+        height: 10px;
+    }
+
+    #splitter[data-layout="horizontal"] #splitContainer::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.4);
+        border-radius: 6px;
+    }
+
+    #splitter[data-layout="horizontal"] #splitContainer::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    /*
+     * ------------------------------------------------------------
+     * Horizontal segment table
+     * ------------------------------------------------------------
+     *
+     * Each <tr> represents one segment.
+     *
+     * The row is transformed into a vertical segment column:
+     *
+     *     icon
+     *     name
+     *     delta
+     *     comparison / segment time
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer table {
+        width: max-content;
+        min-width: 100%;
+        height: 100%;
+
+        margin: 0;
+        padding: 0;
+
+        border-collapse: collapse;
+    }
+
+    #splitter[data-layout="horizontal"] #splitContainer table tbody {
+        display: flex;
+        flex-direction: row;
+
+        width: max-content;
+        min-width: 100%;
+        height: 100%;
+
+        margin: 0;
+        padding: 0;
+    }
+
+    /*
+     * Each segment becomes a fixed-width column.
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer table tr {
+        display: grid;
+
+        grid-template-rows:
+            auto
+            minmax(0, 1fr)
+            auto
+            auto
+            auto;
+
+        flex: 0 0 150px;
+
+        width: 150px;
+        min-width: 150px;
+        height: 100%;
+
+        margin: 0;
+        padding: 0;
+
+        align-items: center;
+
+        border-left: 1px solid transparent;
+        border-right: 1px solid transparent;
+
+        scroll-margin-inline: 12px;
+    }
+
+    /*
+     * Segment cells become rows inside each segment column.
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer table td {
+        display: flex;
+
+        width: 100%;
+        min-width: 0;
+
+        margin: 0;
+
+        align-items: center;
+        justify-content: center;
+
+        border: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+
+        padding: 6px;
+
+        text-align: center;
+    }
+
+    /*
+     * ------------------------------------------------------------
+     * Segment icon
+     * ------------------------------------------------------------
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer .segmentIcon {
+        min-height: 40px;
+    }
+
+    #splitter[data-layout="horizontal"] #splitContainer .segment-icon {
+        flex-shrink: 0;
+
+        width: 32px;
+        height: 32px;
+
+        margin: 0;
+    }
+
+    /*
+     * ------------------------------------------------------------
+     * Segment name
+     * ------------------------------------------------------------
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer .splitName {
+        flex-direction: column;
+
+        gap: 4px;
+
+        min-height: 64px;
+
+        overflow-wrap: anywhere;
+        word-break: break-word;
+
+        overflow: hidden;
+
+        font-weight: normal;
+    }
+
+    /*
+     * ------------------------------------------------------------
+     * Delta
+     * ------------------------------------------------------------
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer .splitDelta {
+        justify-content: center;
+
+        min-height: 32px;
+
+        text-align: center;
+    }
+
+    /*
+     * ------------------------------------------------------------
+     * Comparison
+     * ------------------------------------------------------------
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer .splitComparison {
+        justify-content: center;
+
+        min-height: 32px;
+
+        text-align: center;
+    }
+
+    /*
+     * ------------------------------------------------------------
+     * Segment time
+     * ------------------------------------------------------------
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer .splitTime {
+        justify-content: center;
+
+        min-height: 32px;
+
+        text-align: center;
+    }
+
+    /*
+     * Keep selected segments visually obvious.
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer table tr.selected {
+        background: var(--active-segment-background, #000);
+        color: var(--active-segment-text-color, #fff);
+    }
+
+    /*
+     * ============================================================
+     * Horizontal final segment
+     * ============================================================
+     *
+     * This is now a direct grid item of #splitter because
+     * #splitList uses display: contents.
+     *
+     * Therefore:
+     *
+     *     split list | final segment | comparison
+     *
+     * instead of:
+     *
+     *     split list
+     *       ├── scrolling segments
+     *       └── final segment
+     */
+
+    #splitter[data-layout="horizontal"] #finalSegment {
+        grid-area: finalSegment;
 
         display: flex;
         flex-direction: column;
+
+        width: 100%;
+        height: 100%;
 
         min-width: 0;
         min-height: 0;
@@ -109,10 +385,106 @@
         overflow: hidden;
     }
 
+    #splitter[data-layout="horizontal"] #finalSegment table {
+        width: 100%;
+        height: 100%;
+
+        margin: 0;
+        padding: 0;
+
+        border-collapse: collapse;
+    }
+
+    #splitter[data-layout="horizontal"] #finalSegment table tbody {
+        display: flex;
+
+        width: 100%;
+        height: 100%;
+
+        margin: 0;
+        padding: 0;
+    }
+
+    #splitter[data-layout="horizontal"] #finalSegment table tr {
+        display: grid;
+
+        grid-template-rows:
+            auto
+            minmax(0, 1fr)
+            auto
+            auto
+            auto;
+
+        width: 100%;
+        height: 100%;
+
+        align-items: center;
+    }
+
+    #splitter[data-layout="horizontal"] #finalSegment table td {
+        display: flex;
+
+        width: 100%;
+        min-width: 0;
+
+        align-items: center;
+        justify-content: center;
+
+        border: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+
+        padding: 6px;
+
+        text-align: center;
+    }
+
+    #splitter[data-layout="horizontal"] #finalSegment .segmentIcon {
+        min-height: 40px;
+    }
+
+    #splitter[data-layout="horizontal"] #finalSegment .splitName {
+        flex-direction: column;
+
+        gap: 4px;
+
+        min-height: 64px;
+
+        overflow-wrap: anywhere;
+        word-break: break-word;
+
+        overflow: hidden;
+    }
+
+    #splitter[data-layout="horizontal"] #finalSegment .segment-icon {
+        flex-shrink: 0;
+
+        width: 32px;
+        height: 32px;
+
+        margin: 0;
+    }
+
+    #splitter[data-layout="horizontal"] #finalSegment .splitDelta,
+    #splitter[data-layout="horizontal"] #finalSegment .splitComparison,
+    #splitter[data-layout="horizontal"] #finalSegment .splitTime {
+        justify-content: center;
+
+        min-height: 32px;
+
+        text-align: center;
+    }
+
+    /*
+     * ============================================================
+     * Horizontal comparison
+     * ============================================================
+     */
+
     #splitter[data-layout="horizontal"] .comparison-mode {
         grid-area: comparison;
 
         display: flex;
+
         align-items: center;
         justify-content: center;
 
@@ -123,6 +495,12 @@
 
         text-align: center;
     }
+
+    /*
+     * ============================================================
+     * Horizontal timer
+     * ============================================================
+     */
 
     #splitter[data-layout="horizontal"] #time-container {
         grid-area: timer;
@@ -138,6 +516,12 @@
         align-items: center;
         justify-content: flex-end;
     }
+
+    /*
+     * ============================================================
+     * Horizontal world record
+     * ============================================================
+     */
 
     #splitter[data-layout="horizontal"] #world-record {
         grid-area: worldRecord;
@@ -155,7 +539,7 @@
 
     /*
      * ============================================================
-     * Split list
+     * Vertical / shared split list
      * ============================================================
      */
 

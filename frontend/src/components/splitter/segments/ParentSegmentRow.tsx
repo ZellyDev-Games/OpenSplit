@@ -1,7 +1,6 @@
 import { JSX } from "react";
 
 import SegmentPayload from "../../../models/segmentPayload";
-import SplitPayload from "../../../models/splitPayload";
 
 type ParentSegmentRowProps = {
     segment: SegmentPayload;
@@ -9,7 +8,6 @@ type ParentSegmentRowProps = {
     completeClassName: string;
     isExpanded: boolean;
     hasChildren: boolean;
-    lastLeafSplit: SplitPayload | null;
     parentComparison: JSX.Element | null;
     parentDelta: JSX.Element | null;
     parentSegmentDelta: JSX.Element | null;
@@ -27,12 +25,23 @@ export default function ParentSegmentRow({
     parentSegmentDelta,
     onToggle,
 }: ParentSegmentRowProps) {
+    const indentation = 5 + depth * 16;
+
     return (
         <tr className="parentRow">
             <td
+                className="segmentIcon"
+                style={{
+                    paddingLeft: indentation,
+                }}
+            >
+                {segment.icon && <img src={segment.icon} alt="" draggable={false} className="segment-icon" />}
+            </td>
+
+            <td
                 className={"splitName parentName " + completeClassName}
                 style={{
-                    paddingLeft: depth * 16,
+                    paddingLeft: indentation,
                 }}
             >
                 {hasChildren && (
@@ -48,8 +57,6 @@ export default function ParentSegmentRow({
                         {isExpanded ? "▾" : "▸"}
                     </button>
                 )}
-
-                {segment.icon && <img src={segment.icon} alt="" draggable={false} className="segment-icon" />}
 
                 <strong>{segment.name}</strong>
             </td>

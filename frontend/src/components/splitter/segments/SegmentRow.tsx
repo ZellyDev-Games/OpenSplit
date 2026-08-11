@@ -1,4 +1,4 @@
-import { JSX, RefObject } from "react";
+import { RefObject } from "react";
 
 import SegmentPayload from "../../../models/segmentPayload";
 import SplitPayload from "../../../models/splitPayload";
@@ -14,7 +14,6 @@ type SegmentRowProps = {
     time?: number | null;
     previousCumulative?: number;
     activeRowRef?: RefObject<HTMLTableRowElement | null>;
-    renderToggle?: JSX.Element | null;
 };
 
 export default function SegmentRow({
@@ -26,7 +25,6 @@ export default function SegmentRow({
     time = null,
     previousCumulative = 0,
     activeRowRef,
-    renderToggle,
 }: SegmentRowProps) {
     let delta: number | null = null;
 
@@ -40,18 +38,25 @@ export default function SegmentRow({
 
     const segment: SegmentPayload = segmentData.segment;
 
+    const indentation = 5 + segmentData.depth * 16;
+
     return (
         <tr ref={activeRow ? (activeRowRef ?? null) : null} className={"segmentRow" + (activeRow ? " selected" : "")}>
             <td
-                className="splitName"
+                className="segmentIcon"
                 style={{
-                    paddingLeft: 5 + segmentData.depth * 16,
+                    paddingLeft: indentation,
                 }}
             >
-                {renderToggle}
-
                 {segment.icon && <img src={segment.icon} alt="" draggable={false} className="segment-icon" />}
+            </td>
 
+            <td
+                className="splitName"
+                style={{
+                    paddingLeft: indentation,
+                }}
+            >
                 {segment.name}
             </td>
 

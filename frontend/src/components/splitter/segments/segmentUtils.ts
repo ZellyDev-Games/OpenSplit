@@ -89,9 +89,25 @@ export function isVisible(id: string, parentById: Map<string, string | null>, ex
     return true;
 }
 
+/**
+ * Returns whether an element is completely visible inside a container.
+ *
+ * Checks both axes so this works for:
+ *
+ *  - vertical splitter layout
+ *  - horizontal splitter layout
+ *
+ * An element is considered visible only when its complete bounding
+ * rectangle is inside the container's visible rectangle.
+ */
 export function isElementFullyVisible(element: HTMLElement, container: HTMLElement): boolean {
     const elementRect = element.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
 
-    return elementRect.top >= containerRect.top && elementRect.bottom <= containerRect.bottom;
+    return (
+        elementRect.top >= containerRect.top &&
+        elementRect.bottom <= containerRect.bottom &&
+        elementRect.left >= containerRect.left &&
+        elementRect.right <= containerRect.right
+    );
 }
