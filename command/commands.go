@@ -40,6 +40,7 @@ const (
 	//
 
 	TOGGLEGLOBAL
+	SETLAYOUT
 	TOGGLEWR
 
 	FOCUS
