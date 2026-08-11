@@ -18,22 +18,6 @@ const elements: SkinElement[] = [
     },
 
     {
-        id: "segment_body",
-        label: "Segment Body",
-        selector: "#splitBody",
-    },
-    {
-        id: "segment_body_complete",
-        label: "Segment Body — Complete",
-        selector: "#splitBody.complete",
-    },
-    {
-        id: "segment_body_pb",
-        label: "Segment Body — PB",
-        selector: "#splitBody.complete.pb",
-    },
-
-    {
         id: "segment_container",
         label: "Segment Container",
         selector: "#splitContainer",

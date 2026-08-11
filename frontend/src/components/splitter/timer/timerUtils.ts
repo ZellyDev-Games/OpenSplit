@@ -1,4 +1,24 @@
-import { FormattedTimeParts, TimeParts } from "./Timer";
+type FormattedTimeParts = {
+    isNegative: boolean;
+    showSign: boolean;
+    showHours: boolean;
+    showMinutes: boolean;
+    sepHM: string;
+    sepMS: string;
+    sepSC: string;
+    hoursText: string;
+    minutesText: string;
+    secondsText: string;
+    centisText: string;
+};
+
+type TimeParts = {
+    negative: boolean;
+    hours: number;
+    minutes: number;
+    seconds: number;
+    centis: number;
+};
 
 export function msToParts(ms: number): TimeParts {
     const negative = ms < 0;

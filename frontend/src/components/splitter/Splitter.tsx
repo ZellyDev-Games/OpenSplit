@@ -4,6 +4,7 @@
  * Hosts:
  *  - Timer
  *  - Segment list
+ *  - Split game information
  *  - Context menu
  *  - Comparison mode
  */
@@ -11,13 +12,15 @@
 import { Dispatch, SetStateAction } from "react";
 
 import { CompareAgainst, Comparison, useComparison } from "../../hooks/splitter/useComparison";
+import { useSegmentList } from "../../hooks/splitter/useSegmentList";
 import { useSplitterMenu } from "../../hooks/splitter/useSplitterMenu";
 import { useContextMenu } from "../../hooks/useContextMenu";
 import { ConfigPayload } from "../../models/configPayload";
 import SessionPayload from "../../models/sessionPayload";
 import { ContextMenu } from "../ContextMenu";
-import SegmentList from "./segments/SegmentList";
+import SplitGameInfo from "./SplitGameInfo";
 import Timer from "./timer/Timer";
+import WorldRecordDisplay from "./timer/WorldRecord";
 
 type SplitterParams = {
     sessionPayload: SessionPayload;
@@ -49,6 +52,12 @@ export default function Splitter({
         sessionPayload,
     });
 
+    const { completeClassName, rows, finalRow, containerRef } = useSegmentList({
+        sessionPayload,
+        comparison,
+        forceExpandAll,
+    });
+
     const comparisonLabel: Record<Comparison, string> = {
         [CompareAgainst.Average]: "Comparing Against: Average",
         [CompareAgainst.Best]: "Comparing Against: Best Run",
@@ -60,9 +69,27 @@ export default function Splitter({
             {!disableContextMenu && (
                 <ContextMenu state={contextMenu.state} close={contextMenu.close} items={contextMenuItems} />
             )}
-            <SegmentList sessionPayload={sessionPayload} comparison={comparison} forceExpandAll={forceExpandAll} />
+
+            <SplitGameInfo sessionPayload={sessionPayload} completeClassName={completeClassName} />
+
+            <div id="splitList" className={completeClassName}>
+                <div ref={containerRef} id="splitContainer" className={completeClassName}>
+                    <table cellSpacing={0} className={completeClassName}>
+                        <tbody>{rows}</tbody>
+                    </table>
+                </div>
+
+                <div id="finalSegment" className={completeClassName}>
+                    <table cellSpacing={0} className={completeClassName}>
+                        <tbody>{finalRow}</tbody>
+                    </table>
+                </div>
+            </div>
+
             <div className="comparison-mode">{comparisonLabel[comparison]}</div>
-            <Timer offset={sessionPayload.loaded_split_file?.offset ?? 0} wr={sessionPayload.loaded_split_file?.wr} />
+
+            <Timer offset={sessionPayload.loaded_split_file?.offset ?? 0} />
+            <WorldRecordDisplay worldRecord={sessionPayload.loaded_split_file?.wr} />
         </div>
     );
 }
