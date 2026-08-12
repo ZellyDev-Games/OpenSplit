@@ -47,8 +47,6 @@ interface Props {
 
     revision: number;
 
-    dirty: boolean;
-
     overflowingIds: Set<string>;
 }
 
@@ -64,7 +62,6 @@ export default function SkinFiles({
     selector,
     layer,
     revision,
-    dirty,
     onElementSelected,
     onSelectFile,
     onCreateFile,
@@ -169,12 +166,6 @@ export default function SkinFiles({
                     onCreateRule={onCreateRule}
                 />
             )}
-
-            {selectedFileData?.text && !cssFile && !imageFile && (
-                <TextFileEditor file={selectedFileData} onChangeFile={onChangeFile} />
-            )}
-
-            {dirty && <div className="unsaved-changes">Unsaved changes</div>}
         </div>
     );
 }
