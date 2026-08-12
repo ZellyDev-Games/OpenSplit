@@ -33,10 +33,19 @@ type SplitFile struct {
 
 	Layout string
 
-	WindowX      int
-	WindowY      int
-	WindowHeight int
-	WindowWidth  int
+	Windows SplitterWindows
+}
+
+type SplitterWindow struct {
+	X      int
+	Y      int
+	Width  int
+	Height int
+}
+
+type SplitterWindows struct {
+	Vertical   SplitterWindow
+	Horizontal SplitterWindow
 }
 
 type Variable struct {
@@ -53,6 +62,17 @@ type WorldRecord struct {
 	Players    []string
 	RealTime   float64
 	InGameTime float64
+}
+
+func (s *SplitFile) WindowForLayout(layout string) *SplitterWindow {
+	switch layout {
+	case "horizontal":
+		return &s.Windows.Horizontal
+	case "vertical":
+		fallthrough
+	default:
+		return &s.Windows.Vertical
+	}
 }
 
 func (s *SplitFile) DeepCopyLeafSegments() []Segment {
@@ -100,10 +120,7 @@ func DeepCopySplitFile(inFile *SplitFile) SplitFile {
 
 		Layout: inFile.Layout,
 
-		WindowX:      inFile.WindowX,
-		WindowY:      inFile.WindowY,
-		WindowWidth:  inFile.WindowWidth,
-		WindowHeight: inFile.WindowHeight,
+		Windows: inFile.Windows,
 	}
 }
 

@@ -50,8 +50,14 @@ export type AppViewModel = {
     window: WindowConfig;
 } & (
     | { view: AppView.Welcome }
-    | { view: AppView.NewSplitFile; splitFile?: SplitFilePayload | null }
-    | { view: AppView.EditSplitFile; splitFile: SplitFilePayload | null }
+    | {
+          view: AppView.NewSplitFile;
+          splitFile?: SplitFilePayload | null;
+      }
+    | {
+          view: AppView.EditSplitFile;
+          splitFile: SplitFilePayload | null;
+      }
     | { view: AppView.NewSkin }
     | { view: AppView.EditSkin }
     | { view: AppView.Running; session: SessionPayload; config: ConfigPayload }
@@ -95,12 +101,6 @@ function ViewRouter({ model, skinModel }: ViewRouterProps) {
     }
 }
 
-/**
- * Root application component.
- *
- * Initializes global event bindings, skin loading, window tracking,
- * and routes between the various application views.
- */
 export default function App() {
     const [viewModel, setViewModel] = useState<AppViewModel | null>(null);
 
@@ -132,6 +132,7 @@ export default function App() {
 
         return EventsOn("skin:update", (address: string) => {
             log.info("[App] Skin updated:", address);
+
             changeSkin(address);
         });
     }, []);
@@ -168,22 +169,34 @@ function useDetectWindowChange() {
 
         (async () => {
             const { x, y } = await WindowGetPosition();
+
             lastX = x;
             lastY = y;
 
             const { w, h } = await WindowGetSize();
+
             lastW = w;
             lastH = h;
             init = true;
         })();
 
         const interval = window.setInterval(async () => {
-            if (!init) return;
+            if (!init) {
+                return;
+            }
+
             const { x, y } = await WindowGetPosition();
+
             const { w, h } = await WindowGetSize();
 
-            if (x != lastX || y != lastY || h != lastH || w != lastW) {
-                console.debug("[App] Window position changed", { x, y, w, h });
+            if (x !== lastX || y !== lastY || h !== lastH || w !== lastW) {
+                console.debug("[App] Window position changed", {
+                    x,
+                    y,
+                    w,
+                    h,
+                });
+
                 lastX = x;
                 lastY = y;
                 lastW = w;
@@ -207,6 +220,7 @@ function useAppEventBindings(setViewModel: React.Dispatch<SetStateAction<AppView
             await applyWindowConfig(nextModel);
 
             const size = await WindowGetSize();
+
             console.log("[App] Window after resize", size);
 
             setViewModel(nextModel);
@@ -241,22 +255,24 @@ function useAppEventBindings(setViewModel: React.Dispatch<SetStateAction<AppView
 function useWindowFocus() {
     const f = async () => {
         log.debug("[App] Window focused");
+
         await Dispatch(Command.FOCUS, "true");
     };
 
     const uf = async () => {
         log.debug("[App] Window lost focus");
+
         await Dispatch(Command.FOCUS, "false");
     };
 
     useEffect(() => {
-        (async () => {
-            window.addEventListener("focus", f);
-            window.addEventListener("blur", uf);
-        })();
+        window.addEventListener("focus", f);
+
+        window.addEventListener("blur", uf);
 
         return () => {
             window.removeEventListener("focus", f);
+
             window.removeEventListener("blur", uf);
         };
     }, []);
@@ -267,11 +283,9 @@ async function applyWindowConfig(model: AppViewModel) {
 
     console.log("[App] Applying window config", window);
 
-    // remove constraints
     WindowSetMinSize(1, 1);
     WindowSetMaxSize(10000, 10000);
 
-    // let OS update constraints
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     WindowSetSize(window.width, window.height);
@@ -284,6 +298,7 @@ async function applyWindowConfig(model: AppViewModel) {
         await new Promise((resolve) => setTimeout(resolve, 50));
 
         WindowSetMinSize(window.width, window.height);
+
         WindowSetMaxSize(window.width, window.height);
     }
 }

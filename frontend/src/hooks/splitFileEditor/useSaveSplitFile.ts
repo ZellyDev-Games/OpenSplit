@@ -71,6 +71,10 @@ export function useSaveSplitFile(props: SaveProps) {
             offset: props.offsetText === "" ? 0 : Number(props.offsetText),
 
             platform: props.platform,
+
+            layout: props.splitFilePayload?.layout ?? "",
+
+            windows: props.splitFilePayload?.windows,
         });
 
         await Dispatch(Command.SUBMIT, JSON.stringify(payload));

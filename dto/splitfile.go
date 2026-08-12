@@ -25,6 +25,22 @@ type Variable struct {
 	Label   string `json:"label"`
 }
 
+// SplitterWindow represents the persisted position and size of the
+// splitter window for one layout.
+type SplitterWindow struct {
+	X      int `json:"x"`
+	Y      int `json:"y"`
+	Width  int `json:"width"`
+	Height int `json:"height"`
+}
+
+// SplitterWindows contains independent window geometry for each
+// splitter layout.
+type SplitterWindows struct {
+	Vertical   SplitterWindow `json:"vertical"`
+	Horizontal SplitterWindow `json:"horizontal"`
+}
+
 // SplitFile represents the data and history of a game/category combo.
 type SplitFile struct {
 	ID           string     `json:"id"`
@@ -51,10 +67,16 @@ type SplitFile struct {
 
 	Layout string `json:"layout"`
 
-	WindowX      int `json:"window_x"`
-	WindowY      int `json:"window_y"`
-	WindowWidth  int `json:"window_width"`
-	WindowHeight int `json:"window_height"`
+	Windows SplitterWindows `json:"windows"`
+
+	// Legacy single-window fields.
+	//
+	// These are retained only so older split files can be loaded and
+	// migrated into Windows. New files should use Windows instead.
+	WindowX      int `json:"window_x,omitempty"`
+	WindowY      int `json:"window_y,omitempty"`
+	WindowWidth  int `json:"window_width,omitempty"`
+	WindowHeight int `json:"window_height,omitempty"`
 }
 
 // WorldRecord represents the data of the current world record.

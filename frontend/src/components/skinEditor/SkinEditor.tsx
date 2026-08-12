@@ -23,6 +23,18 @@ export default function SkinEditor({ model }: Props) {
         await Dispatch(Command.CANCEL, null);
     }, []);
 
+    const loadedSplitFile = preview.session.loaded_split_file;
+
+    const layout = loadedSplitFile?.layout === "horizontal" ? "horizontal" : "vertical";
+
+    const windowConfig = loadedSplitFile?.windows?.[layout] ?? {
+        width: layout === "horizontal" ? 900 : 350,
+        height: layout === "horizontal" ? 400 : 550,
+    };
+
+    const previewWidth = windowConfig.width;
+    const previewHeight = windowConfig.height;
+
     return (
         <div className="skin-editor">
             <section className="skin-editor-left panel skin-editor-column">
@@ -50,8 +62,8 @@ export default function SkinEditor({ model }: Props) {
 
                 <PreviewSplitter
                     skinCSS={model.styleSheet}
-                    initialWidth={preview.session.loaded_split_file?.window_width ?? 320}
-                    initialHeight={preview.session.loaded_split_file?.window_height ?? 580}
+                    initialWidth={previewWidth}
+                    initialHeight={previewHeight}
                     overrideCSS={preview.overrideCSS}
                     sessionPayload={preview.session}
                     configPayload={preview.config}
@@ -83,7 +95,6 @@ export default function SkinEditor({ model }: Props) {
                     selector={editor.target.selector}
                     layer={editor.activeRule?.layer ?? null}
                     revision={model.revision}
-                    dirty={editor.dirty}
                     onElementSelected={editor.selectElement}
                     onSelectFile={editor.selectFile}
                     onSelectRule={editor.selectRule}
@@ -96,6 +107,8 @@ export default function SkinEditor({ model }: Props) {
             </section>
 
             <div className="skin-editor-actions">
+                {editor.dirty && <div className="unsaved-changes">Unsaved changes</div>}
+
                 <button className="secondary" onClick={editor.reset} disabled={!editor.dirty}>
                     Reload
                 </button>

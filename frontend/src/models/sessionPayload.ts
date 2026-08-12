@@ -3,6 +3,9 @@
  *
  * This object changes as the runner progresses through
  * a split file.
+ *
+ * Persisted splitter window geometry is stored on the loaded
+ * split file rather than on the runtime session.
  */
 
 import RunPayload from "./runPayload";

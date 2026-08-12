@@ -16,7 +16,10 @@ type Session struct {
 	sessionUpdatedChannel chan *session.Service
 }
 
-func NewSession(sessionUpdatedChannel chan *session.Service, runtimeProvider RuntimeProvider) *Session {
+func NewSession(
+	sessionUpdatedChannel chan *session.Service,
+	runtimeProvider RuntimeProvider,
+) *Session {
 	return &Session{
 		runtimeProvider:       runtimeProvider,
 		sessionUpdatedChannel: sessionUpdatedChannel,
@@ -31,9 +34,14 @@ func (s *Session) StartUIPump() {
 				logger.Debug(logModule, "session UI pump stopped")
 				return
 			}
-			s.runtimeProvider.EventsEmit("session:update", adapters.DomainToDTO(updatedSession))
+
+			s.runtimeProvider.EventsEmit(
+				"session:update",
+				adapters.DomainToDTO(updatedSession),
+			)
 		}
 	}()
+
 	logger.Debug(logModule, "session UI pump started")
 }
 
@@ -97,7 +105,7 @@ type AppViewModel struct {
 	SelectedSkin string `json:"selectedSkin,omitempty"`
 }
 
-// EmitUIEvent informs the frontend of a state change
+// EmitUIEvent informs the frontend of a state change.
 func EmitUIEvent(runtimeProvider RuntimeProvider, model AppViewModel) {
 	logger.Debugf(logModule, "setting UI model: %s", model.View)
 
@@ -107,14 +115,21 @@ func EmitUIEvent(runtimeProvider RuntimeProvider, model AppViewModel) {
 		model.Session != nil &&
 		model.Session.LoadedSplitFile != nil {
 
-		file := model.Session.LoadedSplitFile
+		splitFile := model.Session.LoadedSplitFile
 
-		model.Window.Width = file.WindowWidth
-		model.Window.Height = file.WindowHeight
+		var window dto.SplitterWindow
 
-		model.Window.X = file.WindowX
-		model.Window.Y = file.WindowY
+		switch splitFile.Layout {
+		case "horizontal":
+			window = splitFile.Windows.Horizontal
+		default:
+			window = splitFile.Windows.Vertical
+		}
 
+		model.Window.Width = window.Width
+		model.Window.Height = window.Height
+		model.Window.X = window.X
+		model.Window.Y = window.Y
 		model.Window.Positioned = true
 		model.Window.Resizable = true
 	}
