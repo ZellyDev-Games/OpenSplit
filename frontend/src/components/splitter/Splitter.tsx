@@ -150,11 +150,13 @@ export default function Splitter({
                 </div>
             </div>
 
-            <div className="comparison-mode">{comparisonLabel[comparison]}</div>
+            <div id="splitterInfo">
+                <div className="comparison-mode">{comparisonLabel[comparison]}</div>
 
-            <Timer offset={sessionPayload.loaded_split_file?.offset ?? 0} />
+                <Timer offset={sessionPayload.loaded_split_file?.offset ?? 0} />
 
-            <WorldRecordDisplay worldRecord={sessionPayload.loaded_split_file?.wr} />
+                <WorldRecordDisplay worldRecord={sessionPayload.loaded_split_file?.wr} />
+            </div>
         </div>
     );
 }
