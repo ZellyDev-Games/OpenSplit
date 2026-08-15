@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
+import { SplitterLayout } from "../../hooks/splitter/useSplitterMenu";
 import { Command } from "../../models/command";
 
 type Props = {
@@ -9,6 +10,7 @@ type Props = {
 
 export default function EditSkin({ skins }: Props) {
     const [selectedSkin, setSelectedSkin] = useState("");
+    const [layout, setLayout] = useState<SplitterLayout>("vertical");
 
     async function submit() {
         if (!selectedSkin) {
@@ -19,6 +21,7 @@ export default function EditSkin({ skins }: Props) {
             Command.SUBMIT,
             JSON.stringify({
                 name: selectedSkin,
+                layout,
             }),
         );
     }
@@ -42,6 +45,32 @@ export default function EditSkin({ skins }: Props) {
                     </option>
                 ))}
             </select>
+
+            <label>Open Editor As</label>
+
+            <div className="radio-row">
+                <label>
+                    <input
+                        type="radio"
+                        name="edit-skin-layout"
+                        value="vertical"
+                        checked={layout === "vertical"}
+                        onChange={() => setLayout("vertical")}
+                    />
+                    Vertical
+                </label>
+
+                <label>
+                    <input
+                        type="radio"
+                        name="edit-skin-layout"
+                        value="horizontal"
+                        checked={layout === "horizontal"}
+                        onChange={() => setLayout("horizontal")}
+                    />
+                    Horizontal
+                </label>
+            </div>
 
             <div className="skin-selector-buttons">
                 <button disabled={!selectedSkin} onClick={submit}>

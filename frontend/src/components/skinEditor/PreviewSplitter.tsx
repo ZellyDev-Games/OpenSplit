@@ -10,6 +10,7 @@ import { usePreviewDocument } from "../../hooks/skinEditor/usePreviewDocument";
 import { usePreviewFrame } from "../../hooks/skinEditor/usePreviewFrame";
 import { usePreviewSelection } from "../../hooks/skinEditor/usePreviewSelection";
 import { Comparison } from "../../hooks/splitter/useComparison";
+import { SplitterLayout } from "../../hooks/splitter/useSplitterMenu";
 import { ConfigPayload } from "../../models/configPayload";
 import SessionPayload from "../../models/sessionPayload";
 import type { RuntimeElement, SkinElement } from "../../models/skin/element";
@@ -26,6 +27,9 @@ interface Props {
 
     comparison: Comparison;
     onComparisonChange: Dispatch<SetStateAction<Comparison>>;
+
+    layout: SplitterLayout;
+    onLayoutChange: Dispatch<SetStateAction<SplitterLayout>>;
 
     sessionPayload: SessionPayload;
     configPayload: ConfigPayload;
@@ -55,6 +59,8 @@ export default function PreviewSplitter({
     onPreviewUpdate,
     comparison,
     onComparisonChange,
+    layout,
+    onLayoutChange,
     disableContextMenu = false,
     forceExpandAll = false,
 }: Props) {
@@ -145,6 +151,8 @@ export default function PreviewSplitter({
                         forceExpandAll={forceExpandAll}
                         comparison={comparison}
                         onComparisonChange={onComparisonChange}
+                        layout={layout}
+                        onLayoutChange={onLayoutChange}
                     />,
                     container,
                 )}

@@ -60,9 +60,9 @@ export type AppViewModel = {
       }
     | { view: AppView.NewSkin }
     | { view: AppView.EditSkin }
+    | { view: AppView.SkinEditor }
     | { view: AppView.Running; session: SessionPayload; config: ConfigPayload }
     | { view: AppView.Settings; config: ConfigPayload }
-    | { view: AppView.SkinEditor }
 );
 
 type ViewRouterProps = {

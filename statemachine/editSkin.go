@@ -59,7 +59,8 @@ func (s *EditSkin) Receive(
 		}
 
 		var request struct {
-			Name string `json:"name"`
+			Name   string `json:"name"`
+			Layout string `json:"layout"`
 		}
 
 		if err := json.Unmarshal([]byte(*payload), &request); err != nil {
@@ -76,10 +77,15 @@ func (s *EditSkin) Receive(
 			}, nil
 		}
 
+		if request.Layout != "horizontal" && request.Layout != "vertical" {
+			request.Layout = "vertical"
+		}
+
 		logger.Infof(
 			logModule,
-			"loading skin editor for %s",
+			"loading skin editor for %s with %s layout.",
 			request.Name,
+			request.Layout,
 		)
 
 		if err := machine.skinProvider.SetSkin(
@@ -101,6 +107,7 @@ func (s *EditSkin) Receive(
 
 		machine.changeState(
 			SKINEDITOR,
+			request.Layout,
 		)
 
 		return dispatcher.DispatchReply{

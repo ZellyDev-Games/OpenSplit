@@ -45,6 +45,7 @@ type SkinProvider interface {
 	// Editor mutation.
 	UpdateActiveRule(dto.CSSRuleEditor) error
 	UpdateFileContents(string, string) error
+	SetDefaultLayout(string) error
 
 	// Working copy.
 	CreateCSSFile(string) error

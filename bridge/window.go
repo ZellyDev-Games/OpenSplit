@@ -25,15 +25,22 @@ func WindowForView(view View) WindowConfig {
 
 	case AppViewSkinEditor:
 		return WindowConfig{
-			Width:     1200,
-			Height:    800,
+			Width:     1700,
+			Height:    900,
 			Resizable: false,
 		}
 
-	case AppViewNewSkin, AppViewEditSkin:
+	case AppViewNewSkin:
 		return WindowConfig{
 			Width:     300,
-			Height:    200,
+			Height:    350,
+			Resizable: false,
+		}
+
+	case AppViewEditSkin:
+		return WindowConfig{
+			Width:     300,
+			Height:    350,
 			Resizable: false,
 		}
 	}

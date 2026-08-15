@@ -65,6 +65,7 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
         handleOffsetChange,
 
         segments,
+        setSegments,
 
         showCumulativeTimes,
         setShowCumulativeTimes,
@@ -130,6 +131,7 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
 
                 <SegmentTable
                     segments={segments}
+                    setSegments={setSegments}
                     showCumulativeTimes={showCumulativeTimes}
                     setShowCumulativeTimes={setShowCumulativeTimes}
                     onAddSegment={addSegment}

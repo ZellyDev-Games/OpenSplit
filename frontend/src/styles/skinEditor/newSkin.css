@@ -23,6 +23,40 @@
         width: 300px;
     }
 
+    .skin-creator .radio-row {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+
+        width: 300px;
+
+        gap: 8px;
+    }
+
+    .skin-creator .radio-row label {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+
+        width: auto;
+
+        left: 0;
+
+        gap: 6px;
+
+        cursor: pointer;
+    }
+
+    .skin-creator .radio-row input[type="radio"] {
+        width: auto;
+        height: auto;
+
+        margin: 0;
+        padding: 0;
+
+        flex: 0 0 auto;
+    }
+
     .skin-creator .skin-editor-buttons {
         display: flex;
         flex-direction: row;

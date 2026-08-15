@@ -1,6 +1,7 @@
 import { Dispatch, SetStateAction } from "react";
 
 import { Comparison } from "../../../hooks/splitter/useComparison";
+import { SplitterLayout } from "../../../hooks/splitter/useSplitterMenu";
 import { ConfigPayload } from "../../../models/configPayload";
 import SessionPayload from "../../../models/sessionPayload";
 import Splitter from "../../splitter/Splitter";
@@ -24,6 +25,9 @@ interface PreviewCanvasProps {
 
     comparison: Comparison;
     onComparisonChange: Dispatch<SetStateAction<Comparison>>;
+
+    layout: SplitterLayout;
+    onLayoutChange: Dispatch<SetStateAction<SplitterLayout>>;
 }
 
 export default function PreviewCanvas({
@@ -39,6 +43,8 @@ export default function PreviewCanvas({
     forceExpandAll,
     comparison,
     onComparisonChange,
+    layout,
+    onLayoutChange,
 }: PreviewCanvasProps) {
     return (
         <div
@@ -80,6 +86,8 @@ export default function PreviewCanvas({
                         forceExpandAll={forceExpandAll}
                         comparison={comparison}
                         onComparisonChange={onComparisonChange}
+                        layout={layout}
+                        onLayoutChange={onLayoutChange}
                     />
                 </div>
             </div>

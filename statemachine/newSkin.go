@@ -64,7 +64,8 @@ func (s *NewSkin) Receive(
 		}
 
 		var request struct {
-			Name string `json:"name"`
+			Name   string `json:"name"`
+			Layout string `json:"layout"`
 		}
 
 		err := json.Unmarshal(
@@ -86,10 +87,15 @@ func (s *NewSkin) Receive(
 			}, nil
 		}
 
+		if request.Layout != "horizontal" && request.Layout != "vertical" {
+			request.Layout = "vertical"
+		}
+
 		logger.Infof(
 			logModule,
-			"creating new skin %s",
+			"creating new skin %s with layout %s.",
 			request.Name,
+			request.Layout,
 		)
 
 		err = machine.skinProvider.CreateSkin(
@@ -124,7 +130,10 @@ func (s *NewSkin) Receive(
 		}
 
 		// Open editor on newly created skin.
-		machine.changeState(SKINEDITOR)
+		machine.changeState(
+			SKINEDITOR,
+			request.Layout,
+		)
 
 		return dispatcher.DispatchReply{
 			Message: "skin created",

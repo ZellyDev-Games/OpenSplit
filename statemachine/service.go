@@ -239,7 +239,7 @@ func (s *Service) ReceiveDispatch(
 
 func (s *Service) changeState(
 	newState StateID,
-	_ ...interface{},
+	args ...interface{},
 ) {
 	if s.currentState != nil {
 		logger.Debugf(
@@ -302,10 +302,20 @@ func (s *Service) changeState(
 	case SKINEDITOR:
 		logger.Debug(
 			logModule,
-			"entering state SkinEditor",
+			"entering skin editor",
 		)
 
-		s.currentState, _ = NewSkinEditorState()
+		layout := "vertical"
+
+		if len(args) > 0 {
+			if value, ok := args[0].(string); ok {
+				if value == "horizontal" || value == "vertical" {
+					layout = value
+				}
+			}
+		}
+
+		s.currentState, _ = NewSkinEditorState(layout)
 
 	case RUNNING:
 		logger.Debug(

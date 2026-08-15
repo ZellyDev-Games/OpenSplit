@@ -4,8 +4,6 @@
      */
 
     .skin-editor-actions {
-        grid-column: 3;
-
         display: flex;
 
         justify-content: flex-end;
@@ -17,8 +15,6 @@
         padding: 2px 4px;
 
         min-height: 0;
-
-        grid-row: 2;
     }
 
     .skin-editor-actions button {

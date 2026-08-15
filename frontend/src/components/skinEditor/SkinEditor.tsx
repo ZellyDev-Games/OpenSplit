@@ -1,8 +1,9 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import { Dispatch } from "../../../wailsjs/go/dispatcher/Service";
 import { useSkinEditor } from "../../hooks/skinEditor/useSkinEditor";
 import { useSkinEditorPreview } from "../../hooks/skinEditor/useSkinEditorPreview";
+import { SplitterLayout } from "../../hooks/splitter/useSplitterMenu";
 import { Command } from "../../models/command";
 import type { SkinModel } from "../../models/skin/editor";
 import PreviewSplitter from "./PreviewSplitter";
@@ -14,26 +15,37 @@ interface Props {
     model: SkinModel;
 }
 
+const PREVIEW_SIZES: Record<SplitterLayout, { width: number; height: number }> = {
+    vertical: {
+        width: 350,
+        height: 550,
+    },
+    horizontal: {
+        width: 800,
+        height: 350,
+    },
+};
+
 export default function SkinEditor({ model }: Props) {
     const editor = useSkinEditor(model);
-
     const preview = useSkinEditorPreview(model, editor);
+
+    const [layout, setLayout] = useState<SplitterLayout>("vertical");
+
+    async function setDefaultLayout() {
+        await Dispatch(
+            Command.SKIN_SET_DEFAULT_LAYOUT,
+            JSON.stringify({
+                layout,
+            }),
+        );
+    }
 
     const cancel = useCallback(async () => {
         await Dispatch(Command.CANCEL, null);
     }, []);
 
-    const loadedSplitFile = preview.session.loaded_split_file;
-
-    const layout = loadedSplitFile?.layout === "horizontal" ? "horizontal" : "vertical";
-
-    const windowConfig = loadedSplitFile?.windows?.[layout] ?? {
-        width: layout === "horizontal" ? 900 : 350,
-        height: layout === "horizontal" ? 400 : 550,
-    };
-
-    const previewWidth = windowConfig.width;
-    const previewHeight = windowConfig.height;
+    const { width: previewWidth, height: previewHeight } = PREVIEW_SIZES[layout];
 
     return (
         <div className="skin-editor">
@@ -51,36 +63,6 @@ export default function SkinEditor({ model }: Props) {
                     availableIds={preview.availableIds}
                 />
             </section>
-
-            <section className="skin-editor-preview skin-editor-column">
-                <SkinEditorToolbar
-                    mode={preview.mode}
-                    comparison={preview.comparison}
-                    onModeChange={preview.setMode}
-                    onComparisonChange={preview.setComparison}
-                />
-
-                <PreviewSplitter
-                    skinCSS={model.styleSheet}
-                    initialWidth={previewWidth}
-                    initialHeight={previewHeight}
-                    overrideCSS={preview.overrideCSS}
-                    sessionPayload={preview.session}
-                    configPayload={preview.config}
-                    elements={preview.elements}
-                    onPreviewUpdate={preview.setPreviewUpdate}
-                    selectedElement={preview.selectedRuntime}
-                    onSelect={editor.selectElement}
-                    disableContextMenu
-                    forceExpandAll
-                    comparison={preview.comparison}
-                    onComparisonChange={preview.setComparison}
-                />
-            </section>
-
-            {preview.hasPreviewOverflow && (
-                <div className="skin-preview-warning">⚠ Elements extend outside the splitter preview.</div>
-            )}
 
             <section className="skin-editor-files skin-editor-column">
                 <SkinFiles
@@ -105,6 +87,45 @@ export default function SkinEditor({ model }: Props) {
                     overflowingIds={preview.previewUpdate.metrics.overflowingIds}
                 />
             </section>
+
+            <section className="skin-editor-toolbar">
+                <SkinEditorToolbar
+                    mode={preview.mode}
+                    comparison={preview.comparison}
+                    layout={layout}
+                    onModeChange={preview.setMode}
+                    onComparisonChange={preview.setComparison}
+                    onLayoutChange={setLayout}
+                    onSetDefaultLayout={setDefaultLayout}
+                />
+            </section>
+
+            <div className="skin-editor-preview-area">
+                <section className="skin-editor-preview skin-editor-column">
+                    <PreviewSplitter
+                        skinCSS={model.styleSheet}
+                        initialWidth={previewWidth}
+                        initialHeight={previewHeight}
+                        overrideCSS={preview.overrideCSS}
+                        sessionPayload={preview.session}
+                        configPayload={preview.config}
+                        elements={preview.elements}
+                        onPreviewUpdate={preview.setPreviewUpdate}
+                        selectedElement={preview.selectedRuntime}
+                        onSelect={editor.selectElement}
+                        disableContextMenu
+                        forceExpandAll
+                        comparison={preview.comparison}
+                        onComparisonChange={preview.setComparison}
+                        layout={layout}
+                        onLayoutChange={setLayout}
+                    />
+                </section>
+
+                {preview.hasPreviewOverflow && (
+                    <div className="skin-preview-warning">⚠ Elements extend outside the splitter preview.</div>
+                )}
+            </div>
 
             <div className="skin-editor-actions">
                 {editor.dirty && <div className="unsaved-changes">Unsaved changes</div>}

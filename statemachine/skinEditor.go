@@ -12,20 +12,27 @@ import (
 )
 
 type SkinEditor struct {
+	initialLayout string
 }
 
-func NewSkinEditorState() (*SkinEditor, error) {
-	return &SkinEditor{}, nil
+func NewSkinEditorState(layout string) (*SkinEditor, error) {
+	if layout != "horizontal" && layout != "vertical" {
+		layout = "vertical"
+	}
+
+	return &SkinEditor{
+		initialLayout: layout,
+	}, nil
 }
 
 func (s *SkinEditor) OnEnter() error {
-	logger.Debug(
+	logger.Debugf(
 		logModule,
-		"opening skin editor",
+		"opening skin editor with layout %q",
+		s.initialLayout,
 	)
 
 	return machine.skinProvider.EmitSkinModel()
-
 }
 
 func (s *SkinEditor) EmitUI() error {
@@ -37,7 +44,6 @@ func (s *SkinEditor) EmitUI() error {
 	)
 
 	return nil
-
 }
 
 func (s *SkinEditor) OnExit() error {
@@ -52,9 +58,6 @@ func (s *SkinEditor) Receive(
 	error,
 ) {
 	switch c {
-	case command.CANCEL:
-		return s.cancel()
-
 	case command.SKIN_FILE:
 		return s.selectFile(payload)
 
@@ -85,23 +88,50 @@ func (s *SkinEditor) Receive(
 	case command.SKIN_PREVIEW_SET:
 		return s.setPreviewElements(payload)
 
+	case command.SKIN_SET_DEFAULT_LAYOUT:
+		return s.setDefaultLayout(payload)
+
 	case command.SKIN_SAVE:
 		return s.save()
 
 	case command.SKIN_RELOAD:
 		return s.reload()
 
+	case command.CANCEL:
+		return s.cancel()
 	default:
 		return dispatcher.DispatchReply{}, nil
 	}
-
 }
 
 func (s *SkinEditor) cancel() (dispatcher.DispatchReply, error) {
 	machine.changeState(EDITSKIN)
 
 	return dispatcher.DispatchReply{}, nil
+}
 
+func (s *SkinEditor) setDefaultLayout(
+	payload *string,
+) (dispatcher.DispatchReply, error) {
+	var request struct {
+		Layout string `json:"layout"`
+	}
+
+	if err := decodePayload(payload, &request); err != nil {
+		return errorReply(err)
+	}
+
+	if request.Layout != "horizontal" && request.Layout != "vertical" {
+		return errorReply(
+			errors.New("invalid skin layout"),
+		)
+	}
+
+	if err := machine.skinProvider.SetDefaultLayout(request.Layout); err != nil {
+		return errorReply(err)
+	}
+
+	return successReply("skin default layout updated")
 }
 
 func (s *SkinEditor) selectFile(payload *string) (dispatcher.DispatchReply, error) {
@@ -118,7 +148,6 @@ func (s *SkinEditor) selectFile(payload *string) (dispatcher.DispatchReply, erro
 	}
 
 	return successReply("file selected")
-
 }
 
 func (s *SkinEditor) selectElement(payload *string) (dispatcher.DispatchReply, error) {

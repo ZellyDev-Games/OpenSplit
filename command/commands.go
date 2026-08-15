@@ -76,6 +76,7 @@ const (
 	EDIT_SKIN
 
 	SKIN_SELECT
+	SKIN_SET_DEFAULT_LAYOUT
 
 	//
 	// Skin editor navigation

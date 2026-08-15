@@ -7,6 +7,8 @@ import { renderSegmentRows } from "./SegmentRenderer";
 type SegmentTableProps = {
     segments: SegmentPayload[];
 
+    setSegments: Dispatch<SetStateAction<SegmentPayload[]>>;
+
     showCumulativeTimes: boolean;
     setShowCumulativeTimes: Dispatch<SetStateAction<boolean>>;
 
@@ -17,6 +19,7 @@ type SegmentTableProps = {
 
 export default function SegmentTable({
     segments,
+    setSegments,
     showCumulativeTimes,
     setShowCumulativeTimes,
     onAddSegment,
@@ -80,6 +83,7 @@ export default function SegmentTable({
                                 {
                                     renderSegmentRows({
                                         segments,
+                                        setSegments,
 
                                         showCumulativeTimes,
 

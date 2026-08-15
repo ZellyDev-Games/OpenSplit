@@ -1,25 +1,3 @@
-/**
- * Primary race timer window.
- *
- * Hosts:
- *  - Timer
- *  - Segment list
- *  - Split game information
- *  - Context menu
- *  - Comparison mode
- *  - World record
- *
- * The splitter supports two layouts:
- *
- *  - vertical
- *  - horizontal
- *
- * The active layout is exposed through:
- *
- *  data-layout="vertical"
- *  data-layout="horizontal"
- */
-
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 
 import { CompareAgainst, Comparison, useComparison } from "../../hooks/splitter/useComparison";
@@ -41,6 +19,9 @@ type SplitterParams = {
 
     comparison?: Comparison;
     onComparisonChange?: Dispatch<SetStateAction<Comparison>>;
+
+    layout?: SplitterLayout;
+    onLayoutChange?: Dispatch<SetStateAction<SplitterLayout>>;
 };
 
 const DEFAULT_LAYOUT: SplitterLayout = "vertical";
@@ -72,6 +53,8 @@ export default function Splitter({
     forceExpandAll = false,
     comparison: controlledComparison,
     onComparisonChange,
+    layout: controlledLayout,
+    onLayoutChange,
 }: SplitterParams) {
     const splitterRef = useRef<HTMLDivElement>(null);
     const [initialLayout, setInitialLayout] = useState<SplitterLayout>(DEFAULT_LAYOUT);
@@ -80,19 +63,11 @@ export default function Splitter({
 
     const { comparison, setComparison } = useComparison(controlledComparison, onComparisonChange);
 
-    /*
-     * The split file's saved layout takes precedence over the
-     * skin's preferred layout.
-     *
-     * If no layout has been saved yet, use:
-     *
-     *     --splitter-layout: vertical;
-     *
-     * or:
-     *
-     *     --splitter-layout: horizontal;
-     */
     useEffect(() => {
+        if (controlledLayout !== undefined) {
+            return;
+        }
+
         const savedLayout = getSavedLayout(sessionPayload);
 
         if (savedLayout !== null) {
@@ -105,9 +80,9 @@ export default function Splitter({
         }
 
         setInitialLayout(getSkinDefaultLayout(splitterRef.current));
-    }, [sessionPayload.loaded_split_file?.layout]);
+    }, [controlledLayout, sessionPayload.loaded_split_file?.layout]);
 
-    const { layout, items: contextMenuItems } = useSplitterMenu({
+    const { layout: menuLayout, items: contextMenuItems } = useSplitterMenu({
         disableContextMenu,
         globalHotkeysInitial: configPayload.global_hotkeys_active,
         comparison,
@@ -115,6 +90,18 @@ export default function Splitter({
         sessionPayload,
         initialLayout,
     });
+
+    const layout = controlledLayout ?? menuLayout;
+
+    useEffect(() => {
+        if (controlledLayout === undefined) {
+            return;
+        }
+
+        if (menuLayout !== controlledLayout) {
+            onLayoutChange?.(controlledLayout);
+        }
+    }, [controlledLayout, menuLayout, onLayoutChange]);
 
     const { completeClassName, rows, finalRow, containerRef } = useSegmentList({
         sessionPayload,
