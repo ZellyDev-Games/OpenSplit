@@ -1,5 +1,3 @@
-import { useEffect, useRef, useState } from "react";
-
 import type { CSSFile, CSSRuleEditor } from "../../models/skin/css";
 import type { SkinEditorTarget, SkinModel } from "../../models/skin/editor";
 import type { SkinElement } from "../../models/skin/element";
@@ -45,8 +43,6 @@ interface Props {
 
     onChangeFile(file: string, contents: string): Promise<void>;
 
-    revision: number;
-
     overflowingIds: Set<string>;
 }
 
@@ -61,7 +57,6 @@ export default function SkinFiles({
     mode,
     selector,
     layer,
-    revision,
     onElementSelected,
     onSelectFile,
     onCreateFile,
@@ -71,28 +66,6 @@ export default function SkinFiles({
     onChangeFile,
     overflowingIds,
 }: Props) {
-    const [body, setBody] = useState(activeRule?.body ?? "");
-
-    const editingRule = useRef<string | null>(null);
-    const lastRevision = useRef<number>(revision);
-
-    useEffect(() => {
-        if (!activeRule) {
-            editingRule.current = null;
-            setBody("");
-            return;
-        }
-
-        const ruleChanged = editingRule.current !== activeRule.id;
-        const reloaded = lastRevision.current !== revision;
-
-        if (ruleChanged || reloaded) {
-            editingRule.current = activeRule.id;
-            lastRevision.current = revision;
-            setBody(activeRule.body);
-        }
-    }, [activeRule, revision]);
-
     const selectedFileData = files.find((file) => file.path === selectedFile);
 
     const cssRules = rules.filter((rule) => rule.file === selectedFile);
@@ -149,10 +122,8 @@ export default function SkinFiles({
                     mode={mode}
                     selector={selector}
                     layer={layer}
-                    body={body}
+                    body={activeRule?.body ?? ""}
                     onBodyChange={(value) => {
-                        setBody(value);
-
                         if (!activeRule) {
                             return;
                         }
