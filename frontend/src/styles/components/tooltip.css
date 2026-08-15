@@ -18,16 +18,8 @@
         outline-offset: 2px;
     }
 
-    .has-tooltip {
-        position: relative;
-    }
-
     .tooltip-bubble {
         position: absolute;
-        left: 100%;
-        top: 50%;
-
-        transform: translate(8px, -50%);
 
         padding: 4px 8px;
 
@@ -40,21 +32,8 @@
         font-size: 12px;
         white-space: nowrap;
 
-        opacity: 0;
-        visibility: hidden;
         pointer-events: none;
 
-        transition:
-            opacity 0.12s,
-            visibility 0.12s;
-
-        z-index: 9999;
-    }
-
-    .has-tooltip:hover .tooltip-bubble,
-    .has-tooltip:focus .tooltip-bubble,
-    .has-tooltip:focus-within .tooltip-bubble {
-        opacity: 1;
-        visibility: visible;
+        z-index: 1000;
     }
 }

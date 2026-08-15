@@ -4,26 +4,49 @@
         padding-right: 5px;
         flex-grow: 1;
         margin: 0;
+        overflow: visible;
+    }
+
+    .datagrid-scroll {
+        position: relative;
+
+        height: 100%;
+
+        overflow-x: auto;
         overflow-y: auto;
-        overflow-x: hidden;
     }
 
     .datagrid {
         --wails-draggable: no-drag;
+
         flex: 1 1 auto;
         min-width: 0;
+
         border-collapse: collapse;
     }
 
+    .datagrid thead {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
     .datagrid th {
+        position: sticky;
+        top: 0;
+
         background-color: #640199;
+
         text-align: left;
         height: 40px;
         padding-left: 10px;
+
+        z-index: 100;
     }
 
     .datagrid td {
         position: relative;
+
         border: 1px solid #666;
         background-color: #282828;
     }
@@ -33,16 +56,8 @@
         padding: 8px 0 0 8px;
         background-color: transparent;
     }
+
     .datagrid input:focus {
         outline: 0;
-    }
-
-    .datagrid .has-tooltip {
-        position: relative;
-        z-index: 10;
-    }
-
-    .datagrid .has-tooltip:hover {
-        z-index: 100;
     }
 }

@@ -47,7 +47,7 @@ export default function SegmentTable({
             </div>
 
             <div className="datagrid-container">
-                <div className="datagrid">
+                <div className="datagrid-scroll">
                     {segments.length > 0 && (
                         <table id="tbl-segments" className="datagrid" cellSpacing={0}>
                             <thead>
