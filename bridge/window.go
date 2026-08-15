@@ -16,7 +16,21 @@ func WindowForView(view View) WindowConfig {
 			Resizable: false,
 		}
 
-	case AppViewNewSplitFile, AppViewEditSplitFile, AppViewSettings:
+	case AppViewNewSplitFile:
+		return WindowConfig{
+			Width:     1000,
+			Height:    900,
+			Resizable: false,
+		}
+
+	case AppViewEditSplitFile:
+		return WindowConfig{
+			Width:     1000,
+			Height:    1100,
+			Resizable: false,
+		}
+
+	case AppViewSettings:
 		return WindowConfig{
 			Width:     1000,
 			Height:    900,
