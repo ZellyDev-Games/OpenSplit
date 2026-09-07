@@ -94,7 +94,13 @@ func TestStartUIPumpStops(t *testing.T) {
 
 func TestEmitUIEvent(t *testing.T) {
 	rp := newMockRuntimeProvider()
-	model := AppViewModel{}
+
+	model := AppViewModel{
+		View: AppViewWelcome,
+	}
+
+	expected := model
+	expected.Window = WindowForView(model.View)
 
 	EmitUIEvent(rp, model)
 
@@ -113,10 +119,10 @@ func TestEmitUIEvent(t *testing.T) {
 			t.Fatalf("expected AppViewModel arg, got %T", call.args[0])
 		}
 
-		if !reflect.DeepEqual(got, model) {
+		if !reflect.DeepEqual(got, expected) {
 			t.Fatalf(
 				"expected model %#v, got %#v",
-				model,
+				expected,
 				got,
 			)
 		}
