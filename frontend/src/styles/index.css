@@ -28,12 +28,13 @@
 /* Splitter */
 
 @import "splitter/splitter.css";
-@import "splitter/splitFileEditor.css";
 @import "splitter/gameInfo.css";
+@import "splitter/splitList.css";
 @import "splitter/segmentRow.css";
 @import "splitter/comparison.css";
 @import "splitter/timer.css";
 @import "splitter/worldRecord.css";
+@import "splitter/splitFileEditor.css";
 
 /* Skin Editor */
 
