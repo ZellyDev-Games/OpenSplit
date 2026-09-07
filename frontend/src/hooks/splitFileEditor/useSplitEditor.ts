@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 import { WindowCenter } from "../../../wailsjs/runtime/runtime";
 import SplitFilePayload from "../../models/splitFilePayload";
+import { log } from "../../utils/logger";
 import { useSaveSplitFile } from "./useSaveSplitFile";
 import { useSegmentEditor } from "./useSegmentEditor";
 import { useSplitMetadata } from "./useSplitMetadata";
@@ -15,8 +16,8 @@ export default function useSplitEditor(splitFilePayload: SplitFilePayload | null
 
     const segments = useSegmentEditor(splitFilePayload?.segments ?? []);
 
-    console.log(metadata.categoryID);
-    console.log(metadata.gameID);
+    log.debug(metadata.categoryID);
+    log.debug(metadata.gameID);
 
     const saveSplitFile = useSaveSplitFile({
         splitFilePayload,
