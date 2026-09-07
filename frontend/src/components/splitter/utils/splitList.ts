@@ -1,10 +1,14 @@
-import { getBoxPadding, getGap, getMinimum } from "./css";
+import { getBoxPadding, getEffectiveMinimumSize, getGap } from "./css";
 import type { MinimumSize } from "./types";
 
 type SegmentComponent = {
     selector: string;
     widthVariable: string;
     heightVariable: string;
+    contentAware?: {
+        width?: boolean;
+        height?: boolean;
+    };
 };
 
 /*
@@ -22,6 +26,9 @@ const SEGMENT_COMPONENTS: SegmentComponent[] = [
         selector: ".splitName",
         widthVariable: "--splitter-segment-name-min-width",
         heightVariable: "--splitter-segment-name-min-height",
+        contentAware: {
+            height: true,
+        },
     },
     {
         selector: ".splitDelta",
@@ -41,10 +48,12 @@ const SEGMENT_COMPONENTS: SegmentComponent[] = [
 ];
 
 function getComponentMinimumSize(element: HTMLElement, definition: SegmentComponent): MinimumSize {
-    return {
-        width: getMinimum(element, definition.widthVariable),
-        height: getMinimum(element, definition.heightVariable),
-    };
+    return getEffectiveMinimumSize(
+        element,
+        definition.widthVariable,
+        definition.heightVariable,
+        definition.contentAware,
+    );
 }
 
 /**

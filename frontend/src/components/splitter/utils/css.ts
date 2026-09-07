@@ -1,3 +1,38 @@
+import type { MinimumSize } from "./types";
+
+export function getContentMinimumSize(element: HTMLElement, axes: { width?: boolean; height?: boolean }): MinimumSize {
+    const style = getComputedStyle(element);
+
+    const borderLeft = parseFloat(style.borderLeftWidth) || 0;
+    const borderRight = parseFloat(style.borderRightWidth) || 0;
+    const borderTop = parseFloat(style.borderTopWidth) || 0;
+    const borderBottom = parseFloat(style.borderBottomWidth) || 0;
+
+    return {
+        width: axes.width ? element.scrollWidth + borderLeft + borderRight : 0,
+        height: axes.height ? element.scrollHeight + borderTop + borderBottom : 0,
+    };
+}
+
+export function getEffectiveMinimumSize(
+    element: HTMLElement,
+    widthVariable: string,
+    heightVariable: string,
+    contentAware?: { width?: boolean; height?: boolean },
+): MinimumSize {
+    const declared = {
+        width: getMinimum(element, widthVariable),
+        height: getMinimum(element, heightVariable),
+    };
+
+    const content = contentAware ? getContentMinimumSize(element, contentAware) : { width: 0, height: 0 };
+
+    return {
+        width: contentAware?.width ? Math.max(declared.width, content.width) : declared.width,
+        height: contentAware?.height ? Math.max(declared.height, content.height) : declared.height,
+    };
+}
+
 export function getCSSPixelValue(element: HTMLElement, property: string, fallback = 0): number {
     const value = getComputedStyle(element).getPropertyValue(property).trim();
 

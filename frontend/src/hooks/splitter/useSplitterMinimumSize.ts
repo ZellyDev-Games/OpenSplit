@@ -2,7 +2,6 @@ import { useEffect } from "react";
 
 import { WindowSetMinSize } from "../../../wailsjs/runtime/runtime";
 import { getMinimum } from "../../components/splitter/utils/css";
-import { calculateElementMinimumSize } from "../../components/splitter/utils/element";
 import { calculateSplitterMinimumSize } from "../../components/splitter/utils/splitter";
 import { log } from "../../utils/logger";
 
@@ -37,29 +36,6 @@ function getLayoutInfo(element: HTMLElement) {
         scrollWidth: element.scrollWidth,
         width: element.getBoundingClientRect().width,
     };
-}
-
-function getChildInfo(element: HTMLElement) {
-    return Array.from(element.children)
-        .filter((child): child is HTMLElement => child instanceof HTMLElement)
-        .map((child) => {
-            const style = getComputedStyle(child);
-            const calculated = calculateElementMinimumSize(child);
-
-            return {
-                id: child.id,
-                className: child.className,
-                display: style.display,
-                position: style.position,
-                minWidth: style.minWidth,
-                minHeight: style.minHeight,
-                width: child.getBoundingClientRect().width,
-                height: child.getBoundingClientRect().height,
-                scrollWidth: child.scrollWidth,
-                scrollHeight: child.scrollHeight,
-                calculatedMinimum: calculated,
-            };
-        });
 }
 
 function getSegmentMinimumInfo(element: HTMLElement) {
@@ -177,8 +153,6 @@ export function useSplitterMinimumSize(splitterRef: React.RefObject<HTMLDivEleme
                     splitter: getLayoutInfo(element),
                 });
 
-                log.debug("[SplitterMinimumSize] Children", getChildInfo(element));
-
                 log.debug("[SplitterMinimumSize] Component minimums", {
                     segment: getSegmentMinimumInfo(element),
                 });
@@ -206,34 +180,6 @@ export function useSplitterMinimumSize(splitterRef: React.RefObject<HTMLDivEleme
             });
         };
 
-        const mutationObserver = new MutationObserver((mutations) => {
-            const reasons = mutations.map((mutation) => {
-                if (mutation.type === "childList") {
-                    return "childList";
-                }
-
-                if (mutation.type === "attributes") {
-                    return `${mutation.attributeName ?? "attribute"} changed`;
-                }
-
-                return mutation.type;
-            });
-
-            log.debug("[SplitterMinimumSize] Mutation", {
-                reasons,
-                mutations,
-            });
-
-            update("mutation");
-        });
-
-        mutationObserver.observe(element, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ["class", "style", "data-layout"],
-        });
-
         const resizeObserver = new ResizeObserver((entries) => {
             log.debug(
                 "[SplitterMinimumSize] Resize",
@@ -252,8 +198,6 @@ export function useSplitterMinimumSize(splitterRef: React.RefObject<HTMLDivEleme
             update("resize");
         });
 
-        resizeObserver.observe(element);
-
         const observedElements = new Set<HTMLElement>();
 
         const observe = (target: Element) => {
@@ -269,13 +213,57 @@ export function useSplitterMinimumSize(splitterRef: React.RefObject<HTMLDivEleme
             resizeObserver.observe(target);
         };
 
-        observe(element);
+        const observeResizeTargets = () => {
+            observe(element);
 
-        element
-            .querySelectorAll<HTMLElement>(
-                "#gameInfo, #splitList, #splitContainer, #finalSegment, #finalSegment table, #finalSegment tbody, #finalSegment tr, #splitterInfo",
-            )
-            .forEach(observe);
+            element
+                .querySelectorAll<HTMLElement>(
+                    [
+                        "#gameInfo",
+                        "#splitList",
+                        "#splitContainer",
+                        "#finalSegment",
+                        "#finalSegment table",
+                        "#finalSegment tbody",
+                        "#finalSegment tr",
+                        "#splitterInfo",
+                        ".splitName",
+                    ].join(", "),
+                )
+                .forEach(observe);
+        };
+
+        observeResizeTargets();
+
+        const mutationObserver = new MutationObserver((mutations) => {
+            const reasons = mutations.map((mutation) => {
+                if (mutation.type === "childList") {
+                    return "childList";
+                }
+
+                if (mutation.type === "attributes") {
+                    return `${mutation.attributeName ?? "attribute"} changed`;
+                }
+
+                return mutation.type;
+            });
+
+            observeResizeTargets();
+
+            log.debug("[SplitterMinimumSize] Mutation", {
+                reasons,
+                mutations,
+            });
+
+            update("mutation");
+        });
+
+        mutationObserver.observe(element, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["class", "style", "data-layout"],
+        });
 
         log.debug("[SplitterMinimumSize] Initialized", {
             layout: element.dataset.layout ?? "unknown",
