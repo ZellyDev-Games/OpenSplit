@@ -1,0 +1,283 @@
+@layer components {
+    /*
+     * ============================================================
+     * Shared split list
+     * ============================================================
+     */
+
+    #splitList {
+        display: flex;
+
+        flex: 1 1 auto;
+
+        min-width: 0;
+
+        flex-direction: var(--splitlist-direction, column);
+
+        box-sizing: border-box;
+
+        overflow: hidden;
+    }
+
+    #splitContainer {
+        flex: 1 1 auto;
+
+        min-width: 0;
+        min-height: 0;
+    }
+
+    #splitList table {
+        width: 100%;
+
+        margin: 0;
+        padding: 0;
+
+        border-collapse: collapse;
+        border-spacing: 0;
+    }
+
+    #splitList table td {
+        border-left: 0;
+        border-right: 0;
+    }
+
+    /*
+     * ============================================================
+     * Vertical layout
+     * ============================================================
+     */
+
+    #splitter[data-layout="vertical"] #splitList {
+        flex: 1 1 auto;
+
+        flex-shrink: 1;
+
+        width: 100%;
+        min-width: 0;
+
+        box-sizing: border-box;
+    }
+
+    #splitter[data-layout="vertical"] #splitContainer {
+        flex: 1 1 0;
+
+        width: 100%;
+
+        min-width: 0;
+        min-height: 0;
+
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    #splitter[data-layout="vertical"] #finalSegment {
+        flex: 0 0 auto;
+
+        width: 100%;
+
+        min-width: 0;
+        max-width: 100%;
+
+        box-sizing: border-box;
+
+        overflow: visible;
+    }
+
+    #splitter[data-layout="vertical"] #finalSegment table {
+        width: 100%;
+
+        min-width: 0;
+        max-width: 100%;
+
+        height: auto;
+
+        margin: 0;
+        padding: 0;
+
+        border-collapse: collapse;
+        border-spacing: 0;
+
+        table-layout: fixed;
+    }
+
+    #splitter[data-layout="vertical"] #finalSegment table tbody {
+        height: auto;
+    }
+
+    #splitter[data-layout="vertical"] #finalSegment table tr {
+        width: 100%;
+        min-width: 0;
+
+        height: auto;
+    }
+
+    /*
+     * ============================================================
+     * Horizontal layout
+     * ============================================================
+     */
+
+    #splitter[data-layout="horizontal"] #splitList {
+        flex-direction: row;
+
+        width: 0;
+
+        min-width: max(
+            var(--splitter-final-segment-min-width, 0px),
+            var(--splitter-segment-icon-min-width, 40px),
+            var(--splitter-segment-name-min-width, 110px),
+            var(--splitter-segment-delta-min-width, 70px),
+            var(--splitter-segment-comparison-min-width, 70px),
+            var(--splitter-segment-time-min-width, 70px)
+        );
+
+        min-height: 0;
+
+        box-sizing: border-box;
+    }
+
+    #splitter[data-layout="horizontal"] #splitContainer {
+        display: block;
+
+        flex: 1 1 0;
+
+        width: 0;
+
+        min-width: 0;
+        max-width: 100%;
+        min-height: 0;
+
+        overflow-x: auto;
+        overflow-y: hidden;
+
+        scroll-behavior: smooth;
+        overscroll-behavior-x: contain;
+    }
+
+    #splitter[data-layout="horizontal"] #splitContainer::-webkit-scrollbar {
+        height: 0;
+    }
+
+    #splitter[data-layout="horizontal"] #splitContainer:hover::-webkit-scrollbar {
+        height: 10px;
+    }
+
+    #splitter[data-layout="horizontal"] #splitContainer::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.4);
+        border-radius: 6px;
+    }
+
+    #splitter[data-layout="horizontal"] #splitContainer::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    /*
+     * ============================================================
+     * Horizontal split table
+     * ============================================================
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer table {
+        width: max-content;
+        min-width: 100%;
+        height: 100%;
+
+        margin: 0;
+        padding: 0;
+
+        border-collapse: collapse;
+    }
+
+    #splitter[data-layout="horizontal"] #splitContainer table tbody {
+        display: flex;
+
+        flex-direction: row;
+
+        width: max-content;
+        min-width: 100%;
+        height: 100%;
+
+        margin: 0;
+        padding: 0;
+    }
+
+    /*
+     * ============================================================
+     * Horizontal final segment
+     * ============================================================
+     */
+
+    #splitter[data-layout="horizontal"] #finalSegment {
+        display: flex;
+
+        flex: 0 0 max-content;
+
+        flex-direction: column;
+
+        width: max-content;
+        min-width: max-content;
+        max-width: none;
+
+        height: 100%;
+        min-height: 0;
+
+        box-sizing: border-box;
+
+        overflow: visible;
+    }
+
+    #splitter[data-layout="horizontal"] #finalSegment table {
+        width: max-content;
+        min-width: max-content;
+
+        height: 100%;
+
+        margin: 0;
+        padding: 0;
+
+        border-collapse: collapse;
+        border-spacing: 0;
+    }
+
+    #splitter[data-layout="horizontal"] #finalSegment table tbody {
+        display: flex;
+
+        width: max-content;
+        min-width: max-content;
+
+        height: 100%;
+
+        margin: 0;
+        padding: 0;
+    }
+
+    #splitter[data-layout="horizontal"] #finalSegment table tr {
+        display: flex;
+
+        flex-direction: column;
+
+        width: max-content;
+        min-width: max-content;
+
+        height: 100%;
+
+        align-items: stretch;
+    }
+
+    #splitter[data-layout="horizontal"] #finalSegment table td {
+        display: flex;
+
+        width: 100%;
+        min-width: 0;
+
+        align-items: center;
+        justify-content: center;
+
+        border: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+
+        padding: 6px;
+
+        text-align: center;
+    }
+}

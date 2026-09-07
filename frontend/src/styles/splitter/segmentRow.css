@@ -1,10 +1,20 @@
 @layer components {
+    /*
+     * ============================================================
+     * Shared segment
+     * ============================================================
+     */
+
     .segment-icon {
         width: 18px;
         height: 18px;
+
         object-fit: contain;
+
         margin-right: 6px;
+
         vertical-align: middle;
+
         border-radius: 2px;
     }
 
@@ -14,6 +24,7 @@
 
     button.collapseToggle {
         display: inline-flex;
+
         justify-content: center;
         align-items: center;
 
@@ -27,5 +38,261 @@
 
         line-height: 8px;
         text-align: center;
+    }
+
+    /*
+     * ============================================================
+     * Vertical final segment
+     * ============================================================
+     *
+     * The table follows the width of #finalSegment.
+     *
+     * The skin variables still define the minimum window size,
+     * but the rendered cells are allowed to shrink below those
+     * values when the table is constrained by the splitter.
+     */
+
+    #splitter[data-layout="vertical"] #finalSegment table {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+
+        height: auto;
+
+        margin: 0;
+        padding: 0;
+
+        border-collapse: collapse;
+        border-spacing: 0;
+
+        table-layout: fixed;
+    }
+
+    #splitter[data-layout="vertical"] #splitContainer table tr,
+    #splitter[data-layout="vertical"] #finalSegment table tr {
+        width: 100%;
+        min-width: 0;
+
+        height: max(
+            var(--splitter-segment-icon-min-height, 40px),
+            var(--splitter-segment-name-min-height, 40px),
+            var(--splitter-segment-delta-min-height, 32px),
+            var(--splitter-segment-comparison-min-height, 32px),
+            var(--splitter-segment-time-min-height, 32px)
+        );
+    }
+
+    #splitter[data-layout="vertical"] #finalSegment table td {
+        box-sizing: border-box;
+
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    /*
+     * ============================================================
+     * Vertical component minimums
+     * ============================================================
+     */
+
+    #splitter[data-layout="vertical"] #splitContainer .segmentIcon,
+    #splitter[data-layout="vertical"] #finalSegment .segmentIcon {
+        min-height: var(--splitter-segment-icon-min-height, 0px);
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    #splitter[data-layout="vertical"] #splitContainer .splitName,
+    #splitter[data-layout="vertical"] #finalSegment .splitName {
+        min-height: var(--splitter-segment-name-min-height, 0px);
+        min-width: 0;
+
+        white-space: normal;
+        overflow-wrap: normal;
+        word-break: normal;
+        hyphens: none;
+
+        box-sizing: border-box;
+    }
+
+    #splitter[data-layout="vertical"] #splitContainer .splitDelta,
+    #splitter[data-layout="vertical"] #finalSegment .splitDelta {
+        min-height: var(--splitter-segment-delta-min-height, 0px);
+        min-width: 0;
+        white-space: nowrap;
+        box-sizing: border-box;
+    }
+
+    #splitter[data-layout="vertical"] #splitContainer .splitComparison,
+    #splitter[data-layout="vertical"] #finalSegment .splitComparison {
+        min-height: var(--splitter-segment-comparison-min-height, 0px);
+        min-width: 0;
+        white-space: nowrap;
+        box-sizing: border-box;
+    }
+
+    #splitter[data-layout="vertical"] #splitContainer .splitTime,
+    #splitter[data-layout="vertical"] #finalSegment .splitTime {
+        min-height: var(--splitter-segment-time-min-height, 0px);
+        min-width: 0;
+        white-space: nowrap;
+        box-sizing: border-box;
+    }
+
+    /*
+     * ============================================================
+     * Horizontal segment rows
+     * ============================================================
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer table tr {
+        display: flex;
+
+        flex-direction: column;
+
+        flex: 0 0
+            max(
+                var(--splitter-segment-icon-min-width, 40px),
+                var(--splitter-segment-name-min-width, 110px),
+                var(--splitter-segment-delta-min-width, 70px),
+                var(--splitter-segment-comparison-min-width, 70px),
+                var(--splitter-segment-time-min-width, 70px)
+            );
+
+        width: max(
+            var(--splitter-segment-icon-min-width, 40px),
+            var(--splitter-segment-name-min-width, 110px),
+            var(--splitter-segment-delta-min-width, 70px),
+            var(--splitter-segment-comparison-min-width, 70px),
+            var(--splitter-segment-time-min-width, 70px)
+        );
+
+        min-width: max(
+            var(--splitter-segment-icon-min-width, 40px),
+            var(--splitter-segment-name-min-width, 110px),
+            var(--splitter-segment-delta-min-width, 70px),
+            var(--splitter-segment-comparison-min-width, 70px),
+            var(--splitter-segment-time-min-width, 70px)
+        );
+
+        height: 100%;
+
+        margin: 0;
+        padding: 0;
+
+        align-items: stretch;
+        justify-content: flex-start;
+
+        border-left: 1px solid transparent;
+        border-right: 1px solid transparent;
+
+        scroll-margin-inline: 12px;
+    }
+
+    #splitter[data-layout="horizontal"] #splitContainer table td {
+        display: flex;
+
+        width: 100%;
+        min-width: 0;
+
+        margin: 0;
+
+        align-items: center;
+        justify-content: center;
+
+        border: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+
+        padding: 6px;
+
+        text-align: center;
+    }
+
+    /*
+     * ------------------------------------------------------------
+     * Icon
+     * ------------------------------------------------------------
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer .segmentIcon,
+    #splitter[data-layout="horizontal"] #finalSegment .segmentIcon {
+        min-height: 40px;
+    }
+
+    #splitter[data-layout="horizontal"] #splitContainer .segment-icon,
+    #splitter[data-layout="horizontal"] #finalSegment .segment-icon {
+        flex-shrink: 0;
+
+        width: 32px;
+        height: 32px;
+
+        margin: 0;
+    }
+
+    /*
+     * ------------------------------------------------------------
+     * Name
+     * ------------------------------------------------------------
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer .splitName,
+    #splitter[data-layout="horizontal"] #finalSegment .splitName {
+        flex-direction: column;
+
+        gap: 4px;
+
+        min-height: 64px;
+
+        overflow-wrap: anywhere;
+        word-break: break-word;
+
+        overflow: hidden;
+    }
+
+    /*
+     * ------------------------------------------------------------
+     * Values
+     * ------------------------------------------------------------
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer .splitDelta,
+    #splitter[data-layout="horizontal"] #splitContainer .splitComparison,
+    #splitter[data-layout="horizontal"] #splitContainer .splitTime,
+    #splitter[data-layout="horizontal"] #finalSegment .splitDelta,
+    #splitter[data-layout="horizontal"] #finalSegment .splitComparison,
+    #splitter[data-layout="horizontal"] #finalSegment .splitTime {
+        justify-content: center;
+
+        min-height: 32px;
+
+        text-align: center;
+    }
+
+    /*
+     * ------------------------------------------------------------
+     * Selected segment
+     * ------------------------------------------------------------
+     */
+
+    #splitter[data-layout="horizontal"] #splitContainer table tr.selected {
+        background: var(--active-segment-background, #000);
+        color: var(--active-segment-text-color, #fff);
+    }
+
+    /*
+     * ============================================================
+     * Horizontal final segment row
+     * ============================================================
+     */
+
+    #splitter[data-layout="horizontal"] #finalSegment table tr {
+        display: flex;
+
+        flex-direction: column;
+
+        width: 100%;
+        height: 100%;
+
+        align-items: stretch;
     }
 }

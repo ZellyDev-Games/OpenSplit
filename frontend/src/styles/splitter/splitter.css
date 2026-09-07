@@ -1,17 +1,24 @@
 @layer components {
+    /*
+     * ============================================================
+     * Splitter root
+     * ============================================================
+     */
+
     #splitter {
         display: flex;
 
-        flex: 1;
+        flex: 1 1 auto;
+
         width: 100%;
         height: 100%;
 
         min-width: 0;
         min-height: 0;
 
-        overflow: hidden;
+        box-sizing: border-box;
 
-        flex-direction: column;
+        overflow: hidden;
     }
 
     /*
@@ -21,530 +28,44 @@
      */
 
     #splitter[data-layout="vertical"] {
-        display: flex;
         flex-direction: column;
-    }
 
-    #splitter[data-layout="vertical"] #gameInfo {
-        flex: 0 0 auto;
-    }
-
-    #splitter[data-layout="vertical"] #splitList {
-        flex: 1 1 auto;
-
-        min-width: 0;
         min-height: 0;
     }
 
-    #splitter[data-layout="vertical"] .comparison-mode {
+    #splitter[data-layout="vertical"] #splitterInfo {
         flex: 0 0 auto;
-    }
 
-    #splitter[data-layout="vertical"] #time-container {
-        flex: 0 0 auto;
-    }
+        width: 100%;
 
-    #splitter[data-layout="vertical"] #world-record {
-        flex: 0 0 auto;
+        min-width: 0;
+
+        box-sizing: border-box;
     }
 
     /*
      * ============================================================
      * Horizontal layout
      * ============================================================
-     *
-     *  ------------------------------------------------------------
-     *  |          | Vertical | Vertical | timer |   WR             |
-     *  | Game Info| Segments | Final    |       |                  |
-     *  |          |          | Segment  |-------|------------------|
-     *  |          |          |          | Compare label           |
-     *  ------------------------------------------------------------
-     *
-     * No CSS grid is used.
-     *
-     * #splitterInfo is structural only. display: contents causes
-     * its children to participate directly in the splitter's
-     * horizontal flex layout.
      */
 
     #splitter[data-layout="horizontal"] {
-        display: flex;
         flex-direction: row;
 
         align-items: stretch;
 
         min-width: 0;
         min-height: 0;
-
-        overflow: hidden;
     }
-
-    /*
-     * ------------------------------------------------------------
-     * Structural wrapper
-     * ------------------------------------------------------------
-     *
-     * This wrapper intentionally does not establish a layout.
-     *
-     * Skins can therefore independently reposition:
-     *
-     *     .comparison-mode
-     *     #time-container
-     *     #world-record
-     *
-     * and can make any of them visually belong to another region.
-     */
 
     #splitter[data-layout="horizontal"] #splitterInfo {
-        display: contents;
-    }
-
-    /*
-     * ------------------------------------------------------------
-     * Game info
-     * ------------------------------------------------------------
-     */
-
-    #splitter[data-layout="horizontal"] #gameInfo {
-        flex: 0 0 150px;
-
-        width: 150px;
-        min-width: 100px;
-        min-height: 0;
-
-        overflow: hidden;
-    }
-
-    /*
-     * ------------------------------------------------------------
-     * Split list
-     * ------------------------------------------------------------
-     */
-
-    #splitter[data-layout="horizontal"] #splitList {
-        display: flex;
-        flex: 1 1 auto;
-
-        flex-direction: row;
-
-        min-width: 0;
-        min-height: 0;
-
-        overflow: hidden;
-    }
-
-    /*
-     * ------------------------------------------------------------
-     * Horizontal scrolling segment container
-     * ------------------------------------------------------------
-     */
-
-    #splitter[data-layout="horizontal"] #splitContainer {
-        display: block;
-
-        flex: 1 1 auto;
-
-        min-width: 0;
-        min-height: 0;
-
-        overflow-x: auto;
-        overflow-y: hidden;
-
-        scroll-behavior: smooth;
-        overscroll-behavior-x: contain;
-    }
-
-    #splitter[data-layout="horizontal"] #splitContainer::-webkit-scrollbar {
-        height: 0;
-    }
-
-    #splitter[data-layout="horizontal"] #splitContainer:hover::-webkit-scrollbar {
-        height: 10px;
-    }
-
-    #splitter[data-layout="horizontal"] #splitContainer::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.4);
-        border-radius: 6px;
-    }
-
-    #splitter[data-layout="horizontal"] #splitContainer::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    /*
-     * ------------------------------------------------------------
-     * Horizontal segment table
-     * ------------------------------------------------------------
-     *
-     * Each segment becomes a vertical column.
-     */
-
-    #splitter[data-layout="horizontal"] #splitContainer table {
-        width: max-content;
-        min-width: 100%;
-        height: 100%;
-
-        margin: 0;
-        padding: 0;
-
-        border-collapse: collapse;
-    }
-
-    #splitter[data-layout="horizontal"] #splitContainer table tbody {
-        display: flex;
-        flex-direction: row;
-
-        width: max-content;
-        min-width: 100%;
-        height: 100%;
-
-        margin: 0;
-        padding: 0;
-    }
-
-    #splitter[data-layout="horizontal"] #splitContainer table tr {
-        display: flex;
-        flex-direction: column;
-
-        flex: 0 0 150px;
-
-        width: 150px;
-        min-width: 150px;
-        height: 100%;
-
-        margin: 0;
-        padding: 0;
-
-        align-items: stretch;
-        justify-content: flex-start;
-
-        border-left: 1px solid transparent;
-        border-right: 1px solid transparent;
-
-        scroll-margin-inline: 12px;
-    }
-
-    #splitter[data-layout="horizontal"] #splitContainer table td {
-        display: flex;
-
-        width: 100%;
-        min-width: 0;
-
-        margin: 0;
-
-        align-items: center;
-        justify-content: center;
-
-        border: 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-
-        padding: 6px;
-
-        text-align: center;
-    }
-
-    /*
-     * ------------------------------------------------------------
-     * Segment icon
-     * ------------------------------------------------------------
-     */
-
-    #splitter[data-layout="horizontal"] #splitContainer .segmentIcon {
-        min-height: 40px;
-    }
-
-    #splitter[data-layout="horizontal"] #splitContainer .segment-icon {
-        flex-shrink: 0;
-
-        width: 32px;
-        height: 32px;
-
-        margin: 0;
-    }
-
-    /*
-     * ------------------------------------------------------------
-     * Segment name
-     * ------------------------------------------------------------
-     */
-
-    #splitter[data-layout="horizontal"] #splitContainer .splitName {
-        flex-direction: column;
-
-        gap: 4px;
-
-        min-height: 64px;
-
-        overflow-wrap: anywhere;
-        word-break: break-word;
-
-        overflow: hidden;
-
-        font-weight: normal;
-    }
-
-    /*
-     * ------------------------------------------------------------
-     * Segment values
-     * ------------------------------------------------------------
-     */
-
-    #splitter[data-layout="horizontal"] #splitContainer .splitDelta,
-    #splitter[data-layout="horizontal"] #splitContainer .splitComparison,
-    #splitter[data-layout="horizontal"] #splitContainer .splitTime {
-        justify-content: center;
-
-        min-height: 32px;
-
-        text-align: center;
-    }
-
-    /*
-     * Keep selected segments visually obvious.
-     */
-
-    #splitter[data-layout="horizontal"] #splitContainer table tr.selected {
-        background: var(--active-segment-background, #000);
-        color: var(--active-segment-text-color, #fff);
-    }
-
-    /*
-     * ============================================================
-     * Horizontal final segment
-     * ============================================================
-     */
-
-    #splitter[data-layout="horizontal"] #finalSegment {
-        display: flex;
-        flex: 0 0 150px;
-
-        flex-direction: column;
-
-        width: 150px;
-        height: 100%;
-
-        min-width: 120px;
-        min-height: 0;
-
-        overflow: hidden;
-    }
-
-    #splitter[data-layout="horizontal"] #finalSegment table {
-        width: 100%;
-        height: 100%;
-
-        margin: 0;
-        padding: 0;
-
-        border-collapse: collapse;
-    }
-
-    #splitter[data-layout="horizontal"] #finalSegment table tbody {
-        display: flex;
-
-        width: 100%;
-        height: 100%;
-
-        margin: 0;
-        padding: 0;
-    }
-
-    #splitter[data-layout="horizontal"] #finalSegment table tr {
-        display: flex;
-        flex-direction: column;
-
-        width: 100%;
-        height: 100%;
-
-        align-items: stretch;
-    }
-
-    #splitter[data-layout="horizontal"] #finalSegment table td {
-        display: flex;
-
-        width: 100%;
-        min-width: 0;
-
-        align-items: center;
-        justify-content: center;
-
-        border: 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-
-        padding: 6px;
-
-        text-align: center;
-    }
-
-    #splitter[data-layout="horizontal"] #finalSegment .segmentIcon {
-        min-height: 40px;
-    }
-
-    #splitter[data-layout="horizontal"] #finalSegment .segment-icon {
-        flex-shrink: 0;
-
-        width: 32px;
-        height: 32px;
-
-        margin: 0;
-    }
-
-    #splitter[data-layout="horizontal"] #finalSegment .splitName {
-        flex-direction: column;
-
-        gap: 4px;
-
-        min-height: 64px;
-
-        overflow-wrap: anywhere;
-        word-break: break-word;
-
-        overflow: hidden;
-    }
-
-    #splitter[data-layout="horizontal"] #finalSegment .splitDelta,
-    #splitter[data-layout="horizontal"] #finalSegment .splitComparison,
-    #splitter[data-layout="horizontal"] #finalSegment .splitTime {
-        justify-content: center;
-
-        min-height: 32px;
-
-        text-align: center;
-    }
-
-    /*
-     * ============================================================
-     * Horizontal comparison
-     * ============================================================
-     *
-     * #splitterInfo uses display: contents, so this element is a
-     * direct flex item of #splitter.
-     *
-     * It appears after the split list and before the timer/WR
-     * elements in the DOM, so order is used to establish the
-     * default visual arrangement.
-     */
-
-    #splitter[data-layout="horizontal"] .comparison-mode {
-        order: 3;
-
-        flex: 0 1 150px;
-
-        min-width: 100px;
-        min-height: 0;
-
-        padding: 8px;
-
-        display: flex;
-
-        align-items: center;
-        justify-content: center;
-
-        text-align: center;
-    }
-
-    /*
-     * ============================================================
-     * Horizontal timer
-     * ============================================================
-     */
-
-    #splitter[data-layout="horizontal"] #time-container {
-        order: 4;
-
-        flex: 0 1 180px;
-
-        width: 180px;
-
-        min-width: 120px;
-        min-height: 0;
-
-        padding: 8px;
-
-        align-items: center;
-        justify-content: flex-end;
-    }
-
-    /*
-     * ============================================================
-     * Horizontal world record
-     * ============================================================
-     */
-
-    #splitter[data-layout="horizontal"] #world-record {
-        order: 5;
-
-        flex: 0 1 150px;
-
-        width: 150px;
-
-        min-width: 100px;
-        min-height: 0;
-
-        padding: 8px;
-
-        justify-content: center;
-    }
-
-    /*
-     * ============================================================
-     * Vertical / shared split list
-     * ============================================================
-     */
-
-    #splitContainer {
-        flex: 1;
-
-        min-width: 0;
-        min-height: 0;
-
-        overflow-y: auto;
-        overflow-x: hidden;
-    }
-
-    #splitContainer::-webkit-scrollbar {
-        width: 0;
-    }
-
-    #splitContainer:hover::-webkit-scrollbar {
-        width: 10px;
-    }
-
-    #splitContainer::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.4);
-        border-radius: 6px;
-    }
-
-    #splitContainer::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    #finalSegment {
         flex: 0 0 auto;
-    }
 
-    #splitList {
-        display: flex;
-
-        flex: 1;
-
+        width: auto;
         min-width: 0;
+        max-width: none;
         min-height: 0;
 
-        flex-direction: var(--splitlist-direction, column);
-    }
-
-    #splitList table {
-        width: 100%;
-
-        margin: 0;
-        padding: 0;
-
-        border-collapse: collapse;
-    }
-
-    #splitList table td {
-        border-left: 0;
-        border-right: 0;
+        box-sizing: border-box;
     }
 }
