@@ -10,9 +10,49 @@
         padding-right: 10px;
         box-sizing: border-box;
 
-        align-items: baseline;
+        align-items: center;
 
         font-family: "Monofonto", sans-serif;
         font-size: 50px;
+    }
+
+    #time-sign {
+        min-width: var(--splitter-timer-sign-min-width, 0px);
+        min-height: var(--splitter-timer-sign-min-height, 0px);
+    }
+
+    #time-hours {
+        min-width: var(--splitter-timer-hours-min-width, 0px);
+        min-height: var(--splitter-timer-hours-min-height, 0px);
+    }
+
+    #time-sep-hm {
+        min-width: var(--splitter-timer-separator-hours-minutes-min-width, 0px);
+        min-height: var(--splitter-timer-separator-hours-minutes-min-height, 0px);
+    }
+
+    #time-minutes {
+        min-width: var(--splitter-timer-minutes-min-width, 0px);
+        min-height: var(--splitter-timer-minutes-min-height, 0px);
+    }
+
+    #time-sep-ms {
+        min-width: var(--splitter-timer-separator-minutes-seconds-min-width, 0px);
+        min-height: var(--splitter-timer-separator-minutes-seconds-min-height, 0px);
+    }
+
+    #time-seconds {
+        min-width: var(--splitter-timer-seconds-min-width, 0px);
+        min-height: var(--splitter-timer-seconds-min-height, 0px);
+    }
+
+    #time-sep-sc {
+        min-width: var(--splitter-timer-separator-seconds-centis-min-width, 0px);
+        min-height: var(--splitter-timer-separator-seconds-centis-min-height, 0px);
+    }
+
+    #time-centis {
+        min-width: var(--splitter-timer-centis-min-width, 0px);
+        min-height: var(--splitter-timer-centis-min-height, 0px);
     }
 }
