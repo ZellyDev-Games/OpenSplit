@@ -190,7 +190,7 @@ function useDetectWindowChange() {
             const { w, h } = await WindowGetSize();
 
             if (x !== lastX || y !== lastY || h !== lastH || w !== lastW) {
-                console.debug("[App] Window position changed", {
+                log.debug("[App] Window position changed", {
                     x,
                     y,
                     w,
@@ -215,13 +215,13 @@ function useDetectWindowChange() {
 function useAppEventBindings(setViewModel: React.Dispatch<SetStateAction<AppViewModel | null>>) {
     useEffect(() => {
         const unsubViewModel = EventsOn("ui:model", async (nextModel: AppViewModel) => {
-            console.log("[App] UI model", nextModel);
+            log.info("[App] UI model", nextModel);
 
             await applyWindowConfig(nextModel);
 
             const size = await WindowGetSize();
 
-            console.log("[App] Window after resize", size);
+            log.info("[App] Window after resize", size);
 
             setViewModel(nextModel);
         });
@@ -281,7 +281,7 @@ function useWindowFocus() {
 async function applyWindowConfig(model: AppViewModel) {
     const window = model.window;
 
-    console.log("[App] Applying window config", window);
+    log.info("[App] Applying window config", window);
 
     WindowSetMinSize(1, 1);
     WindowSetMaxSize(10000, 10000);
