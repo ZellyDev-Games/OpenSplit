@@ -1,8 +1,27 @@
 @layer components {
     #world-record {
-        grid-area: wr;
-
         display: flex;
+        flex-direction: column;
+    }
+
+    #world-record > div {
+        display: flex;
+        flex-direction: row;
+
+        flex: 0 0 auto;
+
+        justify-content: center;
+        align-items: center;
+        gap: 0.35rem;
+
+        white-space: nowrap;
+    }
+
+    #world-record small {
+        font-size: 0.85em;
+    }
+
+    #splitter[data-layout="vertical"] #world-record {
         flex-direction: column;
         align-items: center;
 
@@ -12,19 +31,51 @@
         line-height: 1.2;
     }
 
-    #world-record > div {
+    #splitter[data-layout="vertical"] #world-record-player,
+    #splitter[data-layout="vertical"] #world-record-real-time,
+    #splitter[data-layout="vertical"] #world-record-in-game-time {
         display: flex;
-        justify-content: center;
-        align-items: baseline;
-        gap: 0.35rem;
-
-        width: 100%;
-        white-space: nowrap;
+        flex-direction: row;
+        align-items: center;
     }
 
-    /* Remove spacing between seconds and centiseconds */
-    #world-record small {
-        margin-left: -0.5em;
-        font-size: 0.85em;
+    #splitter[data-layout="vertical"] #world-record-label {
+        min-width: var(--splitter-world-record-label-min-width, 0px);
+        min-height: var(--splitter-world-record-label-min-height, 0px);
+    }
+
+    #splitter[data-layout="vertical"] #world-record-players {
+        min-width: var(--splitter-world-record-players-min-width, 0px);
+        min-height: var(--splitter-world-record-players-min-height, 0px);
+    }
+
+    #splitter[data-layout="vertical"] #world-record-rt-label {
+        min-width: var(--splitter-world-record-rt-label-min-width, 0px);
+        min-height: var(--splitter-world-record-rt-label-min-height, 0px);
+    }
+
+    #splitter[data-layout="vertical"] #world-record-rt-time {
+        min-width: var(--splitter-world-record-rt-time-min-width, 0px);
+        min-height: var(--splitter-world-record-rt-time-min-height, 0px);
+    }
+
+    #splitter[data-layout="vertical"] #world-record-rt-centiseconds {
+        min-width: var(--splitter-world-record-rt-centiseconds-min-width, 0px);
+        min-height: var(--splitter-world-record-rt-centiseconds-min-height, 0px);
+    }
+
+    #splitter[data-layout="vertical"] #world-record-igt-label {
+        min-width: var(--splitter-world-record-igt-label-min-width, 0px);
+        min-height: var(--splitter-world-record-igt-label-min-height, 0px);
+    }
+
+    #splitter[data-layout="vertical"] #world-record-igt-time {
+        min-width: var(--splitter-world-record-igt-time-min-width, 0px);
+        min-height: var(--splitter-world-record-igt-time-min-height, 0px);
+    }
+
+    #splitter[data-layout="vertical"] #world-record-igt-centiseconds {
+        min-width: var(--splitter-world-record-igt-centiseconds-min-width, 0px);
+        min-height: var(--splitter-world-record-igt-centiseconds-min-height, 0px);
     }
 }
