@@ -1,11 +1,12 @@
 import type { SkinElement } from "../../../models/skin/element";
+import parentSegmentRow from "../../splitter/previews/parentSegmentRow.preview";
+import segmentList from "../../splitter/previews/segmentList.preview";
+import segmentRow from "../../splitter/previews/segmentRow.preview";
+import segmentTime from "../../splitter/previews/segmentTime.preview";
 import splitGameInfo from "../../splitter/previews/splitGameInfo.preview";
 import splitter from "../../splitter/previews/splitter.preview";
-import parentSegmentRow from "../../splitter/segments/previews/parentSegmentRow.preview";
-import segmentList from "../../splitter/segments/previews/segmentList.preview";
-import segmentRow from "../../splitter/segments/previews/segmentRow.preview";
-import segmentTime from "../../splitter/segments/previews/segmentTime.preview";
-import timer from "../../splitter/timer/timer.preview";
+import timer from "../../splitter/previews/timer.preview";
+import worldRecord from "../../splitter/previews/worldRecord.preview";
 
 export const previewElements: SkinElement[] = [
     ...splitter,
@@ -15,4 +16,5 @@ export const previewElements: SkinElement[] = [
     ...parentSegmentRow,
     ...segmentTime,
     ...timer,
+    ...worldRecord,
 ];
