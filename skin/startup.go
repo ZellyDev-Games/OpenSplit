@@ -169,7 +169,6 @@ func (s *Service) extractDefaultSkinFile(
 	if err != nil {
 		return err
 	}
-	defer reader.Close()
 
 	output, err := os.OpenFile(
 		p,
@@ -177,6 +176,15 @@ func (s *Service) extractDefaultSkinFile(
 		0o644,
 	)
 	if err != nil {
+		if closeErr := reader.Close(); closeErr != nil {
+			logger.Warnf(
+				logModule,
+				"failed to close default skin reader %s: %v",
+				file.Name,
+				closeErr,
+			)
+		}
+
 		return err
 	}
 
@@ -185,13 +193,18 @@ func (s *Service) extractDefaultSkinFile(
 		reader,
 	)
 
-	closeErr := output.Close()
+	readerCloseErr := reader.Close()
+	outputCloseErr := output.Close()
 
 	if copyErr != nil {
 		return copyErr
 	}
 
-	return closeErr
+	if readerCloseErr != nil {
+		return readerCloseErr
+	}
+
+	return outputCloseErr
 }
 
 // restoreSelectedSkin restores the configured skin and falls back to the
