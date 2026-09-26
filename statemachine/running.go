@@ -62,12 +62,12 @@ func (r *Running) OnEnter() error {
 
 					if len(keyData.Modifiers) > 0 {
 						sent := make(
-							map[int]struct{},
+							map[string]struct{},
 							len(data.Modifiers),
 						)
 
-						for _, m := range data.Modifiers {
-							sent[m] = struct{}{}
+						for _, modifier := range data.Modifiers {
+							sent[modifier] = struct{}{}
 						}
 
 						match := true
