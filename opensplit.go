@@ -21,6 +21,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/autosplitter"
 	"github.com/zellydev-games/opensplit/bridge"
+	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/hotkeys"
@@ -47,6 +48,8 @@ const logModule = "main"
 var (
 	shutdownOnce sync.Once
 	shutdownDone = make(chan struct{})
+
+	globalHotkeyProvider statemachine.GlobalHotkeyProvider
 )
 
 // main initializes all OpenSplit services, starts the Wails application,
@@ -120,6 +123,30 @@ func main() {
 			// setup hotkey hook
 			hotkeyProvider = hotkeys.SetupHotkeys()
 			machine.AttachHotkeyProvider(hotkeyProvider)
+
+			if provider, ok := hotkeyProvider.(statemachine.GlobalHotkeyProvider); ok {
+				globalHotkeyProvider = provider
+
+				provider.SetCommandCallback(func(cmd command.Command) {
+					machine.ReceiveDispatch(cmd, nil)
+				})
+
+				if err := provider.Start(ctx); err != nil {
+					logger.Errorf(
+						logModule,
+						"failed to start global hotkey provider: %v",
+						err,
+					)
+				} else if configService.GlobalHotkeysActive {
+					if err := provider.Configure(configService.KeyConfig); err != nil {
+						logger.Errorf(
+							logModule,
+							"failed to configure global hotkeys: %v",
+							err,
+						)
+					}
+				}
+			}
 
 			// startup services
 			timerService.Startup(ctx)
@@ -303,13 +330,40 @@ func startInterruptListener(ctx context.Context, hotkeyProvider statemachine.Hot
 }
 
 // gracefulShutdown performs one-time cleanup before the application exits.
-func gracefulShutdown(hotkeyService statemachine.HotkeyProvider) {
+func gracefulShutdown(
+	hotkeyService statemachine.HotkeyProvider,
+) {
 	shutdownOnce.Do(func() {
-		logger.Info(logModule, "performing graceful shutdown")
-		if err := hotkeyService.Unhook(); err != nil {
-			logger.Errorf(logModule, "failed to unhook hotkeys: %v", err)
+		logger.Info(
+			logModule,
+			"performing graceful shutdown",
+		)
+
+		if hotkeyService != nil {
+			if err := hotkeyService.Unhook(); err != nil {
+				logger.Errorf(
+					logModule,
+					"failed to unhook hotkeys: %v",
+					err,
+				)
+			}
 		}
-		logger.Info(logModule, "shutdown complete")
+
+		if globalHotkeyProvider != nil {
+			if err := globalHotkeyProvider.Close(); err != nil {
+				logger.Errorf(
+					logModule,
+					"failed to close global hotkey provider: %v",
+					err,
+				)
+			}
+		}
+
+		logger.Info(
+			logModule,
+			"shutdown complete",
+		)
+
 		close(shutdownDone)
 	})
 }
