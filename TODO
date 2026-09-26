@@ -3,3 +3,5 @@ default skin toggle keybind?
 reds/golds/greens should still be displayed when run completes
 update default skin
 update other skins
+wayland issues: Config hotkey window is irrelevant in wayland
+                Only global hotkeys work
