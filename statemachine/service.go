@@ -3,7 +3,7 @@ package statemachine
 import (
 	"context"
 	"errors"
-	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -57,6 +57,15 @@ type RuntimeProvider interface {
 type HotkeyProvider interface {
 	StartHook(func(data keyinfo.KeyData)) error
 	Unhook() error
+}
+
+type GlobalHotkeyProvider interface {
+	Start(context.Context) error
+	Configure(map[command.Command]keyinfo.KeyData) error
+	Enable() error
+	Disable() error
+	SetCommandCallback(func(command.Command))
+	Close() error
 }
 
 type uiEmitter interface {
@@ -115,7 +124,6 @@ func (s *Service) Startup(ctx context.Context) {
 		logModule,
 		"starting state machine",
 	)
-
 	s.ctx = ctx
 
 	s.unsubscribeFromWindowDimensionChanges =
@@ -160,7 +168,8 @@ func (s *Service) ReceiveDispatch(
 			)
 	}
 
-	if c == command.QUIT {
+	switch c {
+	case command.QUIT:
 		logger.Debug(
 			logModule,
 			"QUIT c dispatched from front end",
@@ -169,49 +178,61 @@ func (s *Service) ReceiveDispatch(
 		s.runtimeProvider.Quit()
 
 		return dispatcher.DispatchReply{}, nil
-	}
 
-	if c == command.HELLO {
+	case command.HELLO:
 		return dispatcher.DispatchReply{
 			Code:    0,
 			Message: "HELLO",
 		}, nil
-	}
 
-	if c == command.TOGGLEGLOBAL {
+	case command.TOGGLEGLOBAL:
 		logger.Debug(
 			logModule,
-			"TOGGLEGLOBAL c dispatched from frontend",
+			"TOGGLEGLOBAL command dispatched from frontend",
 		)
 
-		s.configService.GlobalHotkeysActive =
-			!s.configService.GlobalHotkeysActive
+		active := !s.configService.GlobalHotkeysActive
 
-		err := s.repoService.SaveConfig(
-			s.configService,
-		)
+		if provider, ok := s.hotkeyProvider.(GlobalHotkeyProvider); ok {
+			var err error
 
-		if err != nil {
-			message := fmt.Sprintf(
-				"error saving config to repo %s",
-				err,
-			)
+			if active {
+				err = provider.Enable()
+			} else {
+				err = provider.Disable()
+			}
+
+			if err != nil {
+				message := "failed to change global hotkey state: " + err.Error()
+
+				logger.Error(logModule, message)
+
+				return dispatcher.DispatchReply{
+					Code:    1,
+					Message: message,
+				}, err
+			}
+		}
+
+		s.configService.GlobalHotkeysActive = active
+
+		if err := s.repoService.SaveConfig(s.configService); err != nil {
+			message := "failed to save global hotkey configuration: " + err.Error()
+
+			logger.Error(logModule, message)
 
 			return dispatcher.DispatchReply{
-				Code:    1,
+				Code:    2,
 				Message: message,
-			}, errors.New(message)
+			}, err
 		}
 
 		return dispatcher.DispatchReply{
-			Message: fmt.Sprintf(
-				"%t",
-				s.configService.GlobalHotkeysActive,
-			),
+			Code:    0,
+			Message: strconv.FormatBool(active),
 		}, nil
-	}
 
-	if c == command.FOCUS {
+	case command.FOCUS:
 		if payload == nil {
 			return dispatcher.DispatchReply{
 				Code:    1,
@@ -257,7 +278,6 @@ func (s *Service) changeState(
 			)
 		}
 	}
-
 	switch newState {
 	case WELCOME:
 		logger.Debug(
@@ -417,7 +437,6 @@ func (s *Service) updateWorldRecord() {
 	)
 
 	showWorldRecord := sf.WR.Show
-
 	sf.WR =
 		s.speedrunService.ToWorldRecord(wr)
 
@@ -582,7 +601,6 @@ func (s *Service) promptPartialRun() error {
 
 	return nil
 }
-
 func (s *Service) promptDirtySave() (bool, error) {
 	if !s.sessionService.Dirty() {
 		return true, nil
