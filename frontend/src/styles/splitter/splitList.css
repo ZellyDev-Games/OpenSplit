@@ -7,31 +7,23 @@
 
     #splitList {
         display: flex;
-
         flex: 1 1 auto;
-
         min-width: 0;
-
         flex-direction: var(--splitlist-direction, column);
-
         box-sizing: border-box;
-
         overflow: hidden;
     }
 
     #splitContainer {
         flex: 1 1 auto;
-
         min-width: 0;
         min-height: 0;
     }
 
     #splitList table {
         width: 100%;
-
         margin: 0;
         padding: 0;
-
         border-collapse: collapse;
         border-spacing: 0;
     }
@@ -49,55 +41,40 @@
 
     #splitter[data-layout="vertical"] #splitList {
         flex: 1 1 auto;
-
         flex-shrink: 1;
-
         width: 100%;
         min-width: 0;
-
         box-sizing: border-box;
     }
 
     #splitter[data-layout="vertical"] #splitContainer {
         flex: 1 1 0;
-
         width: 100%;
-
         min-width: 0;
         min-height: 0;
-
         overflow-y: auto;
         overflow-x: hidden;
     }
 
     #splitter[data-layout="vertical"] #finalSegment {
         flex: 0 0 auto;
-
         width: 100%;
-
         min-width: 0;
         max-width: 100%;
-
         box-sizing: border-box;
-
         overflow: visible;
     }
 
+    #splitter[data-layout="vertical"] #splitContainer table,
     #splitter[data-layout="vertical"] #finalSegment table {
         width: 100%;
-
         min-width: 0;
         max-width: 100%;
-
         height: auto;
-
         margin: 0;
         padding: 0;
-
         border-collapse: collapse;
         border-spacing: 0;
-
-        table-layout: fixed;
     }
 
     #splitter[data-layout="vertical"] #finalSegment table tbody {
@@ -105,9 +82,6 @@
     }
 
     #splitter[data-layout="vertical"] #finalSegment table tr {
-        width: 100%;
-        min-width: 0;
-
         height: auto;
     }
 
@@ -118,31 +92,30 @@
      */
 
     #splitter[data-layout="horizontal"] #splitList {
+        display: flex;
+        flex: 1 1 0;
         flex-direction: row;
 
+        /*
+         * The split list itself must never shrink below the
+         * final segment's minimum width.
+         */
         width: 0;
-
-        min-width: max(
-            var(--splitter-final-segment-min-width, 0px),
-            var(--splitter-segment-icon-min-width, 40px),
-            var(--splitter-segment-name-min-width, 110px),
-            var(--splitter-segment-delta-min-width, 70px),
-            var(--splitter-segment-comparison-min-width, 70px),
-            var(--splitter-segment-time-min-width, 70px)
-        );
+        min-width: var(--splitter-segment-row-min-width);
 
         min-height: 0;
-
         box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    #splitter[data-layout="horizontal"][data-has-segment-icons="true"] #splitList {
+        min-width: max(var(--splitter-segment-row-min-width), var(--splitter-segment-icon-min-width, 10px));
     }
 
     #splitter[data-layout="horizontal"] #splitContainer {
         display: block;
-
         flex: 1 1 0;
-
         width: 0;
-
         min-width: 0;
         max-width: 100%;
         min-height: 0;
@@ -179,24 +152,19 @@
 
     #splitter[data-layout="horizontal"] #splitContainer table {
         width: max-content;
-        min-width: 100%;
+        min-width: 0;
         height: 100%;
-
         margin: 0;
         padding: 0;
-
         border-collapse: collapse;
     }
 
     #splitter[data-layout="horizontal"] #splitContainer table tbody {
         display: flex;
-
         flex-direction: row;
-
         width: max-content;
-        min-width: 100%;
+        min-width: 0;
         height: 100%;
-
         margin: 0;
         padding: 0;
     }
@@ -210,25 +178,39 @@
     #splitter[data-layout="horizontal"] #finalSegment {
         display: flex;
 
-        flex: 0 0 max-content;
+        /*
+         * The final segment occupies exactly its configured
+         * minimum width. The split container gets everything else.
+         */
+        flex: 0 0 var(--splitter-segment-row-min-width);
 
         flex-direction: column;
 
-        width: max-content;
-        min-width: max-content;
-        max-width: none;
+        width: var(--splitter-segment-row-min-width);
+
+        min-width: var(--splitter-segment-row-min-width);
+
+        max-width: 100%;
 
         height: 100%;
         min-height: 0;
 
         box-sizing: border-box;
-
         overflow: visible;
     }
 
+    #splitter[data-layout="horizontal"][data-has-segment-icons="true"] #finalSegment {
+        flex-basis: max(var(--splitter-segment-row-min-width), var(--splitter-segment-icon-min-width, 10px));
+
+        width: max(var(--splitter-segment-row-min-width), var(--splitter-segment-icon-min-width, 10px));
+
+        min-width: max(var(--splitter-segment-row-min-width), var(--splitter-segment-icon-min-width, 10px));
+    }
+
     #splitter[data-layout="horizontal"] #finalSegment table {
-        width: max-content;
-        min-width: max-content;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
 
         height: 100%;
 
@@ -242,8 +224,9 @@
     #splitter[data-layout="horizontal"] #finalSegment table tbody {
         display: flex;
 
-        width: max-content;
-        min-width: max-content;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
 
         height: 100%;
 
@@ -253,11 +236,11 @@
 
     #splitter[data-layout="horizontal"] #finalSegment table tr {
         display: flex;
-
         flex-direction: column;
 
-        width: max-content;
-        min-width: max-content;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
 
         height: 100%;
 

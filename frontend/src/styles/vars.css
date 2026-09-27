@@ -39,6 +39,27 @@
         --split-comparison-text-align: right;
         --split-comparison-font-family: Techna;
 
+        --splitter-gameinfo-min-width: max(
+            var(--splitter-game-title-min-width, 50px),
+            var(--splitter-game-category-min-width, 50px),
+            var(--splitter-game-variable-min-width, 50px),
+            var(--splitter-attempts-min-width, 40px)
+        );
+
+        --splitter-segment-row-min-height: max(
+            var(--splitter-segment-name-min-height, 10px),
+            var(--splitter-segment-delta-min-height, 10px),
+            var(--splitter-segment-comparison-min-height, 10px),
+            var(--splitter-segment-time-min-height, 10px)
+        );
+
+        --splitter-segment-row-min-width: max(
+            var(--splitter-segment-name-min-width, 10px),
+            var(--splitter-segment-delta-min-width, 10px),
+            var(--splitter-segment-comparison-min-width, 10px),
+            var(--splitter-segment-time-min-width, 10px)
+        );
+
         --group-bg: #333;
 
         /* Layout */

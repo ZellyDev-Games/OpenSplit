@@ -1,4 +1,4 @@
-import { JSX } from "react";
+import { CSSProperties, JSX } from "react";
 
 import SegmentPayload from "../../../models/segmentPayload";
 
@@ -8,6 +8,7 @@ type ParentSegmentRowProps = {
     completeClassName: string;
     isExpanded: boolean;
     hasChildren: boolean;
+    hasSegmentIcons: boolean;
     parentComparison: JSX.Element | null;
     parentDelta: JSX.Element | null;
     parentSegmentDelta: JSX.Element | null;
@@ -20,29 +21,34 @@ export default function ParentSegmentRow({
     completeClassName,
     isExpanded,
     hasChildren,
+    hasSegmentIcons,
     parentComparison,
     parentDelta,
     parentSegmentDelta,
     onToggle,
 }: ParentSegmentRowProps) {
-    const indentation = 5 + depth * 16;
-
     return (
         <tr className="parentRow">
-            <td
-                className="segmentIcon"
-                style={{
-                    paddingLeft: indentation,
-                }}
-            >
-                {segment.icon && <img src={segment.icon} alt="" draggable={false} className="segment-icon" />}
-            </td>
+            {hasSegmentIcons && (
+                <td
+                    className="segmentIcon"
+                    style={
+                        {
+                            "--segment-depth": depth,
+                        } as CSSProperties
+                    }
+                >
+                    {segment.icon && <img src={segment.icon} alt="" draggable={false} className="segment-icon" />}
+                </td>
+            )}
 
             <td
                 className={"splitName parentName " + completeClassName}
-                style={{
-                    paddingLeft: indentation,
-                }}
+                style={
+                    {
+                        "--segment-depth": depth,
+                    } as CSSProperties
+                }
             >
                 {hasChildren && (
                     <button

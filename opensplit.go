@@ -21,6 +21,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/autosplitter"
 	"github.com/zellydev-games/opensplit/bridge"
+	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/config"
 	"github.com/zellydev-games/opensplit/dispatcher"
 	"github.com/zellydev-games/opensplit/hotkeys"
@@ -47,6 +48,8 @@ const logModule = "main"
 var (
 	shutdownOnce sync.Once
 	shutdownDone = make(chan struct{})
+
+	globalHotkeyProvider statemachine.GlobalHotkeyProvider
 )
 
 // main initializes all OpenSplit services, starts the Wails application,
@@ -83,8 +86,6 @@ func main() {
 	folderProvider := platform.NewFolderProvider(configService)
 	commandDispatcher := dispatcher.NewService(machine, runtimeProvider, folderProvider, repoService)
 
-	var hotkeyProvider statemachine.HotkeyProvider
-
 	err := wails.Run(&options.App{
 		Title:     "OpenSplit",
 		Width:     320,
@@ -118,8 +119,42 @@ func main() {
 			}
 
 			// setup hotkey hook
-			hotkeyProvider = hotkeys.SetupHotkeys()
-			machine.AttachHotkeyProvider(hotkeyProvider)
+			provider := hotkeys.SetupHotkeys()
+			globalHotkeyProvider = provider
+			machine.AttachHotkeyProvider(provider)
+
+			provider.SetCommandCallback(func(cmd command.Command) {
+				if _, err := machine.ReceiveDispatch(cmd, nil); err != nil {
+					logger.Errorf(
+						logModule,
+						"global hotkey command %d failed: %v",
+						cmd,
+						err,
+					)
+				}
+			})
+
+			if err := provider.Start(ctx); err != nil {
+				logger.Errorf(
+					logModule,
+					"failed to start global hotkey provider: %v",
+					err,
+				)
+			} else if err := provider.Configure(configService.KeyConfig); err != nil {
+				logger.Errorf(
+					logModule,
+					"failed to configure global hotkeys: %v",
+					err,
+				)
+			} else if configService.GlobalHotkeysActive {
+				if err := provider.Enable(); err != nil {
+					logger.Errorf(
+						logModule,
+						"failed to enable global hotkeys: %v",
+						err,
+					)
+				}
+			}
 
 			// startup services
 			timerService.Startup(ctx)
@@ -164,13 +199,13 @@ func main() {
 
 			go skinService.Serve()
 
-			startInterruptListener(ctx, hotkeyProvider)
+			startInterruptListener(ctx)
 			runtime.WindowSetAlwaysOnTop(ctx, true)
 			runtime.WindowSetMinSize(ctx, 100, 100)
 			logger.Info(logModule, "application startup complete")
 		},
 		OnBeforeClose: func(ctx context.Context) bool {
-			gracefulShutdown(hotkeyProvider)
+			gracefulShutdown()
 			return false
 		},
 		Bind: []interface{}{
@@ -278,7 +313,7 @@ func setupPaths(fileProvider repo.FileProvider) (string, string, string, string)
 
 // startInterruptListener installs signal handlers so OpenSplit performs
 // a graceful shutdown when interrupted by the operating system.
-func startInterruptListener(ctx context.Context, hotkeyProvider statemachine.HotkeyProvider) {
+func startInterruptListener(ctx context.Context) {
 	go func() {
 		ch := make(chan os.Signal, 1)
 		signal.Notify(ch, os.Interrupt, syscall.SIGTERM) // disables default exit for these
@@ -286,9 +321,7 @@ func startInterruptListener(ctx context.Context, hotkeyProvider statemachine.Hot
 		logger.Infof(logModule, "received exit signal %s", s)
 
 		// Do cleanup *now* so we don't depend on Wails calling OnShutdown
-		if hotkeyProvider != nil {
-			gracefulShutdown(hotkeyProvider)
-		}
+		gracefulShutdown()
 
 		// Ask Wails to quit (this will still call OnShutdown in normal paths)
 		runtime.Quit(ctx)
@@ -303,13 +336,28 @@ func startInterruptListener(ctx context.Context, hotkeyProvider statemachine.Hot
 }
 
 // gracefulShutdown performs one-time cleanup before the application exits.
-func gracefulShutdown(hotkeyService statemachine.HotkeyProvider) {
+func gracefulShutdown() {
 	shutdownOnce.Do(func() {
-		logger.Info(logModule, "performing graceful shutdown")
-		if err := hotkeyService.Unhook(); err != nil {
-			logger.Errorf(logModule, "failed to unhook hotkeys: %v", err)
+		logger.Info(
+			logModule,
+			"performing graceful shutdown",
+		)
+
+		if globalHotkeyProvider != nil {
+			if err := globalHotkeyProvider.Close(); err != nil {
+				logger.Errorf(
+					logModule,
+					"failed to close global hotkey provider: %v",
+					err,
+				)
+			}
 		}
-		logger.Info(logModule, "shutdown complete")
+
+		logger.Info(
+			logModule,
+			"shutdown complete",
+		)
+
 		close(shutdownDone)
 	})
 }

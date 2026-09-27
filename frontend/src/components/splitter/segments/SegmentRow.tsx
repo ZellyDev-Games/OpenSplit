@@ -1,4 +1,4 @@
-import { RefObject } from "react";
+import { CSSProperties, RefObject } from "react";
 
 import SegmentPayload from "../../../models/segmentPayload";
 import SplitPayload from "../../../models/splitPayload";
@@ -10,6 +10,7 @@ type SegmentRowProps = {
     split: SplitPayload | null;
     cumulativeTarget: number | null;
     individualTarget: number | null;
+    hasSegmentIcons: boolean;
     activeRow?: boolean;
     time?: number | null;
     previousCumulative?: number;
@@ -21,6 +22,7 @@ export default function SegmentRow({
     split,
     cumulativeTarget,
     individualTarget,
+    hasSegmentIcons,
     activeRow = false,
     time = null,
     previousCumulative = 0,
@@ -38,27 +40,23 @@ export default function SegmentRow({
 
     const segment: SegmentPayload = segmentData.segment;
 
-    const indentation = 5 + segmentData.depth * 16;
-
     return (
-        <tr ref={activeRow ? (activeRowRef ?? null) : null} className={"segmentRow" + (activeRow ? " selected" : "")}>
-            <td
-                className="segmentIcon"
-                style={{
-                    paddingLeft: indentation,
-                }}
-            >
-                {segment.icon && <img src={segment.icon} alt="" draggable={false} className="segment-icon" />}
-            </td>
+        <tr
+            ref={activeRow ? (activeRowRef ?? null) : null}
+            className={"segmentRow" + (activeRow ? " selected" : "")}
+            style={
+                {
+                    "--segment-depth": segmentData.depth,
+                } as CSSProperties
+            }
+        >
+            {hasSegmentIcons && (
+                <td className="segmentIcon">
+                    {segment.icon && <img src={segment.icon} alt="" draggable={false} className="segment-icon" />}
+                </td>
+            )}
 
-            <td
-                className="splitName"
-                style={{
-                    paddingLeft: indentation,
-                }}
-            >
-                {segment.name}
-            </td>
+            <td className="splitName">{segment.name}</td>
 
             <td className="splitDelta">{delta !== null && <DeltaDisplay delta={delta} />}</td>
 

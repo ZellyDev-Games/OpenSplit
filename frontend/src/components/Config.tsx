@@ -15,10 +15,54 @@ const RECORDING_ARMED = 10;
 const DEFAULT_ROLLING_AVG = 20;
 
 export default function Config({ configPayload }: ConfigParams) {
-    const [recording, setRecording] = useState(false);
+    const [recording, setRecording] = useState<Command | null>(null);
     const [config, setConfig] = useState<ConfigPayload>(configPayload);
     const [availableSkins, setAvailableSkins] = useState<Array<string>>([]);
     const [rollingAvg, setRollingAvg] = useState<number>(configPayload.rolling_average_runs ?? DEFAULT_ROLLING_AVG);
+
+    useEffect(() => {
+        if (recording === null) {
+            return;
+        }
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const keyInfo: KeyInfo = {
+                key_code: event.keyCode,
+                locale_name: event.key,
+                modifiers: [
+                    event.ctrlKey ? "CTRL" : "",
+                    event.altKey ? "ALT" : "",
+                    event.shiftKey ? "SHIFT" : "",
+                    event.metaKey ? "META" : "",
+                ].filter(Boolean),
+                modifier_locale_names: [
+                    event.ctrlKey ? "Control" : "",
+                    event.altKey ? "Alt" : "",
+                    event.shiftKey ? "Shift" : "",
+                    event.metaKey ? "Meta" : "",
+                ].filter(Boolean),
+            };
+
+            setConfig((previous) => ({
+                ...previous,
+                key_config: {
+                    ...(previous.key_config ?? {}),
+                    [recording]: keyInfo,
+                },
+            }));
+
+            setRecording(null);
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [recording]);
 
     useEffect(() => {
         const loadSkins = async () => {
@@ -32,7 +76,7 @@ export default function Config({ configPayload }: ConfigParams) {
 
     useEffect(() => {
         const offHotkey = EventsOn("config:hotkey-recorded", (evt: { command: Command; key_info: KeyInfo }) => {
-            setRecording(false);
+            setRecording(null);
 
             setConfig((prev) => ({
                 ...prev,
@@ -63,9 +107,10 @@ export default function Config({ configPayload }: ConfigParams) {
     // backend records the next keypress
     const armHotkey = async (command: Command) => {
         const reply = await Dispatch(command, null);
-        if (reply.code == RECORDING_ARMED) {
+
+        if (reply.code === RECORDING_ARMED) {
             log.debug("Hotkey recording armed");
-            setRecording(true);
+            setRecording(command);
         }
     };
 
@@ -113,12 +158,12 @@ export default function Config({ configPayload }: ConfigParams) {
                     <p className="hotkeyID">{label}:</p>
                     <p className="hotkeyValue">{getHotkeyName(config.key_config?.[command])}</p>
 
-                    <button disabled={recording} onClick={() => armHotkey(command)}>
-                        {recording ? "Recording" : "Record Hotkey"}
+                    <button disabled={recording !== null} onClick={() => armHotkey(command)}>
+                        {recording !== null ? "Recording" : "Record Hotkey"}
                     </button>
 
                     <button
-                        disabled={recording || !hasHotkey(config.key_config?.[command])}
+                        disabled={recording !== null || !hasHotkey(config.key_config?.[command])}
                         onClick={() => clearHotkey(command)}
                     >
                         Clear

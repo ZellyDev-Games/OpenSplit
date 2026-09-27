@@ -1,9 +1,18 @@
 @layer components {
     .comparison-mode {
+        min-width: var(--splitter-comparison-min-width, 50px);
+        min-height: var(--splitter-comparison-min-height, 15px);
+
         text-align: center;
         font-size: 0.85rem;
         padding: 4px 0;
         user-select: none;
+
+        white-space: normal;
+        overflow-wrap: normal;
+        word-break: normal;
+
+        box-sizing: border-box;
     }
 
     .splitComparison {

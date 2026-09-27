@@ -1,75 +1,70 @@
 @layer components {
     #gameInfo {
         display: flex;
-
         flex-direction: column;
         justify-content: center;
-
+        align-items: center;
         padding: 12px 16px;
-
         min-width: 0;
-
         box-sizing: border-box;
     }
 
     #gameTitle {
-        min-width: var(--splitter-game-title-min-width, 150px);
+        min-width: var(--splitter-game-title-min-width, 50px);
         min-height: var(--splitter-game-title-min-height, 28px);
-
         margin: 0;
         padding: 4px 0;
-
         line-height: 1.15;
+        white-space: normal;
+        overflow-wrap: normal;
+        word-break: normal;
+        box-sizing: border-box;
     }
 
     #gameCategory {
-        min-width: var(--splitter-game-category-min-width, 150px);
+        min-width: var(--splitter-game-category-min-width, 50px);
         min-height: var(--splitter-game-category-min-height, 26px);
-
         margin: 4px 0 0;
         padding: 0 0 4px;
-
         line-height: 1.1;
+        white-space: normal;
+        overflow-wrap: normal;
+        word-break: normal;
+        box-sizing: border-box;
     }
 
     .game-variable {
-        min-width: var(--splitter-game-variable-min-width, 150px);
+        min-width: var(--splitter-game-variable-min-width, 50px);
         min-height: var(--splitter-game-variable-min-height, 26px);
-
         margin: 4px 0 0;
         padding: 0 0 4px;
-
         line-height: 0.85;
+        white-space: normal;
+        overflow-wrap: normal;
+        word-break: normal;
+        box-sizing: border-box;
     }
 
     #attempts {
         position: absolute;
-
         min-width: var(--splitter-attempts-min-width, 40px);
         min-height: var(--splitter-attempts-min-height, 20px);
-
         top: 8px;
         right: 10px;
-
         padding: 2px 6px;
-
         box-sizing: border-box;
-
         font-size: 0.85em;
         line-height: 1;
-
         white-space: nowrap;
     }
 
     #splitter[data-layout="vertical"] #gameInfo {
         flex: 0 0 auto;
-
         width: 100%;
-
         min-width: 0;
-
         box-sizing: border-box;
     }
+
     /*
      * ============================================================
      * Horizontal layout
@@ -77,16 +72,11 @@
      */
 
     #splitter[data-layout="horizontal"] #gameInfo {
-        flex: 0 0 auto;
-
-        width: max(
-            var(--splitter-game-title-min-width, 150px),
-            var(--splitter-game-category-min-width, 150px),
-            var(--splitter-game-variable-min-width, 150px),
-            var(--splitter-attempts-min-width, 40px)
-        );
-        min-width: 0;
-
+        flex: 0 1 calc(var(--splitter-gameinfo-min-width) + var(--splitter-game-info-padding-width, 32px));
+        width: auto;
+        min-width: calc(var(--splitter-gameinfo-min-width) + var(--splitter-game-info-padding-width, 32px));
+        max-width: none;
+        min-height: 0;
         overflow: hidden;
     }
 }

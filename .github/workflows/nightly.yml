@@ -1,14 +1,14 @@
 name: Nightly
 
 on:
-  push:
-    branches: [ main ]
-    tags:
-      - "*"
-    paths-ignore:
-      - "README.md"
-      - "docs/**"
-      - "**/*.md"
+    push:
+        branches: [main]
+        tags:
+            - "*"
+        paths-ignore:
+            - "README.md"
+            - "docs/**"
+            - "**/*.md"
 
 permissions:
     contents: write
@@ -25,6 +25,11 @@ jobs:
             fail-fast: false
             matrix:
                 include:
+                    - name: linux-amd64-wayland-wk41
+                      runner: ubuntu-24.04
+                      goos: linux
+                      goarch: amd64
+                      tags: wayland,webkit2_41
                     - name: linux-amd64-x11-wk41
                       runner: ubuntu-24.04
                       goos: linux
@@ -98,66 +103,66 @@ jobs:
             - name: Package
               shell: bash
               run: |
-                set -euo pipefail
-                mkdir -p out
-            
-                # Create a suffix from tags (e.g., -x11-webkit2_41) if tags are non-empty
-                TAGSUFFIX=""
-                if [ -n "${{ matrix.tags }}" ]; then
-                  TAGSUFFIX="-${{ matrix.tags }}"
-                  TAGSUFFIX="${TAGSUFFIX//,/-}"
-                fi
-            
-                APP_NAME="OpenSplit"
-                APP_PATH="build/bin/${APP_NAME}.app"
-            
-                case "${{ matrix.goos }}" in
-                  windows)
-                    ARCHIVE="opensplit-${{ matrix.goos }}-${{ matrix.goarch }}${TAGSUFFIX}.zip"
-                    pwsh -NoProfile -Command "Compress-Archive -Path 'build/bin/*' -DestinationPath \"out/$ARCHIVE\" -Force"
-                    echo "ARCHIVE=out/$ARCHIVE" >> "$GITHUB_ENV"
-                    ;;
-            
-                  darwin)
-                    # Ensure the .app exists
-                    if [ ! -d "$APP_PATH" ]; then
-                      echo "Expected app bundle not found: $APP_PATH"
-                      echo "Contents of build/bin:"
-                      ls -la build/bin || true
-                      exit 1
-                    fi
-            
-                    DMG="opensplit-${{ matrix.goos }}-${{ matrix.goarch }}${TAGSUFFIX}.dmg"
-                    brew install create-dmg
-            
-                    # Stage into a temp folder so create-dmg has a clean source dir
-                    STAGE="$(mktemp -d)"
-                    cp -R "$APP_PATH" "$STAGE/"
-            
-                    # Create DMG containing the app + Applications symlink
-                    create-dmg \
-                      --volname "${APP_NAME}" \
-                      --window-pos 200 120 \
-                      --window-size 800 400 \
-                      --app-drop-link 600 185 \
-                      "out/$DMG" \
-                      "$STAGE"
-            
-                    echo "ARCHIVE=out/$DMG" >> "$GITHUB_ENV"
-                    ;;
-            
-                  *)
-                    ARCHIVE="opensplit-${{ matrix.goos }}-${{ matrix.goarch }}${TAGSUFFIX}.zip"
-                    (cd build/bin && zip -r "../../out/$ARCHIVE" .)
-                    echo "ARCHIVE=out/$ARCHIVE" >> "$GITHUB_ENV"
-                    ;;
-                esac
+                  set -euo pipefail
+                  mkdir -p out
+
+                  # Create a suffix from tags (e.g., -x11-webkit2_41) if tags are non-empty
+                  TAGSUFFIX=""
+                  if [ -n "${{ matrix.tags }}" ]; then
+                    TAGSUFFIX="-${{ matrix.tags }}"
+                    TAGSUFFIX="${TAGSUFFIX//,/-}"
+                  fi
+
+                  APP_NAME="OpenSplit"
+                  APP_PATH="build/bin/${APP_NAME}.app"
+
+                  case "${{ matrix.goos }}" in
+                    windows)
+                      ARCHIVE="opensplit-${{ matrix.goos }}-${{ matrix.goarch }}${TAGSUFFIX}.zip"
+                      pwsh -NoProfile -Command "Compress-Archive -Path 'build/bin/*' -DestinationPath \"out/$ARCHIVE\" -Force"
+                      echo "ARCHIVE=out/$ARCHIVE" >> "$GITHUB_ENV"
+                      ;;
+
+                    darwin)
+                      # Ensure the .app exists
+                      if [ ! -d "$APP_PATH" ]; then
+                        echo "Expected app bundle not found: $APP_PATH"
+                        echo "Contents of build/bin:"
+                        ls -la build/bin || true
+                        exit 1
+                      fi
+
+                      DMG="opensplit-${{ matrix.goos }}-${{ matrix.goarch }}${TAGSUFFIX}.dmg"
+                      brew install create-dmg
+
+                      # Stage into a temp folder so create-dmg has a clean source dir
+                      STAGE="$(mktemp -d)"
+                      cp -R "$APP_PATH" "$STAGE/"
+
+                      # Create DMG containing the app + Applications symlink
+                      create-dmg \
+                        --volname "${APP_NAME}" \
+                        --window-pos 200 120 \
+                        --window-size 800 400 \
+                        --app-drop-link 600 185 \
+                        "out/$DMG" \
+                        "$STAGE"
+
+                      echo "ARCHIVE=out/$DMG" >> "$GITHUB_ENV"
+                      ;;
+
+                    *)
+                      ARCHIVE="opensplit-${{ matrix.goos }}-${{ matrix.goarch }}${TAGSUFFIX}.zip"
+                      (cd build/bin && zip -r "../../out/$ARCHIVE" .)
+                      echo "ARCHIVE=out/$ARCHIVE" >> "$GITHUB_ENV"
+                      ;;
+                  esac
 
             - name: Upload artifact (per platform)
               uses: actions/upload-artifact@v6
               with:
-                name: package-${{ matrix.name }}
-                path: ${{ env.ARCHIVE }}
+                  name: package-${{ matrix.name }}
+                  path: ${{ env.ARCHIVE }}
 
     publish:
         name: Publish Release
@@ -211,61 +216,63 @@ jobs:
                       --latest=false
                   fi
 
-            -   name: Write release notes
-                shell: bash
-                run: |
-                    set -euo pipefail
+            - name: Write release notes
+              shell: bash
+              run: |
+                  set -euo pipefail
 
-                    # Always include Linux build selection notes.
-                    # For tags, prepend a small header; for nightly, keep it as-is.
-                    if [ "${IS_TAG}" = "true" ]; then
-                      cat > notes.md << EOF
-                    ## ${RELEASE_NAME}
+                  # Always include Linux build selection notes.
+                  # For tags, prepend a small header; for nightly, keep it as-is.
+                  if [ "${IS_TAG}" = "true" ]; then
+                    cat > notes.md << EOF
+                  ## ${RELEASE_NAME}
 
-                    Automated release for tag \`${RELEASE_NAME}\`.
+                  Automated release for tag \`${RELEASE_NAME}\`.
 
-                    EOF
-                    else
-                      : > notes.md
-                    fi
+                  EOF
+                  else
+                    : > notes.md
+                  fi
 
-                    cat >> notes.md << 'EOF'
-                    ## Which Linux build should I download?
+                  cat >> notes.md << 'EOF'
+                  ## Which Linux build should I download?
 
-                    Pick the archive that matches your WebKitGTK **runtime**:
+                  Pick the archive that matches your WebKitGTK **runtime**:
 
-                    - Distros with WebKitGTK 4.1: use the `*-x11-webkit2_41*` build
-                    - Distros with WebKitGTK 4.0: use the `*-x11-webkit2_40*` build
+                  - Distros with WebKitGTK 4.1: use the `*-x11-webkit2_41*` build
+                  - Distros with WebKitGTK 4.0: use the `*-x11-webkit2_40*` build
 
-                    Note: these only work with X11 at the moment, Wayland support coming soon.
+                  You can check your system with one of these one-liners:
 
-                    You can check your system with one of these one-liners:
+                  **Session Type**
+                  ```bash
+                  echo "$XDG_SESSION_TYPE"
+                  ```
+                  wayland or x11
 
-                    **Debian/Ubuntu:**
-                    ```bash
-                    if dpkg -s libwebkit2gtk-4.1-0 >/dev/null 2>&1; then
-                      echo "Use: *-x11-webkit2_41*"
-                    elif dpkg -s libwebkit2gtk-4.0-37 >/dev/null 2>&1; then
-                      echo "Use: *-x11-webkit2_40*"
-                    else
-                      echo "No WebKitGTK 4.0/4.1 runtime found. On Ubuntu 24.04+: sudo apt install libwebkit2gtk-4.1-0"
-                      echo "On Ubuntu 22.04: sudo apt install libwebkit2gtk-4.0-37"
-                    fi
-                    ```
+                  **Debian/Ubuntu:**
+                  ```bash
+                  if dpkg -s libwebkit2gtk-4.1-0 >/dev/null 2>&1; then
+                    echo "Use: *-x11-webkit2_41*"
+                  elif dpkg -s libwebkit2gtk-4.0-37 >/dev/null 2>&1; then
+                    echo "Use: *-x11-webkit2_40*"
+                  else
+                    echo "No WebKitGTK 4.0/4.1 runtime found. On Ubuntu 24.04+: sudo apt install libwebkit2gtk-4.1-0"
+                    echo "On Ubuntu 22.04: sudo apt install libwebkit2gtk-4.0-37"
+                  fi
+                  ```
 
-                    **Generic (no dev packages required):**
-                    ```bash
-                    if ldconfig -p 2>/dev/null | grep -q 'libwebkit2gtk-4\.1\.so'; then
-                      echo "Use: *-x11-webkit2_41*"
-                    elif ldconfig -p 2>/dev/null | grep -q 'libwebkit2gtk-4\.0\.so'; then
-                      echo "Use: *-x11-webkit2_40*"
-                    else
-                      echo "Could not detect WebKitGTK 4.0/4.1 runtime on this system."
-                    fi
-                    ```
-
-                    > Note: Linux builds require running under **Xorg** (we ship `-tags x11`). Wayland global hotkeys aren’t supported.
-                    EOF
+                  **Generic (no dev packages required):**
+                  ```bash
+                  if ldconfig -p 2>/dev/null | grep -q 'libwebkit2gtk-4\.1\.so'; then
+                    echo "Use: *-x11-webkit2_41*"
+                  elif ldconfig -p 2>/dev/null | grep -q 'libwebkit2gtk-4\.0\.so'; then
+                    echo "Use: *-x11-webkit2_40*"
+                  else
+                    echo "Could not detect WebKitGTK 4.0/4.1 runtime on this system."
+                  fi
+                  ```
+                  EOF
 
             - name: Update release notes
               env:

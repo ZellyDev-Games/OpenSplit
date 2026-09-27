@@ -1,6 +1,7 @@
 import { Dispatch, SetStateAction, useEffect, useRef } from "react";
 
 import { Comparison, useComparison } from "../../hooks/splitter/useComparison";
+import { useLocalHotkeys } from "../../hooks/splitter/useLocalHotkeys";
 import { useSegmentList } from "../../hooks/splitter/useSegmentList";
 import { useSplitterLayout } from "../../hooks/splitter/useSplitterLayout";
 import { SplitterLayout, useSplitterMenu } from "../../hooks/splitter/useSplitterMenu";
@@ -36,6 +37,8 @@ export default function Splitter({
 }: SplitterParams) {
     const splitterRef = useRef<HTMLDivElement>(null);
 
+    useLocalHotkeys(configPayload);
+
     const contextMenu = useContextMenu();
 
     const { comparison, setComparison } = useComparison(controlledComparison, onComparisonChange);
@@ -69,7 +72,7 @@ export default function Splitter({
         }
     }, [controlledLayout, menuLayout, onLayoutChange]);
 
-    const { completeClassName, rows, finalRow, containerRef } = useSegmentList({
+    const { completeClassName, rows, finalRow, containerRef, hasSegmentIcons } = useSegmentList({
         sessionPayload,
         comparison,
         forceExpandAll,
@@ -89,6 +92,7 @@ export default function Splitter({
                 containerRef={containerRef}
                 rows={rows}
                 finalRow={finalRow}
+                hasSegmentIcons={hasSegmentIcons}
             />
         </div>
     );
