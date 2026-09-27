@@ -23,10 +23,10 @@ jobs:
                   go-version-file: 'go.mod'
                   cache: true
 
-            - name: Setup go-task
-              uses: pnorton5432/setup-task@v1
+            - name: Setup Task
+              uses: go-task/setup-task@v1
               with:
-                  task-version: 3.44.1
+                version: 3.44.1
 
             - name: Run Tests
               run: task test

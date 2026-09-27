@@ -9,6 +9,7 @@ type ActiveSegmentRowProps = {
     cTarget: number;
     iTarget: number;
     previousCumulative: number;
+    hasSegmentIcons: boolean;
     activeRowRef: RefObject<HTMLTableRowElement | null>;
 };
 
@@ -21,6 +22,7 @@ export default function ActiveSegmentRow({
     cTarget,
     iTarget,
     previousCumulative,
+    hasSegmentIcons,
     activeRowRef,
 }: ActiveSegmentRowProps) {
     const time = useTimer();
@@ -31,6 +33,7 @@ export default function ActiveSegmentRow({
             split={null}
             cumulativeTarget={cTarget}
             individualTarget={iTarget}
+            hasSegmentIcons={hasSegmentIcons}
             activeRow
             time={time}
             previousCumulative={previousCumulative}

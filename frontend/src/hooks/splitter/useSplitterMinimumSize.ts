@@ -110,6 +110,14 @@ export function useSplitterMinimumSize(splitterRef: React.RefObject<HTMLDivEleme
             return;
         }
 
+        const updateSegmentIconState = () => {
+            const hasSegmentIcons = element.querySelector(".segmentIcon") !== null;
+
+            element.dataset.hasSegmentIcons = hasSegmentIcons ? "true" : "false";
+
+            return hasSegmentIcons;
+        };
+
         let frame = 0;
         let updateCount = 0;
         let previousMinimum: MinimumSize | null = null;
@@ -117,6 +125,8 @@ export function useSplitterMinimumSize(splitterRef: React.RefObject<HTMLDivEleme
 
         const update = (reason = "unknown") => {
             lastUpdateReason = reason;
+
+            updateSegmentIconState();
 
             cancelAnimationFrame(frame);
 
@@ -220,14 +230,30 @@ export function useSplitterMinimumSize(splitterRef: React.RefObject<HTMLDivEleme
                 .querySelectorAll<HTMLElement>(
                     [
                         "#gameInfo",
+                        "#gameTitle",
+                        "#gameCategory",
+                        ".game-variable",
                         "#splitList",
                         "#splitContainer",
                         "#finalSegment",
                         "#finalSegment table",
                         "#finalSegment tbody",
                         "#finalSegment tr",
-                        "#splitterInfo",
                         ".splitName",
+                        // ".splitDelta",
+                        // ".splitComparison",
+                        // ".splitTime",
+                        "#splitterInfo",
+                        ".comparison-mode",
+                        "#world-record",
+                        // "#world-record-label",
+                        "#world-record-names",
+                        // "#world-record-rt-label",
+                        // "#world-record-rt-time",
+                        // "#world-record-rt-centiseconds",
+                        // "#world-record-igt-label",
+                        // "#world-record-igt-time",
+                        // "#world-record-igt-centiseconds",
                     ].join(", "),
                 )
                 .forEach(observe);
@@ -239,6 +265,10 @@ export function useSplitterMinimumSize(splitterRef: React.RefObject<HTMLDivEleme
             const reasons = mutations.map((mutation) => {
                 if (mutation.type === "childList") {
                     return "childList";
+                }
+
+                if (mutation.type === "characterData") {
+                    return "characterData changed";
                 }
 
                 if (mutation.type === "attributes") {
@@ -262,6 +292,7 @@ export function useSplitterMinimumSize(splitterRef: React.RefObject<HTMLDivEleme
             childList: true,
             subtree: true,
             attributes: true,
+            characterData: true,
             attributeFilter: ["class", "style", "data-layout"],
         });
 
@@ -278,6 +309,8 @@ export function useSplitterMinimumSize(splitterRef: React.RefObject<HTMLDivEleme
 
             mutationObserver.disconnect();
             resizeObserver.disconnect();
+
+            delete element.dataset.hasSegmentIcons;
 
             log.debug("[SplitterMinimumSize] Cleanup", {
                 layout: element.dataset.layout ?? "unknown",

@@ -16,42 +16,63 @@
         font-size: 50px;
     }
 
-    #time-sign {
+    /*
+     * Timer components are always rendered so the DOM structure remains
+     * stable, but components without data must not consume layout space.
+     */
+    #time-container [data-present="false"],
+    #time-container [data-present="0"] {
+        display: none;
+    }
+
+    /*
+     * Only components containing data participate in the timer's
+     * minimum-size calculation.
+     */
+    #time-sign[data-present="true"],
+    #time-sign[data-present="1"] {
         min-width: var(--splitter-timer-sign-min-width, 0px);
         min-height: var(--splitter-timer-sign-min-height, 0px);
     }
 
-    #time-hours {
+    #time-hours[data-present="true"],
+    #time-hours[data-present="1"] {
         min-width: var(--splitter-timer-hours-min-width, 0px);
         min-height: var(--splitter-timer-hours-min-height, 0px);
     }
 
-    #time-sep-hm {
+    #time-sep-hm[data-present="true"],
+    #time-sep-hm[data-present="1"] {
         min-width: var(--splitter-timer-separator-hours-minutes-min-width, 0px);
         min-height: var(--splitter-timer-separator-hours-minutes-min-height, 0px);
     }
 
-    #time-minutes {
+    #time-minutes[data-present="true"],
+    #time-minutes[data-present="1"] {
         min-width: var(--splitter-timer-minutes-min-width, 0px);
         min-height: var(--splitter-timer-minutes-min-height, 0px);
     }
 
-    #time-sep-ms {
+    #time-sep-ms[data-present="true"],
+    #time-sep-ms[data-present="1"] {
         min-width: var(--splitter-timer-separator-minutes-seconds-min-width, 0px);
         min-height: var(--splitter-timer-separator-minutes-seconds-min-height, 0px);
     }
 
-    #time-seconds {
+    #time-seconds[data-present="true"],
+    #time-seconds[data-present="1"] {
         min-width: var(--splitter-timer-seconds-min-width, 0px);
         min-height: var(--splitter-timer-seconds-min-height, 0px);
     }
 
-    #time-sep-sc {
+    #time-sep-sc[data-present="true"],
+    #time-sep-sc[data-present="1"] {
         min-width: var(--splitter-timer-separator-seconds-centis-min-width, 0px);
         min-height: var(--splitter-timer-separator-seconds-centis-min-height, 0px);
     }
 
-    #time-centis {
+    #time-centis[data-present="true"],
+    #time-centis[data-present="1"] {
         min-width: var(--splitter-timer-centis-min-width, 0px);
         min-height: var(--splitter-timer-centis-min-height, 0px);
     }

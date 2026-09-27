@@ -1,10 +1,14 @@
-import { getBoxPadding, getMinimum } from "./css";
+import { getBoxPadding, getEffectiveMinimumSize } from "./css";
 import type { MinimumSize } from "./types";
 
 type ComponentDefinition = {
     selector: string;
     widthVariable: string;
     heightVariable: string;
+    contentAware?: {
+        width?: boolean;
+        height?: boolean;
+    };
 };
 
 /**
@@ -26,11 +30,12 @@ function getComponentMinimum(parent: HTMLElement, definition: ComponentDefinitio
         };
     }
 
-    return {
-        width: getMinimum(element, definition.widthVariable),
-
-        height: getMinimum(element, definition.heightVariable),
-    };
+    return getEffectiveMinimumSize(
+        element,
+        definition.widthVariable,
+        definition.heightVariable,
+        definition.contentAware,
+    );
 }
 
 function getContainerMinimum(
@@ -62,16 +67,28 @@ const GAME_INFO_COMPONENTS: ComponentDefinition[] = [
         selector: "#gameTitle",
         widthVariable: "--splitter-game-title-min-width",
         heightVariable: "--splitter-game-title-min-height",
+        contentAware: {
+            // width: true,
+            height: true,
+        },
     },
     {
         selector: "#gameCategory",
         widthVariable: "--splitter-game-category-min-width",
         heightVariable: "--splitter-game-category-min-height",
+        contentAware: {
+            // width: true,
+            height: true,
+        },
     },
     {
         selector: ".game-variable",
         widthVariable: "--splitter-game-variable-min-width",
         heightVariable: "--splitter-game-variable-min-height",
+        contentAware: {
+            // width: true,
+            height: true,
+        },
     },
     {
         selector: "#attempts",
@@ -138,9 +155,13 @@ const WORLD_RECORD_PLAYER_COMPONENTS: ComponentDefinition[] = [
         heightVariable: "--splitter-world-record-label-min-height",
     },
     {
-        selector: "#world-record-players",
-        widthVariable: "--splitter-world-record-players-min-width",
-        heightVariable: "--splitter-world-record-players-min-height",
+        selector: "#world-record-names",
+        widthVariable: "--splitter-world-record-names-min-width",
+        heightVariable: "--splitter-world-record-names-min-height",
+        contentAware: {
+            // width: true,
+            height: true,
+        },
     },
 ];
 
@@ -187,7 +208,7 @@ function calculateWorldRecordSection(worldRecord: HTMLElement, definitions: Comp
 export function calculateWorldRecordMinimumSize(element: HTMLElement): MinimumSize {
     const sections = [
         {
-            selector: "#world-record-player",
+            selector: "#world-record-players",
             definitions: WORLD_RECORD_PLAYER_COMPONENTS,
         },
         {
@@ -229,11 +250,12 @@ export function calculateSplitterInfoMinimumSize(element: HTMLElement): MinimumS
     const sizes: MinimumSize[] = [];
 
     if (comparison) {
-        sizes.push({
-            width: getMinimum(comparison, "--splitter-comparison-min-width"),
-
-            height: getMinimum(comparison, "--splitter-comparison-min-height"),
-        });
+        sizes.push(
+            getEffectiveMinimumSize(comparison, "--splitter-comparison-min-width", "--splitter-comparison-min-height", {
+                // width: true,
+                height: true,
+            }),
+        );
     }
 
     if (timer) {
@@ -250,7 +272,7 @@ export function calculateSplitterInfoMinimumSize(element: HTMLElement): MinimumS
 
     if (layout === "horizontal") {
         return {
-            width: sizes.reduce((total, size) => total + size.width, 0) + padding.left + padding.right,
+            width: Math.max(0, ...sizes.map((size) => size.width)) + padding.left + padding.right,
 
             height: Math.max(0, ...sizes.map((size) => size.height)) + padding.top + padding.bottom,
         };

@@ -7,12 +7,13 @@
 
 void hk_start(void);
 void hk_stop(void);
-int  hk_wait_next(uint16_t* out_keycode, char* out_name, size_t out_name_cap);
+int  hk_wait_next(uint16_t* out_keycode, char* out_name, size_t out_name_cap, uint32_t* out_modifiers);
 
 static CFMachPortRef      gEventTap     = NULL;  // The tap itself
 static CFRunLoopSourceRef gRunLoopSrc   = NULL;  // RunLoop source wrapping the tap
 static CFRunLoopRef       gRunLoop      = NULL;  // The runloop that owns the tap
 static pthread_t          gThread       = 0;     // Background thread id
+static uint32_t           gModifiers    = 0;
 
 static pthread_mutex_t gMu = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  gCv = PTHREAD_COND_INITIALIZER;
@@ -105,10 +106,30 @@ static CGEventRef tapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRe
     CGEventKeyDisplayName(event, name, sizeof(name));
     uint16_t kc = (uint16_t)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
 
+    uint32_t modifiers = 0;
+    CGEventFlags flags = CGEventGetFlags(event);
+
+    if (flags & kCGEventFlagMaskShift) {
+        modifiers |= (1u << 17);
+    }
+
+    if (flags & kCGEventFlagMaskControl) {
+        modifiers |= (1u << 18);
+    }
+
+    if (flags & kCGEventFlagMaskAlternate) {
+        modifiers |= (1u << 19);
+    }
+
+    if (flags & kCGEventFlagMaskCommand) {
+        modifiers |= (1u << 20);
+    }
+
     pthread_mutex_lock(&gMu);
     gKeycode = kc;
-    strncpy(gName, name, sizeof(gName)-1);
-    gName[sizeof(gName)-1] = '\0';
+    strncpy(gName, name, sizeof(gName) - 1);
+    gName[sizeof(gName) - 1] = '\0';
+    gModifiers = modifiers;
     gHasMsg = true;
     pthread_cond_signal(&gCv);
     pthread_mutex_unlock(&gMu);
@@ -162,25 +183,41 @@ void hk_stop(void) {
     if (gThread) { pthread_join(gThread, NULL); gThread = 0; }
 }
 
-int hk_wait_next(uint16_t* out_keycode, char* out_name, size_t out_cap) {
+int hk_wait_next(uint16_t* out_keycode, char* out_name, size_t out_cap, uint32_t* out_modifiers) {
     pthread_mutex_lock(&gMu);
+
     for (;;) {
         if (gHasMsg) {
-            if (out_keycode) *out_keycode = gKeycode;
+            if (out_keycode) {
+                *out_keycode = gKeycode;
+            }
+
             if (out_name && out_cap) {
                 size_t n = strnlen(gName, sizeof(gName));
-                if (n >= out_cap) n = out_cap - 1;
+
+                if (n >= out_cap) {
+                    n = out_cap - 1;
+                }
+
                 memcpy(out_name, gName, n);
                 out_name[n] = '\0';
             }
+
+            if (out_modifiers) {
+                *out_modifiers = gModifiers;
+            }
+
             gHasMsg = false;
+
             pthread_mutex_unlock(&gMu);
             return 1;
         }
+
         if (!gRunning) {
             pthread_mutex_unlock(&gMu);
             return 0;
         }
+
         pthread_cond_wait(&gCv, &gMu);
     }
 }

@@ -103,7 +103,6 @@ function ViewRouter({ model, skinModel }: ViewRouterProps) {
 
 export default function App() {
     const [viewModel, setViewModel] = useState<AppViewModel | null>(null);
-
     const [skinModel, setSkinModel] = useState<SkinModel | null>(null);
 
     useDetectWindowChange();
@@ -226,8 +225,6 @@ function useAppEventBindings(setViewModel: React.Dispatch<SetStateAction<AppView
             setViewModel(nextModel);
         });
 
-        EventsEmit("ui:ready");
-
         const unsubSession = EventsOn("session:update", (updatedSession: SessionPayload) => {
             setViewModel((prev) => {
                 if (!prev) {
@@ -245,6 +242,11 @@ function useAppEventBindings(setViewModel: React.Dispatch<SetStateAction<AppView
             });
         });
 
+        log.info("[App] UI event listeners registered");
+        log.info("[App] Requesting initial UI model");
+
+        EventsEmit("ui:ready");
+
         return () => {
             unsubViewModel();
             unsubSession();
@@ -253,27 +255,29 @@ function useAppEventBindings(setViewModel: React.Dispatch<SetStateAction<AppView
 }
 
 function useWindowFocus() {
-    const f = async () => {
-        log.debug("[App] Window focused");
+    const dispatchFocus = (focused: boolean) => {
+        log.debug(`[App] Window ${focused ? "focused" : "lost focus"}`);
 
-        await Dispatch(Command.FOCUS, "true");
-    };
-
-    const uf = async () => {
-        log.debug("[App] Window lost focus");
-
-        await Dispatch(Command.FOCUS, "false");
+        void Dispatch(Command.FOCUS, focused ? "true" : "false").catch((error) => {
+            log.debug("[App] Unable to update backend window focus", error);
+        });
     };
 
     useEffect(() => {
-        window.addEventListener("focus", f);
+        const handleFocus = () => {
+            dispatchFocus(true);
+        };
 
-        window.addEventListener("blur", uf);
+        const handleBlur = () => {
+            dispatchFocus(false);
+        };
+
+        window.addEventListener("focus", handleFocus);
+        window.addEventListener("blur", handleBlur);
 
         return () => {
-            window.removeEventListener("focus", f);
-
-            window.removeEventListener("blur", uf);
+            window.removeEventListener("focus", handleFocus);
+            window.removeEventListener("blur", handleBlur);
         };
     }, []);
 }

@@ -27,9 +27,9 @@ export default function WorldRecordDisplay({ worldRecord }: WorldRecordParams) {
 
     return (
         <div id="world-record">
-            <div id="world-record-player">
+            <div id="world-record-players">
                 <strong id="world-record-label">WR</strong>
-                <span id="world-record-players">{players}</span>
+                <span id="world-record-names">{players}</span>
             </div>
 
             <div id="world-record-real-time">

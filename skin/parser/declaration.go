@@ -54,6 +54,12 @@ func ParseDeclarations(
 			)
 
 			if !ok {
+				appendRawDeclaration(
+					&declarations,
+					pendingComments,
+					body[index:],
+				)
+
 				break
 			}
 

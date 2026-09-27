@@ -11,6 +11,7 @@ import SessionPayload from "../../models/sessionPayload";
 type SegmentRowsResult = {
     rows: ReactNode[];
     finalRow: ReactNode | null;
+    hasSegmentIcons: boolean;
 };
 
 type UseSegmentRowsParams = {
@@ -27,6 +28,7 @@ type UseSegmentRowsParams = {
     activeRowRef: RefObject<HTMLTableRowElement | null>;
     toggleParent: (id: string) => void;
 };
+
 export function useSegmentRows({
     sessionPayload,
     flatSegments,
@@ -45,8 +47,10 @@ export function useSegmentRows({
         const rows: ReactNode[] = [];
         let finalRow: ReactNode = null;
 
+        const hasSegmentIcons = flatSegments.some(({ segment }) => segment.icon != null && segment.icon !== "");
+
         if (!sessionPayload.loaded_split_file || !sessionPayload.leaf_segments) {
-            return { rows, finalRow };
+            return { rows, finalRow, hasSegmentIcons };
         }
 
         for (const segmentData of flatSegments) {
@@ -112,6 +116,7 @@ export function useSegmentRows({
                         parentComparison={parentComparison}
                         parentDelta={parentDelta}
                         parentSegmentDelta={parentSegmentDelta}
+                        hasSegmentIcons={hasSegmentIcons}
                         onToggle={() => toggleParent(segment.id)}
                     />,
                 );
@@ -137,6 +142,7 @@ export function useSegmentRows({
                     cTarget={targets.cumulative[segment.id]}
                     iTarget={targets.individual[segment.id]}
                     previousCumulative={previousActual}
+                    hasSegmentIcons={hasSegmentIcons}
                 />
             ) : (
                 <SegmentRow
@@ -145,6 +151,7 @@ export function useSegmentRows({
                     split={split}
                     cumulativeTarget={targets.cumulative[segment.id]}
                     individualTarget={targets.individual[segment.id]}
+                    hasSegmentIcons={hasSegmentIcons}
                 />
             );
 
@@ -155,7 +162,7 @@ export function useSegmentRows({
             }
         }
 
-        return { rows, finalRow };
+        return { rows, finalRow, hasSegmentIcons };
     }, [
         sessionPayload,
         flatSegments,

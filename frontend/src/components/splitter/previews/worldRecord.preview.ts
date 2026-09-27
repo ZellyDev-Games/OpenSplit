@@ -10,7 +10,7 @@ const elements: SkinElement[] = [
     {
         id: "world_record_player",
         label: "WR Player Row",
-        selector: "#world-record-player",
+        selector: "#world-record-players",
     },
     {
         id: "world_record_label",
@@ -20,7 +20,7 @@ const elements: SkinElement[] = [
     {
         id: "world_record_players",
         label: "WR Players",
-        selector: "#world-record-players",
+        selector: "#world-record-names",
     },
 
     {

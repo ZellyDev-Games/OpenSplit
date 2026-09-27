@@ -34,13 +34,18 @@ func (w *Welcome) OnEnter() error {
 		"opening welcome",
 	)
 
-	return w.EmitUI()
+	return nil
 }
 
 func (w *Welcome) EmitUI() error {
-	bridge.EmitUIEvent(machine.runtimeProvider, bridge.AppViewModel{
-		View: bridge.AppViewWelcome,
-	})
+	bridge.EmitUIEvent(
+		machine.runtimeProvider,
+		bridge.AppViewModel{
+			View:   bridge.AppViewWelcome,
+			Config: machine.configService,
+		},
+	)
+
 	return nil
 }
 

@@ -8,7 +8,6 @@ import (
 	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/dispatcher"
-	"github.com/zellydev-games/opensplit/keyinfo"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo/adapters"
 	"github.com/zellydev-games/opensplit/session"
@@ -20,89 +19,8 @@ func NewRunningState() (*Running, error) {
 	return &Running{}, nil
 }
 
-func isHotkeyCommand(c command.Command) bool {
-	switch c {
-	case command.SPLIT,
-		command.UNDO,
-		command.SKIP,
-		command.PAUSE,
-		command.RESET,
-		command.COMPARISON_LEFT,
-		command.COMPARISON_RIGHT:
-		return true
-	default:
-		return false
-	}
-}
-
 func (r *Running) OnEnter() error {
 	machine.saveOnWindowDimensionChanges = true
-
-	if machine.hotkeyProvider != nil {
-		err := machine.hotkeyProvider.StartHook(
-			func(data keyinfo.KeyData) {
-				if !machine.configService.GlobalHotkeysActive &&
-					!machine.windowHasFocus {
-					return
-				}
-
-				for c, keyData := range machine.configService.KeyConfig {
-					if !isHotkeyCommand(c) {
-						continue
-					}
-
-					if keyData.KeyCode != data.KeyCode {
-						continue
-					}
-
-					if len(keyData.Modifiers) !=
-						len(data.Modifiers) {
-						continue
-					}
-
-					if len(keyData.Modifiers) > 0 {
-						sent := make(
-							map[int]struct{},
-							len(data.Modifiers),
-						)
-
-						for _, m := range data.Modifiers {
-							sent[m] = struct{}{}
-						}
-
-						match := true
-
-						for _, required := range keyData.Modifiers {
-							if _, ok := sent[required]; !ok {
-								match = false
-								break
-							}
-						}
-
-						if !match {
-							continue
-						}
-					}
-
-					_, _ = machine.ReceiveDispatch(
-						c,
-						nil,
-					)
-
-					return
-				}
-			},
-		)
-
-		if err != nil {
-			logger.Error(
-				logModule,
-				err.Error(),
-			)
-
-			return err
-		}
-	}
 
 	return nil
 }
@@ -122,14 +40,6 @@ func (r *Running) EmitUI() error {
 
 func (r *Running) OnExit() error {
 	machine.saveOnWindowDimensionChanges = false
-
-	if machine.hotkeyProvider != nil {
-		err := machine.hotkeyProvider.Unhook()
-
-		if err != nil {
-			return err
-		}
-	}
 
 	return nil
 }

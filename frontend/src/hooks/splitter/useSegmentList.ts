@@ -33,7 +33,7 @@ export function useSegmentList({ sessionPayload, comparison, forceExpandAll = fa
 
     const { containerRef, activeRowRef } = useSegmentScroll(sessionPayload.current_segment_index);
 
-    const { rows, finalRow } = useSegmentRows({
+    const { rows, finalRow, hasSegmentIcons } = useSegmentRows({
         sessionPayload,
         targets,
         completeClassName,
@@ -49,5 +49,6 @@ export function useSegmentList({ sessionPayload, comparison, forceExpandAll = fa
         finalRow,
         containerRef,
         activeRowRef,
+        hasSegmentIcons,
     };
 }

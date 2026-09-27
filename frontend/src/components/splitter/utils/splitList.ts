@@ -1,4 +1,4 @@
-import { getBoxPadding, getEffectiveMinimumSize, getGap } from "./css";
+import { getBoxPadding, getEffectiveMinimumSize } from "./css";
 import type { MinimumSize } from "./types";
 
 type SegmentComponent = {
@@ -27,6 +27,7 @@ const SEGMENT_COMPONENTS: SegmentComponent[] = [
         widthVariable: "--splitter-segment-name-min-width",
         heightVariable: "--splitter-segment-name-min-height",
         contentAware: {
+            // width: true,
             height: true,
         },
     },
@@ -70,11 +71,17 @@ function getComponentMinimumSize(element: HTMLElement, definition: SegmentCompon
  *     row height = sum(component heights)
  */
 function getSegmentRowMinimumSize(row: HTMLElement, layout: string | undefined): MinimumSize {
-    const components = SEGMENT_COMPONENTS.map((definition) => {
-        const component = row.querySelector<HTMLElement>(definition.selector);
+    const hasSegmentIcon = row.querySelector(".segmentIcon") !== null;
 
-        return component ? getComponentMinimumSize(component, definition) : null;
-    }).filter((size): size is MinimumSize => size !== null);
+    const components = SEGMENT_COMPONENTS.filter(
+        (definition) => definition.selector !== ".segmentIcon" || hasSegmentIcon,
+    )
+        .map((definition) => {
+            const component = row.querySelector<HTMLElement>(definition.selector);
+
+            return component ? getComponentMinimumSize(component, definition) : null;
+        })
+        .filter((size): size is MinimumSize => size !== null);
 
     if (components.length === 0) {
         return {
@@ -184,7 +191,6 @@ function getFinalSegmentMinimumSize(element: HTMLElement): MinimumSize {
 }
 
 export function calculateSplitListMinimumSize(element: HTMLElement): MinimumSize {
-    const splitContainer = element.querySelector<HTMLElement>("#splitContainer");
     const finalSegment = element.querySelector<HTMLElement>("#finalSegment");
 
     const layout = element.closest<HTMLElement>("#splitter")?.dataset.layout;
@@ -213,26 +219,17 @@ export function calculateSplitListMinimumSize(element: HTMLElement): MinimumSize
     /*
      * Horizontal:
      *
-     *     splitContainer + finalSegment
+     * #splitContainer is a horizontal scroll area and may
+     * collapse completely to zero width.
+     *
+     * Only #finalSegment contributes to the minimum width.
      */
-    let splitContainerMinimum: MinimumSize = {
-        width: 0,
-        height: 0,
-    };
-
-    const table = splitContainer?.querySelector<HTMLElement>(":scope > table");
-
-    if (table) {
-        splitContainerMinimum = getTableMinimumSize(table, layout);
-    }
-
     const finalSegmentMinimum = finalSegment ? getFinalSegmentMinimumSize(finalSegment) : { width: 0, height: 0 };
 
-    const gap = getGap(element);
     const padding = getBoxPadding(element);
 
     return {
-        width: splitContainerMinimum.width + finalSegmentMinimum.width + gap.column + padding.left + padding.right,
-        height: Math.max(splitContainerMinimum.height, finalSegmentMinimum.height) + padding.top + padding.bottom,
+        width: finalSegmentMinimum.width + padding.left + padding.right,
+        height: finalSegmentMinimum.height + padding.top + padding.bottom,
     };
 }

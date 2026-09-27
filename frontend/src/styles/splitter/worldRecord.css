@@ -2,80 +2,290 @@
     #world-record {
         display: flex;
         flex-direction: column;
-    }
-
-    #world-record > div {
-        display: flex;
-        flex-direction: row;
-
-        flex: 0 0 auto;
 
         justify-content: center;
         align-items: center;
-        gap: 0.35rem;
-
-        white-space: nowrap;
     }
 
     #world-record small {
         font-size: 0.85em;
     }
 
-    #splitter[data-layout="vertical"] #world-record {
-        flex-direction: column;
-        align-items: center;
+    #world-record-names {
+        white-space: normal;
+        overflow-wrap: normal;
+        word-break: normal;
+    }
 
+    /*
+     * ============================================================
+     * Vertical layout
+     * ============================================================
+     */
+
+    #splitter[data-layout="vertical"] #world-record {
         width: 100%;
 
         font-size: 0.8em;
         line-height: 1.2;
+
+        /*
+         * The calculated minimum is based on the section
+         * minimums below. Do not allow the WR container itself
+         * to flex-shrink below its content minimum.
+         */
+        flex: 0 0 auto;
+        box-sizing: border-box;
     }
 
-    #splitter[data-layout="vertical"] #world-record-player,
+    /*
+     * Each WR section is a horizontal row of components.
+     *
+     * This is important: the component elements may be inline
+     * elements. min-height has no effect on normal inline
+     * elements, so the section must establish a flex formatting
+     * context for the component minimums to actually participate
+     * in layout.
+     */
+    #splitter[data-layout="vertical"] #world-record-players,
     #splitter[data-layout="vertical"] #world-record-real-time,
     #splitter[data-layout="vertical"] #world-record-in-game-time {
         display: flex;
         flex-direction: row;
         align-items: center;
+
+        padding: 2px;
+
+        flex: 0 0 auto;
+        box-sizing: border-box;
     }
 
+    /*
+     * World-record player
+     */
     #splitter[data-layout="vertical"] #world-record-label {
+        flex: 0 0 auto;
+
         min-width: var(--splitter-world-record-label-min-width, 0px);
         min-height: var(--splitter-world-record-label-min-height, 0px);
+
+        padding-right: 2px;
+
+        box-sizing: border-box;
     }
 
-    #splitter[data-layout="vertical"] #world-record-players {
-        min-width: var(--splitter-world-record-players-min-width, 0px);
-        min-height: var(--splitter-world-record-players-min-height, 0px);
+    #splitter[data-layout="vertical"] #world-record-names {
+        flex: 0 0 auto;
+
+        min-width: var(--splitter-world-record-names-min-width, 0px);
+        min-height: var(--splitter-world-record-names-min-height, 0px);
+
+        padding-left: 2px;
+
+        box-sizing: border-box;
     }
 
+    /*
+     * Real time
+     */
     #splitter[data-layout="vertical"] #world-record-rt-label {
+        flex: 0 0 auto;
+
         min-width: var(--splitter-world-record-rt-label-min-width, 0px);
         min-height: var(--splitter-world-record-rt-label-min-height, 0px);
+
+        padding-right: 2px;
+
+        box-sizing: border-box;
     }
 
     #splitter[data-layout="vertical"] #world-record-rt-time {
+        flex: 0 0 auto;
+
         min-width: var(--splitter-world-record-rt-time-min-width, 0px);
         min-height: var(--splitter-world-record-rt-time-min-height, 0px);
+
+        padding-left: 2px;
+
+        box-sizing: border-box;
     }
 
     #splitter[data-layout="vertical"] #world-record-rt-centiseconds {
+        flex: 0 0 auto;
+
         min-width: var(--splitter-world-record-rt-centiseconds-min-width, 0px);
         min-height: var(--splitter-world-record-rt-centiseconds-min-height, 0px);
+
+        box-sizing: border-box;
     }
 
+    /*
+     * In-game time
+     */
     #splitter[data-layout="vertical"] #world-record-igt-label {
+        flex: 0 0 auto;
+
         min-width: var(--splitter-world-record-igt-label-min-width, 0px);
         min-height: var(--splitter-world-record-igt-label-min-height, 0px);
+
+        padding-right: 2px;
+
+        box-sizing: border-box;
     }
 
     #splitter[data-layout="vertical"] #world-record-igt-time {
+        flex: 0 0 auto;
+
         min-width: var(--splitter-world-record-igt-time-min-width, 0px);
         min-height: var(--splitter-world-record-igt-time-min-height, 0px);
+
+        padding-left: 2px;
+
+        box-sizing: border-box;
     }
 
     #splitter[data-layout="vertical"] #world-record-igt-centiseconds {
+        flex: 0 0 auto;
+
         min-width: var(--splitter-world-record-igt-centiseconds-min-width, 0px);
         min-height: var(--splitter-world-record-igt-centiseconds-min-height, 0px);
+
+        box-sizing: border-box;
+    }
+
+    /*
+     * ============================================================
+     * Horizontal layout
+     * ============================================================
+     */
+
+    #splitter[data-layout="horizontal"] #world-record {
+        width: 100%;
+
+        font-size: 0.8em;
+        line-height: 1.2;
+
+        /*
+         * The calculated minimum is based on the section
+         * minimums below. Do not allow the WR container itself
+         * to flex-shrink below its content minimum.
+         */
+        flex: 0 0 auto;
+        box-sizing: border-box;
+    }
+
+    /*
+     * Each WR section is a horizontal row of components.
+     *
+     * This is important: the component elements may be inline
+     * elements. min-height has no effect on normal inline
+     * elements, so the section must establish a flex formatting
+     * context for the component minimums to actually participate
+     * in layout.
+     */
+    #splitter[data-layout="horizontal"] #world-record-players,
+    #splitter[data-layout="horizontal"] #world-record-real-time,
+    #splitter[data-layout="horizontal"] #world-record-in-game-time {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+
+        padding: 2px;
+
+        flex: 0 0 auto;
+        box-sizing: border-box;
+    }
+
+    /*
+     * World-record player
+     */
+    #splitter[data-layout="horizontal"] #world-record-label {
+        flex: 0 0 auto;
+
+        min-width: var(--splitter-world-record-label-min-width, 0px);
+        min-height: var(--splitter-world-record-label-min-height, 0px);
+
+        padding-right: 2px;
+
+        box-sizing: border-box;
+    }
+
+    #splitter[data-layout="horizontal"] #world-record-names {
+        flex: 0 0 auto;
+
+        min-width: var(--splitter-world-record-names-min-width, 0px);
+        min-height: var(--splitter-world-record-names-min-height, 0px);
+
+        padding-left: 2px;
+
+        box-sizing: border-box;
+    }
+
+    /*
+     * Real time
+     */
+    #splitter[data-layout="horizontal"] #world-record-rt-label {
+        flex: 0 0 auto;
+
+        min-width: var(--splitter-world-record-rt-label-min-width, 0px);
+        min-height: var(--splitter-world-record-rt-label-min-height, 0px);
+
+        padding-right: 2px;
+
+        box-sizing: border-box;
+    }
+
+    #splitter[data-layout="horizontal"] #world-record-rt-time {
+        flex: 0 0 auto;
+
+        min-width: var(--splitter-world-record-rt-time-min-width, 0px);
+        min-height: var(--splitter-world-record-rt-time-min-height, 0px);
+
+        padding-left: 2px;
+
+        box-sizing: border-box;
+    }
+
+    #splitter[data-layout="horizontal"] #world-record-rt-centiseconds {
+        flex: 0 0 auto;
+
+        min-width: var(--splitter-world-record-rt-centiseconds-min-width, 0px);
+        min-height: var(--splitter-world-record-rt-centiseconds-min-height, 0px);
+
+        box-sizing: border-box;
+    }
+
+    /*
+     * In-game time
+     */
+    #splitter[data-layout="horizontal"] #world-record-igt-label {
+        flex: 0 0 auto;
+
+        min-width: var(--splitter-world-record-igt-label-min-width, 0px);
+        min-height: var(--splitter-world-record-igt-label-min-height, 0px);
+
+        padding-right: 2px;
+
+        box-sizing: border-box;
+    }
+
+    #splitter[data-layout="horizontal"] #world-record-igt-time {
+        flex: 0 0 auto;
+
+        min-width: var(--splitter-world-record-igt-time-min-width, 0px);
+        min-height: var(--splitter-world-record-igt-time-min-height, 0px);
+
+        padding-left: 2px;
+
+        box-sizing: border-box;
+    }
+
+    #splitter[data-layout="horizontal"] #world-record-igt-centiseconds {
+        flex: 0 0 auto;
+
+        min-width: var(--splitter-world-record-igt-centiseconds-min-width, 0px);
+        min-height: var(--splitter-world-record-igt-centiseconds-min-height, 0px);
+
+        box-sizing: border-box;
     }
 }
