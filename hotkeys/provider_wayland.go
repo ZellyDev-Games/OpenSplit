@@ -26,8 +26,7 @@ type LinuxManager struct {
 
 	portal *PortalManager
 
-	keyPressedCallback func(keyinfo.KeyData)
-	commandCallback    func(command.Command)
+	commandCallback func(command.Command)
 
 	currentKeyConfig map[command.Command]keyinfo.KeyData
 }
@@ -36,24 +35,6 @@ func NewLinuxManager() *LinuxManager {
 	return &LinuxManager{
 		portal: NewPortalManager(),
 	}
-}
-
-func (m *LinuxManager) StartHook(
-	callback func(data keyinfo.KeyData),
-) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.keyPressedCallback = callback
-	return nil
-}
-
-func (m *LinuxManager) Unhook() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.keyPressedCallback = nil
-	return nil
 }
 
 func (m *LinuxManager) SetCommandCallback(

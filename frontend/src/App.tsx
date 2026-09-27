@@ -103,7 +103,6 @@ function ViewRouter({ model, skinModel }: ViewRouterProps) {
 
 export default function App() {
     const [viewModel, setViewModel] = useState<AppViewModel | null>(null);
-
     const [skinModel, setSkinModel] = useState<SkinModel | null>(null);
 
     useDetectWindowChange();

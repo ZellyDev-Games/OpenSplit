@@ -3,12 +3,13 @@
 package hotkeys
 
 import (
-	"fmt"
+	"context"
 	"runtime"
 	"sync"
 	"syscall"
 	"unsafe"
 
+	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/keyinfo"
 	"github.com/zellydev-games/opensplit/logger"
 
@@ -37,6 +38,7 @@ const (
 
 const (
 	whKeyboardLL = 13
+
 	wmKeyDown    = 0x0100
 	wmKeyUp      = 0x0101
 	wmSysKeyDown = 0x0104
@@ -66,207 +68,468 @@ type point struct {
 	y int32
 }
 
-// WindowsManager implements the HotkeyProvider interface for Windows keypresses
+// WindowsManager implements GlobalHotkeyProvider for Windows.
 //
-// It creates a callback that is invoked with a low-level keyboard hook provided by user32.dll, then reports all
-// keypresses to keyChannel where the hotkeys.Service routes it appropriately.  It also features a message pump
-// that calls GetMessage provided by user32.dll to inform Windows that our thread is cooperating, and therefore
-// eligible to have the callback executed.
+// The Windows low-level keyboard hook is used only while global hotkeys
+// are enabled. Local/focused key handling is performed by the frontend.
 type WindowsManager struct {
-	hhookHandle        uintptr
-	callback           uintptr
-	hookThread         windows.Handle
-	hooked             bool
-	keyPressedCallback func(info keyinfo.KeyData)
-	mu                 sync.Mutex
+	mu sync.Mutex
+
+	ctx context.Context
+
+	hhookHandle uintptr
+	callback    uintptr
+	hookThread  windows.Handle
+	hooked      bool
+
+	keyConfig map[command.Command]keyinfo.KeyData
+
+	commandCallback func(command.Command)
 }
 
-// SetupHotkeys implements the HotKeyProvider interface to deliver a manager and channel to the caller
+// SetupHotkeys creates the Windows global hotkey manager.
 func SetupHotkeys() *WindowsManager {
 	return new(WindowsManager)
 }
 
-// StartHook converts handleKeyDown into a Windows callback via syscall, and installs it to the locked OS thread with
-// setWindowsHook.  It then starts a message pump as required by Windows to inform the OS that this thread is cooperating
-// which makes it eligible to have its callback function invoked by the OS.
-//
-// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowshookexw
-// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmessagew
-func (w *WindowsManager) StartHook(callback func(data keyinfo.KeyData)) error {
+// Start initializes the provider.
+func (w *WindowsManager) Start(ctx context.Context) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.hooked {
-		logger.Warn(logModule, "StartHook() called on hooked manager")
+
+	if w.ctx != nil {
 		return nil
 	}
 
-	w.keyPressedCallback = callback
+	w.ctx = ctx
 
-	go func() {
-		// Messages are sent to the thread that installed the hook, so lock this function down to just that thread
-		runtime.LockOSThread()
-		w.hookThread = windows.CurrentThread()
-		w.callback = syscall.NewCallback(w.handleKeyDown)
-		hhook, _, err := setWindowsHook.Call(whKeyboardLL,
-			w.callback,
-			0,
-			0)
-		if hhook == 0 {
-			logger.Error(logModule, err.Error())
-			return
-		}
-
-		w.hhookHandle = hhook
-		logger.Debugf(logModule, "hook set at address %d", hhook)
-		for {
-			msg := &threadMessage{}
-			ret, _, _ := getMessage.Call(uintptr(unsafe.Pointer(msg)), 0, 0, 0)
-			if ret == 0 {
-				logger.Debug(logModule, "WM_QUIT received, quitting message loop")
-				err = w.Unhook()
-				if err != nil {
-					return
-				}
-				return
-			}
-		}
-	}()
-
-	w.hooked = true
 	return nil
 }
 
-// Unhook called unhookWindowsHook with the address of our hook handle to inform the OS to stop calling our callback
+// Configure stores the current global hotkey configuration.
 //
-// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-unhookwindowshookex
-func (w *WindowsManager) Unhook() error {
-	w.mu.Lock()
-	defer w.mu.Unlock()
+// The actual Windows hook is configured when Enable is called.
+func (w *WindowsManager) Configure(
+	keyConfig map[command.Command]keyinfo.KeyData,
+) error {
+	configCopy := make(
+		map[command.Command]keyinfo.KeyData,
+		len(keyConfig),
+	)
 
-	if !w.hooked {
-		logger.Warn(logModule, "Unhook() called on unhooked manager")
+	for cmd, data := range keyConfig {
+		configCopy[cmd] = data
+	}
+
+	w.mu.Lock()
+	w.keyConfig = configCopy
+	w.mu.Unlock()
+
+	return nil
+}
+
+// SetCommandCallback installs the callback used when a configured
+// global shortcut is activated.
+func (w *WindowsManager) SetCommandCallback(
+	callback func(command.Command),
+) {
+	w.mu.Lock()
+	w.commandCallback = callback
+	w.mu.Unlock()
+}
+
+// Enable installs the Windows low-level keyboard hook.
+func (w *WindowsManager) Enable() error {
+	w.mu.Lock()
+
+	if w.hooked {
+		w.mu.Unlock()
 		return nil
 	}
 
-	ret, _, err := unhookWindowsHook.Call(w.hhookHandle)
+	w.hooked = true
+
+	w.mu.Unlock()
+
+	go w.runHook()
+
+	return nil
+}
+
+// Disable removes the Windows low-level keyboard hook.
+func (w *WindowsManager) Disable() error {
+	w.mu.Lock()
+
+	if !w.hooked {
+		w.mu.Unlock()
+		return nil
+	}
+
+	handle := w.hhookHandle
+	w.hooked = false
+
+	w.mu.Unlock()
+
+	if handle == 0 {
+		return nil
+	}
+
+	ret, _, err := unhookWindowsHook.Call(handle)
 	if ret == 0 {
 		logger.Error(logModule, err.Error())
 		return err
 	}
 
-	logger.Debugf(logModule, "hook removed at address %d", w.hhookHandle)
-	w.hooked = false
+	logger.Debugf(
+		logModule,
+		"Windows global keyboard hook removed at address %d",
+		handle,
+	)
+
 	return nil
 }
 
-// handleKeyDown is called by the OS after StartHook installs it. The callback receives nCode, lparam, and wparam as
-// defined by the Win32 API: https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelkeyboardproc
-func (w *WindowsManager) handleKeyDown(nCode uintptr, identifier uintptr, kbHookStruct uintptr) uintptr {
-	// If nCode is less than zero we're obligated to pass the message along
+// Close shuts down the global hotkey provider.
+func (w *WindowsManager) Close() error {
+	return w.Disable()
+}
+
+// runHook installs the low-level keyboard hook and services its
+// required Windows message loop.
+func (w *WindowsManager) runHook() {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	w.mu.Lock()
+
+	if !w.hooked {
+		w.mu.Unlock()
+		return
+	}
+
+	w.callback = syscall.NewCallback(w.handleKeyDown)
+
+	callback := w.callback
+
+	w.mu.Unlock()
+
+	hhook, _, err := setWindowsHook.Call(
+		whKeyboardLL,
+		callback,
+		0,
+		0,
+	)
+
+	if hhook == 0 {
+		w.mu.Lock()
+		w.hooked = false
+		w.callback = 0
+		w.mu.Unlock()
+
+		if err != nil {
+			logger.Error(logModule, err.Error())
+		}
+
+		return
+	}
+
+	w.mu.Lock()
+	w.hhookHandle = hhook
+	w.hookThread = windows.CurrentThread()
+	w.mu.Unlock()
+
+	logger.Debugf(
+		logModule,
+		"Windows global keyboard hook installed at address %d",
+		hhook,
+	)
+
+	for {
+		msg := &threadMessage{}
+
+		ret, _, _ := getMessage.Call(
+			uintptr(unsafe.Pointer(msg)),
+			0,
+			0,
+			0,
+		)
+
+		if ret == 0 {
+			logger.Debug(
+				logModule,
+				"WM_QUIT received, stopping Windows global hotkey loop",
+			)
+			break
+		}
+
+		if ret == ^uintptr(0) {
+			logger.Error(
+				logModule,
+				"GetMessageW failed",
+			)
+			break
+		}
+
+		w.mu.Lock()
+		active := w.hooked
+		w.mu.Unlock()
+
+		if !active {
+			break
+		}
+	}
+
+	// The hook may already have been removed by Disable().
+	w.mu.Lock()
+
+	handle := w.hhookHandle
+	w.hhookHandle = 0
+	w.callback = 0
+	w.hookThread = 0
+	w.mu.Unlock()
+
+	if handle != 0 {
+		_, _, _ = unhookWindowsHook.Call(handle)
+	}
+}
+
+// handleKeyDown is called by the Windows low-level keyboard hook.
+func (w *WindowsManager) handleKeyDown(
+	nCode uintptr,
+	identifier uintptr,
+	kbHookStruct uintptr,
+) uintptr {
 	if int32(nCode) < 0 {
-		ret, _, _ := callNextHook.Call(0, nCode, identifier, kbHookStruct)
-		return ret
+		return w.callNext(nCode, identifier, kbHookStruct)
 	}
 
-	if isKeyEvent(identifier) {
-		// Process modifiers first
-		//goland:noinspection ALL
-		hookInfo := *(*kbDLLHook)(unsafe.Pointer(kbHookStruct)) //nolint:all
-		vk := hookInfo.vkCode
+	if !isKeyEvent(identifier) {
+		return w.callNext(nCode, identifier, kbHookStruct)
+	}
 
-		extended := hookInfo.flags&0x1 == 1
-		var lparam uintptr
-		buf := make([]uint16, 64)
-		p := unsafe.SliceData(buf)
+	hookInfo := *(*kbDLLHook)(unsafe.Pointer(kbHookStruct)) //nolint:all
 
-		lparam |= uintptr(hookInfo.scanCode) << 16
-		if extended {
-			lparam |= 1 << 24
+	vk := hookInfo.vkCode
+
+	// Keep modifier state synchronized with Windows key events.
+	modifierState.mu.Lock()
+
+	switch identifier {
+	case wmKeyDown, wmSysKeyDown:
+		if isModifierKey(vk) {
+			modifierState.m[vk] = true
 		}
 
-		modifierState.mu.Lock()
-		switch identifier {
-		case wmKeyDown, wmSysKeyDown:
-			if isModifierKey(vk) {
-				modifierState.m[vk] = true
-			}
-		case wmKeyUp, wmSysKeyUp:
-			if isModifierKey(vk) {
-				modifierState.m[vk] = false
-			}
-		}
-		modifierState.mu.Unlock()
-
-		if identifier == wmKeyDown || identifier == wmSysKeyDown {
-			if !isModifierKey(hookInfo.vkCode) {
-				nameLen, _, err := getKeyName.Call(
-					lparam,
-					uintptr(unsafe.Pointer(p)),
-					uintptr(len(buf)),
-				)
-				if nameLen == 0 {
-					logger.Error(logModule, err.Error())
-				}
-
-				localeString := windows.UTF16ToString(buf)
-
-				modifierState.mu.Lock()
-
-				modifiers := make([]string, 0, len(modifierState.m))
-				modifierLocaleNames := make([]string, 0, len(modifierState.m))
-
-				for code, state := range modifierState.m {
-					if !state {
-						continue
-					}
-
-					if name := w.modCodeToName(int(code)); name != "" {
-						modifiers = append(modifiers, name)
-					}
-
-					if name := w.modCodeToLocaleName(int(code)); name != "" {
-						modifierLocaleNames = append(modifierLocaleNames, name)
-					}
-				}
-
-				modifierState.mu.Unlock()
-
-				fmt.Println(localeString)
-				fmt.Println(modifierState.m)
-
-				if w.keyPressedCallback != nil {
-					w.keyPressedCallback(
-						keyinfo.NewKeyData(
-							int(hookInfo.vkCode),
-							localeString,
-							modifiers,
-							modifierLocaleNames,
-						),
-					)
-				}
-				resetModifiers()
-			}
+	case wmKeyUp, wmSysKeyUp:
+		if isModifierKey(vk) {
+			modifierState.m[vk] = false
 		}
 	}
 
-	ret, _, _ := callNextHook.Call(0, nCode, identifier, kbHookStruct)
+	modifierState.mu.Unlock()
+
+	// Only key-down events can activate a command.
+	if identifier != wmKeyDown && identifier != wmSysKeyDown {
+		return w.callNext(nCode, identifier, kbHookStruct)
+	}
+
+	// Modifier keys themselves do not activate configured commands.
+	if isModifierKey(vk) {
+		return w.callNext(nCode, identifier, kbHookStruct)
+	}
+
+	localeName := w.keyName(hookInfo)
+
+	modifiers, modifierLocaleNames := currentModifiers()
+
+	data := keyinfo.NewKeyData(
+		int(vk),
+		localeName,
+		modifiers,
+		modifierLocaleNames,
+	)
+
+	if cmd, ok := w.matchCommand(data); ok {
+		w.mu.Lock()
+		callback := w.commandCallback
+		w.mu.Unlock()
+
+		if callback != nil {
+			logger.Debugf(
+				logModule,
+				"global Windows hotkey activated: command=%d",
+				cmd,
+			)
+
+			callback(cmd)
+		}
+	}
+
+	return w.callNext(nCode, identifier, kbHookStruct)
+}
+
+func (w *WindowsManager) callNext(
+	nCode uintptr,
+	identifier uintptr,
+	kbHookStruct uintptr,
+) uintptr {
+	ret, _, _ := callNextHook.Call(
+		0,
+		nCode,
+		identifier,
+		kbHookStruct,
+	)
+
 	return ret
 }
 
-func (w *WindowsManager) modCodeToString(code int) string {
+// keyName resolves the Windows localized key name from the keyboard
+// scan code.
+func (w *WindowsManager) keyName(
+	hookInfo kbDLLHook,
+) string {
+	extended := hookInfo.flags&0x1 == 1
+
+	var lparam uintptr
+	lparam |= uintptr(hookInfo.scanCode) << 16
+
+	if extended {
+		lparam |= 1 << 24
+	}
+
+	buf := make([]uint16, 64)
+
+	nameLen, _, err := getKeyName.Call(
+		lparam,
+		uintptr(unsafe.Pointer(&buf[0])),
+		uintptr(len(buf)),
+	)
+
+	if nameLen == 0 {
+		if err != nil {
+			logger.Error(logModule, err.Error())
+		}
+
+		return ""
+	}
+
+	return windows.UTF16ToString(buf)
+}
+
+// matchCommand finds the configured command corresponding to a key event.
+func (w *WindowsManager) matchCommand(
+	data keyinfo.KeyData,
+) (command.Command, bool) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	for cmd, binding := range w.keyConfig {
+		if keyDataMatches(data, binding) {
+			return cmd, true
+		}
+	}
+
+	return 0, false
+}
+
+func keyDataMatches(
+	event keyinfo.KeyData,
+	binding keyinfo.KeyData,
+) bool {
+	if event.KeyCode != binding.KeyCode {
+		return false
+	}
+
+	if len(event.Modifiers) != len(binding.Modifiers) {
+		return false
+	}
+
+	for _, required := range binding.Modifiers {
+		found := false
+
+		for _, actual := range event.Modifiers {
+			if required == actual {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return false
+		}
+	}
+
+	return true
+}
+
+func currentModifiers() (
+	[]string,
+	[]string,
+) {
+	modifierState.mu.Lock()
+	defer modifierState.mu.Unlock()
+
+	modifiers := make([]string, 0, len(modifierState.m))
+	modifierLocaleNames := make([]string, 0, len(modifierState.m))
+
+	for code, state := range modifierState.m {
+		if !state {
+			continue
+		}
+
+		name := modifierCodeToName(int(code))
+		if name != "" {
+			modifiers = append(modifiers, name)
+		}
+
+		localeName := modifierCodeToLocaleName(int(code))
+		if localeName != "" {
+			modifierLocaleNames = append(
+				modifierLocaleNames,
+				localeName,
+			)
+		}
+	}
+
+	return modifiers, modifierLocaleNames
+}
+
+func modifierCodeToName(code int) string {
+	switch code {
+	case vkLShift, vkRShift:
+		return "SHIFT"
+
+	case vkLControl, vkRControl:
+		return "CTRL"
+
+	case vkLMenu, vkRMenu:
+		return "ALT"
+
+	default:
+		return ""
+	}
+}
+
+func modifierCodeToLocaleName(code int) string {
 	switch code {
 	case vkLShift:
 		return "Left Shift"
+
 	case vkRShift:
 		return "Right Shift"
+
 	case vkLControl:
 		return "Left Control"
+
 	case vkRControl:
 		return "Right Control"
+
 	case vkLMenu:
 		return "Left Alt"
+
 	case vkRMenu:
 		return "Right Alt"
+
 	default:
 		return ""
 	}
@@ -274,10 +537,14 @@ func (w *WindowsManager) modCodeToString(code int) string {
 
 func isModifierKey(vk uint32) bool {
 	switch vk {
-	case vkLShift, vkRShift,
-		vkLControl, vkRControl,
-		vkLMenu, vkRMenu:
+	case vkLShift,
+		vkRShift,
+		vkLControl,
+		vkRControl,
+		vkLMenu,
+		vkRMenu:
 		return true
+
 	default:
 		return false
 	}
@@ -300,51 +567,6 @@ var modifierState = struct {
 func isKeyEvent(identifier uintptr) bool {
 	return identifier == wmKeyDown ||
 		identifier == wmKeyUp ||
-		identifier == wmSysKeyUp ||
-		identifier == wmSysKeyDown
-}
-
-func resetModifiers() {
-	modifierState.mu.Lock()
-	defer modifierState.mu.Unlock()
-	modifierState.m = map[uint32]bool{
-		vkLControl: false,
-		vkRControl: false,
-		vkLShift:   false,
-		vkRShift:   false,
-		vkLMenu:    false,
-		vkRMenu:    false,
-	}
-}
-
-func (w *WindowsManager) modCodeToName(code int) string {
-	switch code {
-	case vkLShift, vkRShift:
-		return "SHIFT"
-	case vkLControl, vkRControl:
-		return "CTRL"
-	case vkLMenu, vkRMenu:
-		return "ALT"
-	default:
-		return ""
-	}
-}
-
-func (w *WindowsManager) modCodeToLocaleName(code int) string {
-	switch code {
-	case vkLShift:
-		return "Left Shift"
-	case vkRShift:
-		return "Right Shift"
-	case vkLControl:
-		return "Left Control"
-	case vkRControl:
-		return "Right Control"
-	case vkLMenu:
-		return "Left Alt"
-	case vkRMenu:
-		return "Right Alt"
-	default:
-		return ""
-	}
+		identifier == wmSysKeyDown ||
+		identifier == wmSysKeyUp
 }

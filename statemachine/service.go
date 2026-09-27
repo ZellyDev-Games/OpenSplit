@@ -54,11 +54,6 @@ type RuntimeProvider interface {
 	Quit()
 }
 
-type HotkeyProvider interface {
-	StartHook(func(data keyinfo.KeyData)) error
-	Unhook() error
-}
-
 type GlobalHotkeyProvider interface {
 	Start(context.Context) error
 	Configure(map[command.Command]keyinfo.KeyData) error
@@ -91,7 +86,7 @@ type Service struct {
 	skinProvider                          skin.SkinProvider
 	repoService                           *repo.Service
 	runtimeProvider                       RuntimeProvider
-	hotkeyProvider                        HotkeyProvider
+	hotkeyProvider                        GlobalHotkeyProvider
 	configService                         *config.Service
 	speedrunService                       *speedrun.Service
 	saveOnWindowDimensionChanges          bool
@@ -194,11 +189,11 @@ func (s *Service) Startup(ctx context.Context) {
 }
 
 func (s *Service) AttachHotkeyProvider(
-	provider HotkeyProvider,
+	provider GlobalHotkeyProvider,
 ) {
 	logger.Debug(
 		logModule,
-		"hotkey provider attached",
+		"global hotkey provider attached",
 	)
 
 	s.hotkeyProvider = provider
@@ -261,13 +256,13 @@ func (s *Service) ReceiveDispatch(
 
 		active := !s.configService.GlobalHotkeysActive
 
-		if provider, ok := s.hotkeyProvider.(GlobalHotkeyProvider); ok {
+		if s.hotkeyProvider != nil {
 			var err error
 
 			if active {
-				err = provider.Enable()
+				err = s.hotkeyProvider.Enable()
 			} else {
-				err = provider.Disable()
+				err = s.hotkeyProvider.Disable()
 			}
 
 			if err != nil {
