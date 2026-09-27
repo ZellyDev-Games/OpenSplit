@@ -54,11 +54,10 @@ func ParseDeclarations(
 			)
 
 			if !ok {
-				pendingComments = append(
+				appendRawDeclaration(
+					&declarations,
 					pendingComments,
-					strings.TrimSpace(
-						body[index:],
-					),
+					body[index:],
 				)
 
 				break

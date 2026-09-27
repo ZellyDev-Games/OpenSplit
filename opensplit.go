@@ -124,7 +124,14 @@ func main() {
 			machine.AttachHotkeyProvider(provider)
 
 			provider.SetCommandCallback(func(cmd command.Command) {
-				machine.ReceiveDispatch(cmd, nil)
+				if _, err := machine.ReceiveDispatch(cmd, nil); err != nil {
+					logger.Errorf(
+						logModule,
+						"global hotkey command %d failed: %v",
+						cmd,
+						err,
+					)
+				}
 			})
 
 			if err := provider.Start(ctx); err != nil {

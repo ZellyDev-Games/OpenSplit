@@ -284,26 +284,6 @@ func (s *Service) getSkinAddressFor(
 	return u.String()
 }
 
-// formatSkinPath constructs a filesystem path within the configured skin
-// directory.
-func (s *Service) formatSkinPath(
-	name string,
-	parts ...string,
-) string {
-	root := filepath.Join(
-		s.skinDir,
-		name,
-	)
-
-	if len(parts) == 0 {
-		return root
-	}
-
-	return filepath.Join(
-		append([]string{root}, parts...)...,
-	)
-}
-
 // validateSkinName validates a skin name before it is used as a filesystem
 // component.
 func validateSkinName(name string) error {

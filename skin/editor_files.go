@@ -23,20 +23,6 @@ func (s *Service) skinRoot() (string, error) {
 	)
 }
 
-func (s *Service) resolveSkinPath(
-	file string,
-) (string, error) {
-	root, err := s.skinRoot()
-	if err != nil {
-		return "", err
-	}
-
-	return skinfiles.ResolvePath(
-		root,
-		file,
-	)
-}
-
 func (s *Service) SkinFiles() ([]string, error) {
 	root, err := s.skinRoot()
 	if err != nil {

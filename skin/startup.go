@@ -126,7 +126,7 @@ func (s *Service) installDefaultSkin() error {
 func (s *Service) extractDefaultSkinFile(
 	target string,
 	file *zip.File,
-) error {
+) (err error) {
 	p := filepath.Join(
 		target,
 		file.Name,
@@ -169,7 +169,12 @@ func (s *Service) extractDefaultSkinFile(
 	if err != nil {
 		return err
 	}
-	defer reader.Close()
+
+	defer func() {
+		if closeErr := reader.Close(); err == nil && closeErr != nil {
+			err = closeErr
+		}
+	}()
 
 	output, err := os.OpenFile(
 		p,
