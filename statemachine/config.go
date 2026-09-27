@@ -8,7 +8,6 @@ import (
 	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/dispatcher"
-	"github.com/zellydev-games/opensplit/keyinfo"
 	"github.com/zellydev-games/opensplit/logger"
 	"github.com/zellydev-games/opensplit/repo/adapters"
 )
@@ -73,16 +72,7 @@ func (c *Config) Receive(cmd command.Command, payload *string) (dispatcher.Dispa
 		c.recordingArmed = true
 		c.listeningFor = cmd
 		logger.Infof(logModule, "recording armed for cmd: %d", c.listeningFor)
-		err := machine.hotkeyProvider.StartHook(func(data keyinfo.KeyData) {
-			c.handleHotkey(data)
-			logger.Infof(logModule, "updated cmd %v with hotkey %s (%d)",
-				c.listeningFor, data.LocaleName, data.KeyCode)
-		})
-		if err != nil {
-			logger.Error(logModule, err.Error())
-			c.recordingArmed = false
-			return dispatcher.DispatchReply{Code: 6}, err
-		}
+
 		return dispatcher.DispatchReply{Code: RecordingArmed}, nil
 	case command.CANCEL:
 		machine.changeState(c.previousState)
@@ -105,10 +95,34 @@ func (c *Config) Receive(cmd command.Command, payload *string) (dispatcher.Dispa
 
 		machine.configService.Apply(newConfig)
 
+		if machine.hotkeyProvider != nil {
+			if err := machine.hotkeyProvider.Configure(
+				machine.configService.KeyConfig,
+			); err != nil {
+				message := fmt.Sprintf(
+					"error configuring global hotkeys: %v",
+					err,
+				)
+
+				logger.Error(logModule, message)
+
+				return dispatcher.DispatchReply{
+					Code:    4,
+					Message: message,
+				}, errors.New(message)
+			}
+		}
+
 		machine.configService.NotifyUpdate()
 
-		if err := machine.repoService.SaveConfig(machine.configService); err != nil {
-			message := fmt.Sprintf("error saving config to repo: %v", err)
+		if err := machine.repoService.SaveConfig(
+			machine.configService,
+		); err != nil {
+			message := fmt.Sprintf(
+				"error saving config to repo: %v",
+				err,
+			)
+
 			return dispatcher.DispatchReply{
 				Code:    4,
 				Message: message,
@@ -116,34 +130,11 @@ func (c *Config) Receive(cmd command.Command, payload *string) (dispatcher.Dispa
 		}
 
 		machine.changeState(c.previousState)
+
 		return dispatcher.DispatchReply{}, nil
 	default:
 		message := fmt.Sprintf("unknown cmd sent to config service: %v", cmd)
 		return dispatcher.DispatchReply{Code: 5, Message: message}, errors.New(message)
-	}
-}
-
-// handleHotkey stores the newly recorded hotkey binding.
-func (c *Config) handleHotkey(data keyinfo.KeyData) {
-	if c.recordingArmed {
-		c.recordingArmed = false
-
-		logger.Infof(logModule,
-			"recording cmd %v -> keycode=%d mods=%v",
-			c.listeningFor,
-			data.KeyCode,
-			data.Modifiers,
-		)
-
-		bridge.EmitHotkeyRecorded(
-			machine.runtimeProvider,
-			c.listeningFor,
-			data,
-		)
-	}
-
-	if err := machine.hotkeyProvider.Unhook(); err != nil {
-		logger.Error(logModule, err.Error())
 	}
 }
 

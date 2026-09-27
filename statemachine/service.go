@@ -3,7 +3,7 @@ package statemachine
 import (
 	"context"
 	"errors"
-	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -54,9 +54,13 @@ type RuntimeProvider interface {
 	Quit()
 }
 
-type HotkeyProvider interface {
-	StartHook(func(data keyinfo.KeyData)) error
-	Unhook() error
+type GlobalHotkeyProvider interface {
+	Start(context.Context) error
+	Configure(map[command.Command]keyinfo.KeyData) error
+	Enable() error
+	Disable() error
+	SetCommandCallback(func(command.Command))
+	Close() error
 }
 
 type uiEmitter interface {
@@ -82,7 +86,7 @@ type Service struct {
 	skinProvider                          skin.SkinProvider
 	repoService                           *repo.Service
 	runtimeProvider                       RuntimeProvider
-	hotkeyProvider                        HotkeyProvider
+	hotkeyProvider                        GlobalHotkeyProvider
 	configService                         *config.Service
 	speedrunService                       *speedrun.Service
 	saveOnWindowDimensionChanges          bool
@@ -121,24 +125,75 @@ func (s *Service) Startup(ctx context.Context) {
 	s.unsubscribeFromWindowDimensionChanges =
 		s.setupWindowDimensionListener()
 
-	s.changeState(WELCOME)
+	logger.Debug(
+		logModule,
+		"registering ui:ready listener",
+	)
 
 	s.runtimeProvider.EventsOn(
 		"ui:ready",
 		func(...any) {
+			logger.Debug(
+				logModule,
+				"ui:ready received",
+			)
+
+			if s.currentState == nil {
+				logger.Error(
+					logModule,
+					"ui:ready received but currentState is nil",
+				)
+				return
+			}
+
+			logger.Debugf(
+				logModule,
+				"ui:ready current state=%s",
+				s.currentState.String(),
+			)
+
 			if emitter, ok := s.currentState.(uiEmitter); ok {
-				_ = emitter.EmitUI()
+				logger.Debug(
+					logModule,
+					"emitting UI model after ui:ready",
+				)
+
+				if err := emitter.EmitUI(); err != nil {
+					logger.Errorf(
+						logModule,
+						"failed to emit UI after ui:ready: %v",
+						err,
+					)
+				}
+			} else {
+				logger.Errorf(
+					logModule,
+					"current state %s does not implement uiEmitter",
+					s.currentState.String(),
+				)
 			}
 		},
+	)
+
+	logger.Debug(
+		logModule,
+		"initializing Welcome state",
+	)
+
+	s.changeState(WELCOME)
+
+	logger.Debug(
+		logModule,
+		"state machine startup complete",
 	)
 }
 
 func (s *Service) AttachHotkeyProvider(
-	provider HotkeyProvider,
+	provider GlobalHotkeyProvider,
 ) {
 	logger.Debug(
 		logModule,
-		"hotkey provider attached",
+		"global hotkey provider attached",
 	)
 
 	s.hotkeyProvider = provider
@@ -148,6 +203,22 @@ func (s *Service) ReceiveDispatch(
 	c command.Command,
 	payload *string,
 ) (dispatcher.DispatchReply, error) {
+	// FOCUS is a window/runtime event rather than a state-machine
+	// command. It can arrive while the frontend is starting up,
+	// before the initial state has been loaded.
+	if c == command.FOCUS {
+		if payload == nil {
+			return dispatcher.DispatchReply{
+				Code:    1,
+				Message: `focus requires payload of "true" or "false"`,
+			}, nil
+		}
+
+		s.windowHasFocus = *payload == "true"
+
+		return dispatcher.DispatchReply{}, nil
+	}
+
 	if s.currentState == nil {
 		logger.Error(
 			logModule,
@@ -160,7 +231,8 @@ func (s *Service) ReceiveDispatch(
 			)
 	}
 
-	if c == command.QUIT {
+	switch c {
+	case command.QUIT:
 		logger.Debug(
 			logModule,
 			"QUIT c dispatched from front end",
@@ -169,59 +241,64 @@ func (s *Service) ReceiveDispatch(
 		s.runtimeProvider.Quit()
 
 		return dispatcher.DispatchReply{}, nil
-	}
 
-	if c == command.HELLO {
+	case command.HELLO:
 		return dispatcher.DispatchReply{
 			Code:    0,
 			Message: "HELLO",
 		}, nil
-	}
 
-	if c == command.TOGGLEGLOBAL {
+	case command.TOGGLEGLOBAL:
 		logger.Debug(
 			logModule,
-			"TOGGLEGLOBAL c dispatched from frontend",
+			"TOGGLEGLOBAL command dispatched from frontend",
 		)
 
-		s.configService.GlobalHotkeysActive =
-			!s.configService.GlobalHotkeysActive
+		active := !s.configService.GlobalHotkeysActive
 
-		err := s.repoService.SaveConfig(
-			s.configService,
-		)
+		if s.hotkeyProvider != nil {
+			var err error
 
-		if err != nil {
-			message := fmt.Sprintf(
-				"error saving config to repo %s",
-				err,
-			)
+			if active {
+				err = s.hotkeyProvider.Enable()
+			} else {
+				err = s.hotkeyProvider.Disable()
+			}
+
+			if err != nil {
+				message := "failed to change global hotkey state: " + err.Error()
+
+				logger.Error(logModule, message)
+
+				return dispatcher.DispatchReply{
+					Code:    1,
+					Message: message,
+				}, err
+			}
+		}
+
+		s.configService.GlobalHotkeysActive = active
+
+		if err := s.repoService.SaveConfig(s.configService); err != nil {
+			message := "failed to save global hotkey configuration: " + err.Error()
+
+			logger.Error(logModule, message)
 
 			return dispatcher.DispatchReply{
-				Code:    1,
+				Code:    2,
 				Message: message,
-			}, errors.New(message)
+			}, err
 		}
+
+		s.runtimeProvider.EventsEmit(
+			"hotkeys:global-state",
+			active,
+		)
 
 		return dispatcher.DispatchReply{
-			Message: fmt.Sprintf(
-				"%t",
-				s.configService.GlobalHotkeysActive,
-			),
+			Code:    0,
+			Message: strconv.FormatBool(active),
 		}, nil
-	}
-
-	if c == command.FOCUS {
-		if payload == nil {
-			return dispatcher.DispatchReply{
-				Code:    1,
-				Message: `focus requires payload of "true" or "false"`,
-			}, nil
-		}
-
-		s.windowHasFocus = *payload == "true"
-
-		return dispatcher.DispatchReply{}, nil
 	}
 
 	logger.Debugf(
@@ -257,7 +334,6 @@ func (s *Service) changeState(
 			)
 		}
 	}
-
 	switch newState {
 	case WELCOME:
 		logger.Debug(
@@ -417,7 +493,6 @@ func (s *Service) updateWorldRecord() {
 	)
 
 	showWorldRecord := sf.WR.Show
-
 	sf.WR =
 		s.speedrunService.ToWorldRecord(wr)
 
@@ -582,7 +657,6 @@ func (s *Service) promptPartialRun() error {
 
 	return nil
 }
-
 func (s *Service) promptDirtySave() (bool, error) {
 	if !s.sessionService.Dirty() {
 		return true, nil

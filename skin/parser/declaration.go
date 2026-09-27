@@ -54,11 +54,10 @@ func ParseDeclarations(
 			)
 
 			if !ok {
-				pendingComments = append(
+				appendRawDeclaration(
+					&declarations,
 					pendingComments,
-					strings.TrimSpace(
-						body[index:],
-					),
+					body[index:],
 				)
 
 				break
@@ -203,20 +202,20 @@ func readComment(
 		return "", start, false
 	}
 
-	end := strings.Index(
+	commentEnd := strings.Index(
 		text[start+2:],
 		"*/",
 	)
 
-	if end < 0 {
+	if commentEnd < 0 {
 		return "", start, false
 	}
 
-	end += start + 4
+	commentEnd += start + 4
 
 	return strings.TrimSpace(
-		text[start:end],
-	), end, true
+		text[start:commentEnd],
+	), commentEnd, true
 }
 
 // appendRawDeclaration preserves an unsupported or malformed declaration

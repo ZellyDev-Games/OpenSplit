@@ -144,6 +144,8 @@ tasks:
 
                     if [ "${XDG_SESSION_TYPE:-}" = "x11" ]; then
                       tags="x11"
+                    elif [ "${XDG_SESSION_TYPE:-}" = "wayland" ]; then
+                      tags="wayland"
                     fi
 
                     if command -v pkg-config >/dev/null 2>&1; then

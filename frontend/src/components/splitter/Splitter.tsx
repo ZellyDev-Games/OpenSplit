@@ -1,6 +1,7 @@
 import { Dispatch, SetStateAction, useEffect, useRef } from "react";
 
 import { Comparison, useComparison } from "../../hooks/splitter/useComparison";
+import { useLocalHotkeys } from "../../hooks/splitter/useLocalHotkeys";
 import { useSegmentList } from "../../hooks/splitter/useSegmentList";
 import { useSplitterLayout } from "../../hooks/splitter/useSplitterLayout";
 import { SplitterLayout, useSplitterMenu } from "../../hooks/splitter/useSplitterMenu";
@@ -35,6 +36,8 @@ export default function Splitter({
     onLayoutChange,
 }: SplitterParams) {
     const splitterRef = useRef<HTMLDivElement>(null);
+
+    useLocalHotkeys(configPayload);
 
     const contextMenu = useContextMenu();
 

@@ -4,24 +4,29 @@ package keyinfo
 type KeyData struct {
 	KeyCode             int      `json:"key_code"`
 	LocaleName          string   `json:"locale_name"`
-	Modifiers           []int    `json:"modifiers"`
+	Modifiers           []string `json:"modifiers"`
 	ModifierLocaleNames []string `json:"modifier_locale_names"`
 }
 
 // NewKeyData constructs a normalized KeyData value.
-func NewKeyData(kCode int, localeName string, modifiers []int, modifierLocalNames []string) KeyData {
+func NewKeyData(
+	keyCode int,
+	localeName string,
+	modifiers []string,
+	modifierLocaleNames []string,
+) KeyData {
 	if modifiers == nil {
-		modifiers = []int{}
+		modifiers = []string{}
 	}
 
-	if modifierLocalNames == nil {
-		modifierLocalNames = []string{}
+	if modifierLocaleNames == nil {
+		modifierLocaleNames = []string{}
 	}
 
 	return KeyData{
-		KeyCode:             kCode,
+		KeyCode:             keyCode,
 		LocaleName:          localeName,
 		Modifiers:           modifiers,
-		ModifierLocaleNames: modifierLocalNames,
+		ModifierLocaleNames: modifierLocaleNames,
 	}
 }
