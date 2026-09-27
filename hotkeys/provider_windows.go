@@ -211,18 +211,24 @@ func (w *WindowsManager) handleKeyDown(nCode uintptr, identifier uintptr, kbHook
 				localeString := windows.UTF16ToString(buf)
 
 				modifierState.mu.Lock()
-				modifiers := make([]int, 0, len(modifierState.m))
+
+				modifiers := make([]string, 0, len(modifierState.m))
+				modifierLocaleNames := make([]string, 0, len(modifierState.m))
+
 				for code, state := range modifierState.m {
-					if state {
-						modifiers = append(modifiers, int(code))
+					if !state {
+						continue
 					}
-				}
-				modifierLocaleNames := make([]string, 0, len(modifiers))
-				for _, vkInt := range modifiers {
-					if name := w.modCodeToString(vkInt); name != "" {
+
+					if name := w.modCodeToName(int(code)); name != "" {
+						modifiers = append(modifiers, name)
+					}
+
+					if name := w.modCodeToLocaleName(int(code)); name != "" {
 						modifierLocaleNames = append(modifierLocaleNames, name)
 					}
 				}
+
 				modifierState.mu.Unlock()
 
 				fmt.Println(localeString)
@@ -308,5 +314,37 @@ func resetModifiers() {
 		vkRShift:   false,
 		vkLMenu:    false,
 		vkRMenu:    false,
+	}
+}
+
+func (w *WindowsManager) modCodeToName(code int) string {
+	switch code {
+	case vkLShift, vkRShift:
+		return "SHIFT"
+	case vkLControl, vkRControl:
+		return "CTRL"
+	case vkLMenu, vkRMenu:
+		return "ALT"
+	default:
+		return ""
+	}
+}
+
+func (w *WindowsManager) modCodeToLocaleName(code int) string {
+	switch code {
+	case vkLShift:
+		return "Left Shift"
+	case vkRShift:
+		return "Right Shift"
+	case vkLControl:
+		return "Left Control"
+	case vkRControl:
+		return "Right Control"
+	case vkLMenu:
+		return "Left Alt"
+	case vkRMenu:
+		return "Right Alt"
+	default:
+		return ""
 	}
 }
