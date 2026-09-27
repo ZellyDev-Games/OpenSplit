@@ -4,6 +4,7 @@ package hotkeys
 
 import (
 	"context"
+	"sync"
 
 	"github.com/zellydev-games/opensplit/command"
 	"github.com/zellydev-games/opensplit/keyinfo"
@@ -21,6 +22,8 @@ func SetupHotkeys() *LinuxManager {
 // frontend because the GlobalShortcuts portal does not provide a raw
 // keyboard hook.
 type LinuxManager struct {
+	mu sync.Mutex
+
 	portal *PortalManager
 
 	keyPressedCallback func(keyinfo.KeyData)
@@ -35,12 +38,20 @@ func NewLinuxManager() *LinuxManager {
 	}
 }
 
-func (m *LinuxManager) StartHook(callback func(data keyinfo.KeyData)) error {
+func (m *LinuxManager) StartHook(
+	callback func(data keyinfo.KeyData),
+) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.keyPressedCallback = callback
 	return nil
 }
 
 func (m *LinuxManager) Unhook() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.keyPressedCallback = nil
 	return nil
 }
@@ -48,7 +59,10 @@ func (m *LinuxManager) Unhook() error {
 func (m *LinuxManager) SetCommandCallback(
 	callback func(command.Command),
 ) {
+	m.mu.Lock()
 	m.commandCallback = callback
+	m.mu.Unlock()
+
 	m.portal.SetCommandCallback(callback)
 }
 
@@ -59,16 +73,20 @@ func (m *LinuxManager) Start(ctx context.Context) error {
 func (m *LinuxManager) Configure(
 	keyConfig map[command.Command]keyinfo.KeyData,
 ) error {
-	m.currentKeyConfig = make(
+	configCopy := make(
 		map[command.Command]keyinfo.KeyData,
 		len(keyConfig),
 	)
 
 	for cmd, keyData := range keyConfig {
-		m.currentKeyConfig[cmd] = keyData
+		configCopy[cmd] = keyData
 	}
 
-	return m.portal.Configure(m.currentKeyConfig)
+	m.mu.Lock()
+	m.currentKeyConfig = configCopy
+	m.mu.Unlock()
+
+	return m.portal.Configure(configCopy)
 }
 
 func (m *LinuxManager) Close() error {
@@ -76,10 +94,25 @@ func (m *LinuxManager) Close() error {
 }
 
 func (m *LinuxManager) Enable() error {
+	m.mu.Lock()
+	keyConfig := make(
+		map[command.Command]keyinfo.KeyData,
+		len(m.currentKeyConfig),
+	)
+
+	for cmd, keyData := range m.currentKeyConfig {
+		keyConfig[cmd] = keyData
+	}
+	m.mu.Unlock()
+
 	logger.Debugf("hotkeys", "enabling global hotkeys")
 
-	if err := m.portal.Configure(m.currentKeyConfig); err != nil {
-		logger.Errorf("hotkeys", "enable global hotkeys failed: %v", err)
+	if err := m.portal.Enable(keyConfig); err != nil {
+		logger.Errorf(
+			"hotkeys",
+			"enable global hotkeys failed: %v",
+			err,
+		)
 		return err
 	}
 
@@ -88,5 +121,17 @@ func (m *LinuxManager) Enable() error {
 }
 
 func (m *LinuxManager) Disable() error {
-	return m.portal.Disable()
+	logger.Debugf("hotkeys", "disabling global hotkeys")
+
+	if err := m.portal.Disable(); err != nil {
+		logger.Errorf(
+			"hotkeys",
+			"disable global hotkeys failed: %v",
+			err,
+		)
+		return err
+	}
+
+	logger.Infof("hotkeys", "global hotkeys disabled")
+	return nil
 }
