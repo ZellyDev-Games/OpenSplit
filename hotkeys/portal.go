@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/godbus/dbus/v5"
 	"github.com/zellydev-games/opensplit/command"
@@ -37,6 +38,9 @@ type portalShortcutBinding struct {
 type PortalManager struct {
 	mu sync.Mutex
 
+	bindingsConfigured bool
+	enabled            bool
+
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -63,38 +67,63 @@ func NewPortalManager() *PortalManager {
 
 func (p *PortalManager) Start(ctx context.Context) error {
 	p.mu.Lock()
-	defer p.mu.Unlock()
-
 	if p.conn != nil {
+		p.mu.Unlock()
 		return nil
 	}
+	p.mu.Unlock()
 
 	conn, err := dbus.SessionBus()
 	if err != nil {
 		return fmt.Errorf("connect to session bus: %w", err)
 	}
 
-	p.ctx, p.cancel = context.WithCancel(ctx)
+	portalCtx, cancel := context.WithCancel(ctx)
+
+	p.mu.Lock()
+	// Another Start could theoretically have completed while we
+	// were connecting to D-Bus.
+	if p.conn != nil {
+		p.mu.Unlock()
+		cancel()
+		conn.Close()
+		return nil
+	}
+
+	p.ctx = portalCtx
+	p.cancel = cancel
 	p.conn = conn
 	p.object = conn.Object(
 		portalBusName,
 		portalPath,
 	)
+	p.mu.Unlock()
 
 	if err := p.installSignalHandler(); err != nil {
-		p.cancel()
+		cancel()
+		conn.Close()
+
+		p.mu.Lock()
 		p.cancel = nil
 		p.conn = nil
 		p.object = nil
+		p.ctx = nil
+		p.mu.Unlock()
+
 		return err
 	}
 
 	if err := p.createSession(); err != nil {
-		p.cancel()
+		cancel()
+		conn.Close()
+
+		p.mu.Lock()
 		p.cancel = nil
-		p.conn.Close()
 		p.conn = nil
 		p.object = nil
+		p.ctx = nil
+		p.mu.Unlock()
+
 		return err
 	}
 
@@ -102,7 +131,15 @@ func (p *PortalManager) Start(ctx context.Context) error {
 }
 
 func (p *PortalManager) createSession() error {
-	token := "opensplit"
+	p.mu.Lock()
+	object := p.object
+	p.mu.Unlock()
+
+	if object == nil {
+		return fmt.Errorf("portal connection has not been created")
+	}
+
+	token := portalToken("opensplit")
 
 	options := map[string]dbus.Variant{
 		"handle_token":         dbus.MakeVariant(token),
@@ -111,7 +148,7 @@ func (p *PortalManager) createSession() error {
 
 	var request dbus.ObjectPath
 
-	err := p.object.Call(
+	err := object.Call(
 		portalIface+".CreateSession",
 		0,
 		options,
@@ -133,9 +170,7 @@ func (p *PortalManager) createSession() error {
 
 	session, ok := value.Value().(dbus.ObjectPath)
 	if !ok {
-		// Some portal implementations historically exposed this as
-		// a string, so accept that representation too.
-		if s, ok := value.Value().(string); ok {
+		if s, stringOK := value.Value().(string); stringOK {
 			session = dbus.ObjectPath(s)
 		} else {
 			return fmt.Errorf(
@@ -145,7 +180,9 @@ func (p *PortalManager) createSession() error {
 		}
 	}
 
+	p.mu.Lock()
 	p.session = session
+	p.mu.Unlock()
 
 	logger.Infof(
 		logModule,
@@ -304,7 +341,7 @@ func (p *PortalManager) handleActivated(signal *dbus.Signal) {
 
 	p.mu.Lock()
 
-	if session != p.session {
+	if !p.enabled || session != p.session {
 		p.mu.Unlock()
 		return
 	}
@@ -357,23 +394,309 @@ func (p *PortalManager) Configure(
 	keyConfig map[command.Command]keyinfo.KeyData,
 ) error {
 	p.mu.Lock()
+	enabled := p.enabled
+	session := p.session
+	p.mu.Unlock()
 
-	logger.Debugf(
-		logModule,
-		"configuring global shortcuts: session=%s bindings_configured=%t key_count=%d",
-		p.session,
-		len(keyConfig),
-	)
+	if !enabled {
+		// Configuration is retained by LinuxManager. Do not bind
+		// anything while global hotkeys are disabled.
+		logger.Debugf(
+			logModule,
+			"global hotkeys disabled; deferring portal configuration",
+		)
+		return nil
+	}
 
-	if p.session == "" {
-		p.mu.Unlock()
+	if session == "" {
 		return fmt.Errorf("portal session has not been created")
 	}
 
-	session := p.session
+	if err := p.recreateSession(); err != nil {
+		p.mu.Lock()
+		p.enabled = false
+		p.mu.Unlock()
+
+		return fmt.Errorf("recreate portal session: %w", err)
+	}
+
+	if err := p.configureBindings(keyConfig); err != nil {
+		p.mu.Lock()
+		p.enabled = false
+		p.mu.Unlock()
+
+		return err
+	}
+
+	return nil
+}
+
+func (p *PortalManager) Close() error {
+	p.mu.Lock()
+
+	cancel := p.cancel
+	conn := p.conn
+	signalCh := p.signalCh
+
+	p.cancel = nil
+	p.conn = nil
+	p.object = nil
+	p.session = ""
+	p.shortcuts = make(map[string]portalShortcut)
+	p.bindingsConfigured = false
+	p.enabled = false
+	p.signalCh = nil
 
 	p.mu.Unlock()
 
+	if cancel != nil {
+		cancel()
+	}
+
+	if conn != nil {
+		if signalCh != nil {
+			conn.RemoveSignal(signalCh)
+		}
+		conn.Close()
+	}
+
+	return nil
+}
+
+func (p *PortalManager) Enable(
+	keyConfig map[command.Command]keyinfo.KeyData,
+) error {
+	p.mu.Lock()
+	enabled := p.enabled
+	session := p.session
+	bound := p.bindingsConfigured
+	p.mu.Unlock()
+
+	if enabled {
+		return nil
+	}
+
+	if session == "" {
+		if err := p.createSession(); err != nil {
+			return err
+		}
+
+		bound = false
+	}
+
+	if !bound {
+		if err := p.configureBindings(keyConfig); err != nil {
+			return err
+		}
+	}
+
+	p.mu.Lock()
+	p.enabled = true
+	p.mu.Unlock()
+
+	return nil
+}
+
+func (p *PortalManager) Disable() error {
+	if err := p.closeSession(); err != nil {
+		return err
+	}
+
+	p.resetSessionState()
+
+	p.mu.Lock()
+	p.enabled = false
+	p.mu.Unlock()
+
+	return nil
+}
+
+func (p *PortalManager) recreateSession() error {
+	if err := p.closeSession(); err != nil {
+		return err
+	}
+
+	p.resetSessionState()
+
+	return p.createSession()
+}
+
+func (p *PortalManager) closeSession() error {
+	p.mu.Lock()
+	conn := p.conn
+	session := p.session
+	p.mu.Unlock()
+
+	if conn == nil || session == "" {
+		return nil
+	}
+
+	sessionObject := conn.Object(
+		portalBusName,
+		session,
+	)
+
+	call := sessionObject.Call(
+		"org.freedesktop.portal.Session.Close",
+		0,
+	)
+
+	if call.Err != nil {
+		return fmt.Errorf(
+			"close global shortcut session: %w",
+			call.Err,
+		)
+	}
+
+	return nil
+}
+
+func (p *PortalManager) bindShortcutsForSession(
+	session dbus.ObjectPath,
+	bindings []portalShortcutBinding,
+) error {
+	options := map[string]dbus.Variant{
+		"handle_token": dbus.MakeVariant(portalToken("bind")),
+	}
+
+	var request dbus.ObjectPath
+
+	err := p.object.Call(
+		portalIface+".BindShortcuts",
+		0,
+		session,
+		bindings,
+		"", // parent_window
+		options,
+	).Store(&request)
+
+	if err != nil {
+		return fmt.Errorf("BindShortcuts call: %w", err)
+	}
+
+	_, _, err = p.waitForResponse(request)
+	if err != nil {
+		return fmt.Errorf("BindShortcuts response: %w", err)
+	}
+
+	return nil
+}
+
+func (p *PortalManager) OpenConfiguration() error {
+	p.mu.Lock()
+	session := p.session
+	p.mu.Unlock()
+
+	if session == "" {
+		return fmt.Errorf("portal session has not been created")
+	}
+
+	return p.configureShortcutsForSession(session)
+}
+
+func (p *PortalManager) configureBindings(
+	keyConfig map[command.Command]keyinfo.KeyData,
+) error {
+	shortcuts, bindings, err := portalShortcutDefinitions(keyConfig)
+	if err != nil {
+		return err
+	}
+
+	p.mu.Lock()
+	session := p.session
+	p.mu.Unlock()
+
+	if session == "" {
+		return fmt.Errorf("portal session has not been created")
+	}
+
+	// An empty binding set is valid from the application's perspective.
+	// There is no need to call BindShortcuts with an empty list.
+	if len(bindings) == 0 {
+		p.mu.Lock()
+		p.shortcuts = shortcuts
+		p.bindingsConfigured = true
+		p.mu.Unlock()
+
+		return nil
+	}
+
+	if err := p.bindShortcutsForSession(session, bindings); err != nil {
+		return err
+	}
+
+	p.mu.Lock()
+	p.shortcuts = shortcuts
+	p.bindingsConfigured = true
+	p.mu.Unlock()
+
+	logger.Infof(
+		logModule,
+		"configured %d global shortcuts for session %s",
+		len(shortcuts),
+		session,
+	)
+
+	return nil
+}
+
+func (p *PortalManager) resetSessionState() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.session = ""
+	p.shortcuts = make(map[string]portalShortcut)
+	p.bindingsConfigured = false
+}
+
+func (p *PortalManager) configureShortcutsForSession(
+	session dbus.ObjectPath,
+) error {
+	options := map[string]dbus.Variant{}
+
+	call := p.object.Call(
+		portalIface+".ConfigureShortcuts",
+		0,
+		session,
+		"",
+		options,
+	)
+
+	if call.Err != nil {
+		return fmt.Errorf(
+			"ConfigureShortcuts: %w",
+			call.Err,
+		)
+	}
+
+	var request dbus.ObjectPath
+
+	if err := call.Store(&request); err != nil {
+		return fmt.Errorf(
+			"read ConfigureShortcuts request: %w",
+			err,
+		)
+	}
+
+	_, _, err := p.waitForResponse(request)
+	return err
+}
+
+func portalToken(prefix string) string {
+	return fmt.Sprintf(
+		"%s_%d",
+		prefix,
+		time.Now().UnixNano(),
+	)
+}
+
+func portalShortcutDefinitions(
+	keyConfig map[command.Command]keyinfo.KeyData,
+) (
+	map[string]portalShortcut,
+	[]portalShortcutBinding,
+	error,
+) {
 	shortcuts := make(map[string]portalShortcut)
 
 	commands := []command.Command{
@@ -417,172 +740,30 @@ func (p *PortalManager) Configure(
 		}
 	}
 
-	if len(shortcuts) == 0 {
-		return nil
-	}
-
-	bindings := make([]portalShortcutBinding, 0, len(shortcuts))
+	bindings := make(
+		[]portalShortcutBinding,
+		0,
+		len(shortcuts),
+	)
 
 	for _, shortcut := range shortcuts {
-		properties := map[string]dbus.Variant{
-			"description":       dbus.MakeVariant(shortcut.Description),
-			"preferred_trigger": dbus.MakeVariant(shortcut.Trigger),
-		}
-
-		bindings = append(bindings, portalShortcutBinding{
-			ID:         shortcut.ID,
-			Properties: properties,
-		})
-	}
-
-	if err := p.bindShortcutsForSession(session, bindings); err != nil {
-		return err
-	}
-
-	p.mu.Lock()
-	p.shortcuts = shortcuts
-	p.mu.Unlock()
-
-	return nil
-}
-
-func (p *PortalManager) bindShortcuts(
-	bindings []interface{},
-) error {
-	call := p.object.Call(
-		portalIface+".BindShortcuts",
-		0,
-		p.session,
-		bindings,
-		"",
-		map[string]dbus.Variant{},
-	)
-
-	if call.Err != nil {
-		return fmt.Errorf("BindShortcuts: %w", call.Err)
-	}
-
-	var request dbus.ObjectPath
-
-	if err := call.Store(&request); err != nil {
-		return fmt.Errorf("read BindShortcuts request: %w", err)
-	}
-
-	if _, _, err := p.waitForResponse(request); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (p *PortalManager) Close() error {
-	p.mu.Lock()
-
-	cancel := p.cancel
-	conn := p.conn
-	p.cancel = nil
-	p.conn = nil
-	p.object = nil
-	p.session = ""
-	p.shortcuts = make(map[string]portalShortcut)
-
-	p.mu.Unlock()
-
-	if cancel != nil {
-		cancel()
-	}
-
-	if conn != nil {
-		conn.RemoveSignal(p.signalCh)
-		conn.Close()
-	}
-
-	return nil
-}
-
-func (p *PortalManager) Disable() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	p.shortcuts = make(map[string]portalShortcut)
-
-	return nil
-}
-
-func (p *PortalManager) bindShortcutsForSession(
-	session dbus.ObjectPath,
-	bindings []portalShortcutBinding,
-) error {
-	options := map[string]dbus.Variant{
-		"handle_token": dbus.MakeVariant("bind"),
-	}
-
-	var request dbus.ObjectPath
-
-	err := p.object.Call(
-		portalIface+".BindShortcuts",
-		0,
-		session,
-		bindings,
-		"", // parent_window
-		options,
-	).Store(&request)
-
-	if err != nil {
-		return fmt.Errorf("BindShortcuts call: %w", err)
-	}
-
-	_, _, err = p.waitForResponse(request)
-	if err != nil {
-		return fmt.Errorf("BindShortcuts response: %w", err)
-	}
-
-	return nil
-}
-
-func (p *PortalManager) OpenConfiguration() error {
-	p.mu.Lock()
-	session := p.session
-	p.mu.Unlock()
-
-	if session == "" {
-		return fmt.Errorf("portal session has not been created")
-	}
-
-	return p.configureShortcutsForSession(session)
-}
-
-func (p *PortalManager) configureShortcutsForSession(
-	session dbus.ObjectPath,
-) error {
-	options := map[string]dbus.Variant{}
-
-	call := p.object.Call(
-		portalIface+".ConfigureShortcuts",
-		0,
-		session,
-		"",
-		options,
-	)
-
-	if call.Err != nil {
-		return fmt.Errorf(
-			"ConfigureShortcuts: %w",
-			call.Err,
+		bindings = append(
+			bindings,
+			portalShortcutBinding{
+				ID: shortcut.ID,
+				Properties: map[string]dbus.Variant{
+					"description": dbus.MakeVariant(
+						shortcut.Description,
+					),
+					"preferred_trigger": dbus.MakeVariant(
+						shortcut.Trigger,
+					),
+				},
+			},
 		)
 	}
 
-	var request dbus.ObjectPath
-
-	if err := call.Store(&request); err != nil {
-		return fmt.Errorf(
-			"read ConfigureShortcuts request: %w",
-			err,
-		)
-	}
-
-	_, _, err := p.waitForResponse(request)
-	return err
+	return shortcuts, bindings, nil
 }
 
 func shortcutID(cmd command.Command) string {
@@ -700,10 +881,14 @@ func normalizeModifier(value string) string {
 }
 
 func normalizeKey(value string) string {
+	if value == " " {
+		return "SPACE"
+	}
+
 	value = strings.TrimSpace(value)
 
 	switch strings.ToLower(value) {
-	case " ":
+	case "space":
 		return "SPACE"
 
 	case "escape":
