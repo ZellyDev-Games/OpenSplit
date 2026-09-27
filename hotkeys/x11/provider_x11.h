@@ -3,8 +3,9 @@
 #include <stdint.h>
 
 typedef struct {
-  uint8_t type;       // 1=press, 2=release
-  uint16_t keycode;   // raw X keycode
+  uint8_t type;     // 1=press, 2=release
+  uint16_t keycode; // raw X keycode
+  uint16_t dom_keycode;
   uint32_t modifiers; // X11 effective modifier mask
   char name[64];      // keysym name or "(unknown)"
 } xi2_event;
@@ -25,3 +26,6 @@ void xi2_stop(void);
 // Closes the X11 display and frees resources.
 // Must be called after xi2_next() has returned.
 void xi2_close(void);
+
+// int xi2_keycode_to_dom_keycode(uint16_t keycode);
+int keysym_to_dom_keycode(uint64_t keysym);

@@ -14,7 +14,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"time"
 	"unsafe"
 
 	"github.com/zellydev-games/opensplit/command"
@@ -39,8 +38,6 @@ type Manager struct {
 
 	started bool
 	enabled bool
-
-	lastUpdate time.Time
 
 	stopOnce sync.Once
 	done     chan struct{}
@@ -160,18 +157,45 @@ func (x *Manager) handleEvent(event C.xi2_event) {
 	enabled := x.enabled
 	callback := x.callback
 
+	x11KeyCode := int(event.keycode)
+	domKeyCode := int(event.dom_keycode)
+	x11Name := C.GoString(&event.name[0])
+	modifiers := x11Modifiers(uint32(event.modifiers))
+
+	if enabled {
+		logger.Debug(
+			logModule,
+			fmt.Sprintf(
+				"x11 key event: x11_keycode=%d dom_keycode=%d x11_name=%q modifiers=%v",
+				x11KeyCode,
+				domKeyCode,
+				x11Name,
+				modifiers,
+			),
+		)
+	}
+
 	var matched command.Command
 	var found bool
 
 	if enabled && callback != nil {
-		keyCode := int(event.keycode)
-		localeName := C.GoString(&event.name[0])
-		modifiers := x11Modifiers(uint32(event.modifiers))
-
 		for cmd, binding := range x.keyConfig {
+			logger.Debug(
+				logModule,
+				fmt.Sprintf(
+					"checking command=%d x11_keycode=%d dom_keycode=%d binding_keycode=%d binding_name=%q modifiers=%v",
+					cmd,
+					x11KeyCode,
+					domKeyCode,
+					// localeName,
+					binding.KeyCode,
+					binding.LocaleName,
+					binding.Modifiers,
+				),
+			)
+
 			if matchesKey(
-				keyCode,
-				localeName,
+				domKeyCode,
 				modifiers,
 				binding,
 			) {
@@ -187,23 +211,6 @@ func (x *Manager) handleEvent(event C.xi2_event) {
 	if !found {
 		return
 	}
-
-	/*
-	 * Raw XInput can report the same physical key through multiple
-	 * devices. Keep the existing small debounce behavior.
-	 */
-	x.mu.Lock()
-
-	now := time.Now()
-
-	if now.Sub(x.lastUpdate) <= 20*time.Millisecond {
-		x.mu.Unlock()
-		return
-	}
-
-	x.lastUpdate = now
-
-	x.mu.Unlock()
 
 	callback(matched)
 }
@@ -329,21 +336,12 @@ func x11Modifiers(mask uint32) []string {
 
 func matchesKey(
 	keyCode int,
-	localeName string,
 	modifiers []string,
 	binding keyinfo.KeyData,
 ) bool {
 	if keyCode != binding.KeyCode {
 		return false
 	}
-
-	/*
-	 * KeyCode is the authoritative identity, matching the frontend
-	 * configuration behavior. LocaleName is intentionally not used
-	 * for matching because the same physical key can have different
-	 * names depending on the keyboard layout.
-	 */
-	_ = localeName
 
 	required := normalizeModifiers(binding.Modifiers)
 

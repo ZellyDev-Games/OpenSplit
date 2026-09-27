@@ -37,7 +37,7 @@ static int select_raw(Display *dpy, Window root) {
   }
 
   XIEventMask em = {0};
-  em.deviceid = XIAllDevices;
+  em.deviceid = XIAllMasterDevices;
   em.mask_len = mlen;
   em.mask = g_mask;
 
@@ -217,25 +217,22 @@ int xi2_next(xi2_event *out) {
 
       XkbStateRec st;
 
+      memset(&st, 0, sizeof(st));
+
       if (XkbGetState(g_dpy, XkbUseCoreKbd, &st) != Success) {
         st.group = 0;
       }
 
-      KeySym ks = XkbKeycodeToKeysym(g_dpy, kc, st.group, 0);
+      KeySym ks = XkbKeycodeToKeysym(g_dpy, kc, 0, 0);
 
       if (ks == NoSymbol) {
-        ks = XkbKeycodeToKeysym(g_dpy, kc, st.group, 1);
+        ks = XkbKeycodeToKeysym(g_dpy, kc, 0, 1);
       }
-
-      if (ks == NoSymbol) {
-        ks = XkbKeycodeToKeysym(g_dpy, kc, 0, 0);
-      }
-
-      memset(out, 0, sizeof(*out));
 
       out->type = (cookie->evtype == XI_RawKeyPress) ? 1 : 2;
 
       out->keycode = (uint16_t)kc;
+      out->dom_keycode = (uint16_t)keysym_to_dom_keycode(ks);
 
       /*
        * X11 modifier masks:
@@ -293,4 +290,195 @@ void xi2_close(void) {
   }
 
   destroy_stop_pipe();
+}
+
+int keysym_to_dom_keycode(uint64_t keysym) {
+  switch ((KeySym)keysym) {
+  /* Letters */
+  case XK_a:
+  case XK_A:
+    return 65;
+  case XK_b:
+  case XK_B:
+    return 66;
+  case XK_c:
+  case XK_C:
+    return 67;
+  case XK_d:
+  case XK_D:
+    return 68;
+  case XK_e:
+  case XK_E:
+    return 69;
+  case XK_f:
+  case XK_F:
+    return 70;
+  case XK_g:
+  case XK_G:
+    return 71;
+  case XK_h:
+  case XK_H:
+    return 72;
+  case XK_i:
+  case XK_I:
+    return 73;
+  case XK_j:
+  case XK_J:
+    return 74;
+  case XK_k:
+  case XK_K:
+    return 75;
+  case XK_l:
+  case XK_L:
+    return 76;
+  case XK_m:
+  case XK_M:
+    return 77;
+  case XK_n:
+  case XK_N:
+    return 78;
+  case XK_o:
+  case XK_O:
+    return 79;
+  case XK_p:
+  case XK_P:
+    return 80;
+  case XK_q:
+  case XK_Q:
+    return 81;
+  case XK_r:
+  case XK_R:
+    return 82;
+  case XK_s:
+  case XK_S:
+    return 83;
+  case XK_t:
+  case XK_T:
+    return 84;
+  case XK_u:
+  case XK_U:
+    return 85;
+  case XK_v:
+  case XK_V:
+    return 86;
+  case XK_w:
+  case XK_W:
+    return 87;
+  case XK_x:
+  case XK_X:
+    return 88;
+  case XK_y:
+  case XK_Y:
+    return 89;
+  case XK_z:
+  case XK_Z:
+    return 90;
+
+  /* Number row */
+  case XK_0:
+    return 48;
+  case XK_1:
+    return 49;
+  case XK_2:
+    return 50;
+  case XK_3:
+    return 51;
+  case XK_4:
+    return 52;
+  case XK_5:
+    return 53;
+  case XK_6:
+    return 54;
+  case XK_7:
+    return 55;
+  case XK_8:
+    return 56;
+  case XK_9:
+    return 57;
+
+  /* Function keys */
+  case XK_F1:
+    return 112;
+  case XK_F2:
+    return 113;
+  case XK_F3:
+    return 114;
+  case XK_F4:
+    return 115;
+  case XK_F5:
+    return 116;
+  case XK_F6:
+    return 117;
+  case XK_F7:
+    return 118;
+  case XK_F8:
+    return 119;
+  case XK_F9:
+    return 120;
+  case XK_F10:
+    return 121;
+  case XK_F11:
+    return 122;
+  case XK_F12:
+    return 123;
+
+  /* Navigation */
+  case XK_Home:
+    return 36;
+  case XK_End:
+    return 35;
+  case XK_Left:
+    return 37;
+  case XK_Up:
+    return 38;
+  case XK_Right:
+    return 39;
+  case XK_Down:
+    return 40;
+  case XK_Prior:
+    return 33;
+  case XK_Next:
+    return 34;
+  case XK_Insert:
+    return 45;
+  case XK_Delete:
+    return 46;
+
+  /* Keypad navigation */
+  case XK_KP_Home:
+    return 36;
+  case XK_KP_End:
+    return 35;
+  case XK_KP_Left:
+    return 37;
+  case XK_KP_Up:
+    return 38;
+  case XK_KP_Right:
+    return 39;
+  case XK_KP_Down:
+    return 40;
+  case XK_KP_Prior:
+    return 33;
+  case XK_KP_Next:
+    return 34;
+  case XK_KP_Insert:
+    return 45;
+  case XK_KP_Delete:
+    return 46;
+
+  /* Editing/control */
+  case XK_BackSpace:
+    return 8;
+  case XK_Tab:
+    return 9;
+  case XK_Return:
+    return 13;
+  case XK_Escape:
+    return 27;
+  case XK_space:
+    return 32;
+
+  default:
+    return 0;
+  }
 }
