@@ -137,13 +137,21 @@ func main() {
 						"failed to start global hotkey provider: %v",
 						err,
 					)
-				} else if configService.GlobalHotkeysActive {
+				} else {
 					if err := provider.Configure(configService.KeyConfig); err != nil {
 						logger.Errorf(
 							logModule,
 							"failed to configure global hotkeys: %v",
 							err,
 						)
+					} else if configService.GlobalHotkeysActive {
+						if err := provider.Enable(); err != nil {
+							logger.Errorf(
+								logModule,
+								"failed to enable global hotkeys: %v",
+								err,
+							)
+						}
 					}
 				}
 			}
