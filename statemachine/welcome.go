@@ -34,7 +34,7 @@ func (w *Welcome) OnEnter() error {
 		"opening welcome",
 	)
 
-	return w.EmitUI()
+	return nil
 }
 
 func (w *Welcome) EmitUI() error {
