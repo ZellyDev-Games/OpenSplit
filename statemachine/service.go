@@ -124,20 +124,72 @@ func (s *Service) Startup(ctx context.Context) {
 		logModule,
 		"starting state machine",
 	)
+
 	s.ctx = ctx
 
 	s.unsubscribeFromWindowDimensionChanges =
 		s.setupWindowDimensionListener()
 
-	s.changeState(WELCOME)
+	logger.Debug(
+		logModule,
+		"registering ui:ready listener",
+	)
 
 	s.runtimeProvider.EventsOn(
 		"ui:ready",
 		func(...any) {
+			logger.Debug(
+				logModule,
+				"ui:ready received",
+			)
+
+			if s.currentState == nil {
+				logger.Error(
+					logModule,
+					"ui:ready received but currentState is nil",
+				)
+				return
+			}
+
+			logger.Debugf(
+				logModule,
+				"ui:ready current state=%s",
+				s.currentState.String(),
+			)
+
 			if emitter, ok := s.currentState.(uiEmitter); ok {
-				_ = emitter.EmitUI()
+				logger.Debug(
+					logModule,
+					"emitting UI model after ui:ready",
+				)
+
+				if err := emitter.EmitUI(); err != nil {
+					logger.Errorf(
+						logModule,
+						"failed to emit UI after ui:ready: %v",
+						err,
+					)
+				}
+			} else {
+				logger.Errorf(
+					logModule,
+					"current state %s does not implement uiEmitter",
+					s.currentState.String(),
+				)
 			}
 		},
+	)
+
+	logger.Debug(
+		logModule,
+		"initializing Welcome state",
+	)
+
+	s.changeState(WELCOME)
+
+	logger.Debug(
+		logModule,
+		"state machine startup complete",
 	)
 }
 
@@ -156,6 +208,22 @@ func (s *Service) ReceiveDispatch(
 	c command.Command,
 	payload *string,
 ) (dispatcher.DispatchReply, error) {
+	// FOCUS is a window/runtime event rather than a state-machine
+	// command. It can arrive while the frontend is starting up,
+	// before the initial state has been loaded.
+	if c == command.FOCUS {
+		if payload == nil {
+			return dispatcher.DispatchReply{
+				Code:    1,
+				Message: `focus requires payload of "true" or "false"`,
+			}, nil
+		}
+
+		s.windowHasFocus = *payload == "true"
+
+		return dispatcher.DispatchReply{}, nil
+	}
+
 	if s.currentState == nil {
 		logger.Error(
 			logModule,
@@ -227,22 +295,15 @@ func (s *Service) ReceiveDispatch(
 			}, err
 		}
 
+		s.runtimeProvider.EventsEmit(
+			"hotkeys:global-state",
+			active,
+		)
+
 		return dispatcher.DispatchReply{
 			Code:    0,
 			Message: strconv.FormatBool(active),
 		}, nil
-
-	case command.FOCUS:
-		if payload == nil {
-			return dispatcher.DispatchReply{
-				Code:    1,
-				Message: `focus requires payload of "true" or "false"`,
-			}, nil
-		}
-
-		s.windowHasFocus = *payload == "true"
-
-		return dispatcher.DispatchReply{}, nil
 	}
 
 	logger.Debugf(
