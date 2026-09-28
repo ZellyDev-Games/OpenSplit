@@ -123,6 +123,7 @@ func (r *Running) Receive(
 		result := machine.sessionService.Split()
 
 		if result == session.SplitFinished {
+			machine.notifyRunDone()
 			machine.runtimeProvider.EventsEmit(
 				"opensplit:done",
 			)
@@ -170,6 +171,7 @@ func (r *Running) Receive(
 		result := machine.sessionService.Done()
 
 		if result == session.SplitFinished {
+			machine.notifyRunDone()
 			machine.runtimeProvider.EventsEmit(
 				"opensplit:done",
 			)

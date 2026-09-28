@@ -21,8 +21,25 @@ type Socket struct {
 	port       uint16
 	mu         sync.Mutex
 	conn       net.PacketConn
+	peer       net.Addr
 	closeOnce  sync.Once
 	closed     chan struct{}
+}
+
+// NotifyDone tells the connected RaceTime.gg integration that the active run
+// has finished. The integration registers its UDP address with HELLO packets.
+func (s *Socket) NotifyDone() {
+	s.mu.Lock()
+	conn, peer := s.conn, s.peer
+	s.mu.Unlock()
+	if conn == nil || peer == nil {
+		logger.Debug(logModule, "cannot notify RaceTime.gg: no connected peer")
+		return
+	}
+	packet := []byte{magic0, magic1, magic2, magic3, 1, 0, byte(command.DONE)}
+	if _, err := conn.WriteTo(packet, peer); err != nil {
+		logger.Errorf(logModule, "failed to notify RaceTime.gg that run is done: %v", err)
+	}
 }
 
 func NewSocket(d *dispatcher.Service, port uint16) *Socket {
@@ -99,6 +116,10 @@ func (s *Socket) Listen() {
 			logger.Warnf(logModule, "invalid magic header")
 			continue
 		}
+
+		s.mu.Lock()
+		s.peer = addr
+		s.mu.Unlock()
 
 		version := int(packet[4])
 		ackRequested := int(packet[5]) == 1

@@ -92,6 +92,18 @@ type Service struct {
 	saveOnWindowDimensionChanges          bool
 	unsubscribeFromWindowDimensionChanges func()
 	windowHasFocus                        bool
+	runDoneCallback                       func()
+}
+
+// SetRunDoneCallback registers an integration notification for completed runs.
+func (s *Service) SetRunDoneCallback(callback func()) {
+	s.runDoneCallback = callback
+}
+
+func (s *Service) notifyRunDone() {
+	if s.runDoneCallback != nil {
+		s.runDoneCallback()
+	}
 }
 
 func NewMachine(
