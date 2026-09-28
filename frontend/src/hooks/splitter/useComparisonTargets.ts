@@ -10,6 +10,7 @@ export function useComparisonTargets(comparison: Comparison, leaves?: SegmentPay
      */
     return useMemo<Targets>(() => {
         let cumulative = 0;
+        let cumulativeKnown = true;
 
         const result: Targets = {
             cumulative: {},
@@ -25,8 +26,18 @@ export function useComparisonTargets(comparison: Comparison, leaves?: SegmentPay
         leaves?.forEach((segment) => {
             const value = selector[comparison](segment);
 
+            // -1 is the split-file sentinel for an unknown comparison.
+            // Keep it out of cumulative targets so an empty history does not
+            // create a zero-second delta or a misleading cumulative time.
+            if (value < 0) {
+                cumulativeKnown = false;
+                return;
+            }
+
             result.individual[segment.id] = value;
-            result.cumulative[segment.id] = cumulative + value;
+            if (cumulativeKnown) {
+                result.cumulative[segment.id] = cumulative + value;
+            }
 
             cumulative += value;
         });
