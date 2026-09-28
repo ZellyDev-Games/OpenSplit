@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=OpenSplit
+Comment=Speedrun split timer
+Exec=OpenSplit
+Terminal=false
+Categories=Game;Utility;
+StartupWMClass=OpenSplit
