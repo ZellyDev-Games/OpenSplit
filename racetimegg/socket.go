@@ -29,6 +29,20 @@ type Socket struct {
 // NotifyDone tells the connected RaceTime.gg integration that the active run
 // has finished. The integration registers its UDP address with HELLO packets.
 func (s *Socket) NotifyDone() {
+	s.notify(command.DONE, "run is done")
+}
+
+// NotifyUndone tells the integration that OpenSplit undid its final split.
+func (s *Socket) NotifyUndone() {
+	s.notify(command.UNDONE, "run completion was undone")
+}
+
+// NotifyForfeit tells the integration that OpenSplit reset the run.
+func (s *Socket) NotifyForfeit() {
+	s.notify(command.PAUSE, "run was reset")
+}
+
+func (s *Socket) notify(c command.Command, description string) {
 	s.mu.Lock()
 	conn, peer := s.conn, s.peer
 	s.mu.Unlock()
@@ -36,9 +50,9 @@ func (s *Socket) NotifyDone() {
 		logger.Debug(logModule, "cannot notify RaceTime.gg: no connected peer")
 		return
 	}
-	packet := []byte{magic0, magic1, magic2, magic3, 1, 0, byte(command.DONE)}
+	packet := []byte{magic0, magic1, magic2, magic3, 1, 0, byte(c)}
 	if _, err := conn.WriteTo(packet, peer); err != nil {
-		logger.Errorf(logModule, "failed to notify RaceTime.gg that run is done: %v", err)
+		logger.Errorf(logModule, "failed to notify RaceTime.gg that %s: %v", description, err)
 	}
 }
 
@@ -143,7 +157,10 @@ func (s *Socket) Listen() {
 		var payload string
 
 		switch c {
-		case command.SET_RUNTIME_OFFSET:
+		case command.SET_RUNTIME_OFFSET, command.PAUSE:
+			if c == command.PAUSE && n == 7 {
+				break
+			}
 			if n < 15 {
 				logger.Warnf(
 					logModule,
@@ -163,8 +180,9 @@ func (s *Socket) Listen() {
 
 			logger.Debugf(
 				logModule,
-				"decoded payload=%d",
-				offset,
+				"decoded payload=%s for %v",
+				payload,
+				c,
 			)
 		}
 

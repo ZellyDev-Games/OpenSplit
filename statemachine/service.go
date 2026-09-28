@@ -93,16 +93,32 @@ type Service struct {
 	unsubscribeFromWindowDimensionChanges func()
 	windowHasFocus                        bool
 	runDoneCallback                       func()
+	runUndoneCallback                     func()
+	runForfeitCallback                    func()
 }
 
-// SetRunDoneCallback registers an integration notification for completed runs.
-func (s *Service) SetRunDoneCallback(callback func()) {
-	s.runDoneCallback = callback
+// SetRunEventCallbacks registers notifications for race actions driven by OpenSplit.
+func (s *Service) SetRunEventCallbacks(done, undone, forfeit func()) {
+	s.runDoneCallback = done
+	s.runUndoneCallback = undone
+	s.runForfeitCallback = forfeit
 }
 
 func (s *Service) notifyRunDone() {
 	if s.runDoneCallback != nil {
 		s.runDoneCallback()
+	}
+}
+
+func (s *Service) notifyRunUndone() {
+	if s.runUndoneCallback != nil {
+		s.runUndoneCallback()
+	}
+}
+
+func (s *Service) notifyRunForfeit() {
+	if s.runForfeitCallback != nil {
+		s.runForfeitCallback()
 	}
 }
 

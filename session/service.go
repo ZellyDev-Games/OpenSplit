@@ -78,6 +78,12 @@ type Run struct {
 	SplitFileVersion int
 }
 
+type raceDoneSnapshot struct {
+	run          Run
+	segmentIndex int
+	dirty        bool
+}
+
 // Service represents the current state of a run.
 //
 // It is the primary glue that brings together a Timer, a SplitFile, a Run
@@ -91,9 +97,13 @@ type Service struct {
 	currentRun            *Run
 	currentSegmentIndex   int
 	sessionState          State
+	pausedAt              time.Time
+	manualPauseActive     bool
+	forfeitPauseActive    bool
 	lastSplitTime         time.Time
 	dirty                 bool
 	runtimeOffsetOverride *time.Duration
+	raceDoneSnapshot      *raceDoneSnapshot
 	configService         *config.Service
 	sessionUpdateChannel  chan *Service
 }
@@ -265,11 +275,12 @@ func (s *Service) SetLayout(layout string) error {
 	return nil
 }
 
-// SetRuntimeOffsetOverride replaces the configured splitfile offset
-// for the current session only.
+// SetRuntimeOffsetOverride replaces the configured splitfile offset for the
+// current session without resetting the active timer or run.
 func (s *Service) SetRuntimeOffsetOverride(offset time.Duration) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	defer s.sendUpdate()
 
 	s.runtimeOffsetOverride = &offset
 
@@ -279,22 +290,93 @@ func (s *Service) SetRuntimeOffsetOverride(offset time.Duration) {
 		offset.Milliseconds(),
 	)
 
-	s.resetLocked()
 }
 
 // ClearRuntimeOffsetOverride removes the runtime-only offset override.
 func (s *Service) ClearRuntimeOffsetOverride() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	defer s.sendUpdate()
 
 	s.runtimeOffsetOverride = nil
-
-	s.resetLocked()
 
 	logger.Info(
 		logModule,
 		"runtime offset override cleared",
 	)
+}
+
+// RaceDone records the remaining segment splits at the current timer value
+// while keeping the active run and stopwatch running.
+func (s *Service) RaceDone() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	defer s.sendUpdate()
+	if s.currentRun == nil || s.raceDoneSnapshot != nil ||
+		(s.sessionState != Running && s.sessionState != Paused) {
+		return
+	}
+	if s.currentSegmentIndex < 0 || s.currentSegmentIndex >= len(s.currentRun.LeafSegments) {
+		return
+	}
+	if s.timer.GetCurrentTime() < 1*time.Millisecond {
+		return
+	}
+
+	s.raceDoneSnapshot = &raceDoneSnapshot{
+		run:          deepCopyRun(*s.currentRun),
+		segmentIndex: s.currentSegmentIndex,
+		dirty:        s.dirty,
+	}
+	now := s.timer.GetCurrentTime()
+	previous := time.Duration(0)
+	for i := 0; i < s.currentSegmentIndex; i++ {
+		segment := s.currentRun.LeafSegments[i]
+		if split, ok := s.currentRun.Splits[segment.ID]; ok {
+			previous = split.CurrentCumulative
+		}
+	}
+	for i := s.currentSegmentIndex; i < len(s.currentRun.LeafSegments); i++ {
+		segment := s.currentRun.LeafSegments[i]
+		s.currentRun.Splits[segment.ID] = Split{
+			SplitSegmentID:    segment.ID,
+			CurrentCumulative: now,
+			CurrentDuration:   now - previous,
+		}
+		previous = now
+	}
+	s.currentSegmentIndex = len(s.currentRun.LeafSegments)
+	s.currentRun.TotalTime = now
+	s.dirty = true
+}
+
+// RaceUndone restores the split progress that was active before RaceDone.
+func (s *Service) RaceUndone() {
+	s.mu.Lock()
+	if s.currentRun != nil && s.raceDoneSnapshot != nil {
+		snapshot := s.raceDoneSnapshot
+		*s.currentRun = deepCopyRun(snapshot.run)
+		s.currentSegmentIndex = snapshot.segmentIndex
+		s.dirty = snapshot.dirty
+		s.raceDoneSnapshot = nil
+		s.mu.Unlock()
+		s.sendUpdate()
+		return
+	}
+
+	undoNaturalFinish := s.currentRun != nil &&
+		s.sessionState == Finished && s.currentRun.Completed &&
+		!s.currentRun.ForceFinished
+	s.mu.Unlock()
+	if undoNaturalFinish {
+		s.Undo()
+	}
+}
+
+func (s *Service) RaceDoneActive() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.raceDoneSnapshot != nil
 }
 
 func (s *Service) effectiveOffset() time.Duration {
@@ -338,7 +420,7 @@ func (s *Service) Undo() {
 	defer s.mu.Unlock()
 	defer s.sendUpdate()
 
-	if s.currentRun == nil ||
+	if s.raceDoneSnapshot != nil || s.currentRun == nil ||
 		s.currentSegmentIndex <= 0 ||
 		s.sessionState == Idle {
 		return
@@ -394,8 +476,15 @@ func (s *Service) Undo() {
 	)
 
 	if s.sessionState == Finished {
-		s.sessionState = Running
 		s.currentRun.Completed = false
+		if !s.pausedAt.IsZero() {
+			s.timer.SubtractTime(-time.Since(s.pausedAt))
+			if s.forfeitPauseActive {
+				s.pausedAt = time.Now()
+			} else {
+				s.pausedAt = time.Time{}
+			}
+		}
 
 		if len(s.loadedSplitFile.Runs) > 0 {
 			lastCompletedRun :=
@@ -407,7 +496,12 @@ func (s *Service) Undo() {
 			}
 		}
 
-		s.timer.Start()
+		if s.forfeitPauseActive || s.manualPauseActive {
+			s.sessionState = Paused
+		} else {
+			s.sessionState = Running
+			s.timer.Start()
+		}
 
 		logger.Info(
 			logModule,
@@ -527,16 +621,22 @@ func (s *Service) Pause() {
 		return
 	}
 
-	if s.sessionState == Running {
-		s.sessionState = Paused
-		s.timer.Pause()
+	s.manualPauseActive = !s.manualPauseActive
+	if s.manualPauseActive {
+		if s.sessionState == Running {
+			s.sessionState = Paused
+			s.timer.Pause()
+		}
 
 		logger.Infof(
 			logModule,
 			"session paused at %d",
 			s.timer.GetCurrentTime(),
 		)
-	} else {
+		return
+	}
+
+	if !s.forfeitPauseActive && s.sessionState == Paused {
 		s.sessionState = Running
 		s.timer.Start()
 
@@ -544,6 +644,36 @@ func (s *Service) Pause() {
 			logModule,
 			"session resumed",
 		)
+	}
+}
+
+// SetForfeitPaused tracks RTGG's forfeit pause separately from the user's
+// local pause key so either control can be changed without unpausing the other.
+func (s *Service) SetForfeitPaused(paused bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	defer s.sendUpdate()
+	if paused == s.forfeitPauseActive {
+		return
+	}
+	if paused {
+		s.forfeitPauseActive = true
+		s.pausedAt = time.Now()
+		if s.sessionState == Running {
+			s.sessionState = Paused
+			s.timer.Pause()
+		}
+		return
+	}
+
+	if !s.pausedAt.IsZero() {
+		s.timer.SubtractTime(-time.Since(s.pausedAt))
+		s.pausedAt = time.Time{}
+	}
+	s.forfeitPauseActive = false
+	if !s.manualPauseActive && s.sessionState == Paused {
+		s.sessionState = Running
+		s.timer.Start()
 	}
 }
 
@@ -659,6 +789,10 @@ func (s *Service) resetLocked() {
 	s.timer.Reset(&offset)
 
 	s.currentRun = nil
+	s.raceDoneSnapshot = nil
+	s.pausedAt = time.Time{}
+	s.manualPauseActive = false
+	s.forfeitPauseActive = false
 	s.sessionState = Idle
 	s.currentSegmentIndex = -1
 
@@ -740,6 +874,13 @@ func (s *Service) startNewRun() SplitResult {
 
 	s.sessionState = Running
 	s.currentSegmentIndex = 0
+	if s.forfeitPauseActive || s.manualPauseActive {
+		s.timer.Pause()
+		s.sessionState = Paused
+		if s.forfeitPauseActive {
+			s.pausedAt = time.Now()
+		}
+	}
 
 	s.currentRun = &Run{
 		ID:               uuid.New(),
@@ -821,6 +962,7 @@ func (s *Service) advanceRun() SplitResult {
 		)
 
 		s.timer.Pause()
+		s.pausedAt = time.Now()
 
 		s.sessionState = Finished
 		s.currentRun.TotalTime = now
