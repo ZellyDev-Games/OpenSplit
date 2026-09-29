@@ -1,3 +1,9 @@
 default skin toggle keybind?
 
 still small skining issues, but it's only a few pixels on the vertical and horizontal views
+
+For the release archive entry to work, install com.zellydevgames.opensplit.desktop under ~/.local/share/applications and make sure OpenSplit is available on PATH.
+The portal requires a matching desktop entry for host app registration (XDG Registry docs).
+Older portals without the Registry method continue through the existing flow.
+
+Add cancel button to reset
