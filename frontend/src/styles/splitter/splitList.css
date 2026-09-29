@@ -188,13 +188,13 @@
          * The final segment occupies exactly its configured
          * minimum width. The split container gets everything else.
          */
-        flex: 0 0 var(--splitter-segment-row-min-width);
+        flex: 0 0 max-content;
 
         flex-direction: column;
 
-        width: var(--splitter-segment-row-min-width);
+        width: max-content;
 
-        min-width: var(--splitter-segment-row-min-width);
+        min-width: max-content;
 
         max-width: 100%;
 
@@ -206,11 +206,11 @@
     }
 
     #splitter[data-layout="horizontal"][data-has-segment-icons="true"] #finalSegment {
-        flex-basis: max(var(--splitter-segment-row-min-width), var(--splitter-segment-icon-min-width, 10px));
+        flex-basis: max-content;
 
-        width: max(var(--splitter-segment-row-min-width), var(--splitter-segment-icon-min-width, 10px));
+        width: max-content;
 
-        min-width: max(var(--splitter-segment-row-min-width), var(--splitter-segment-icon-min-width, 10px));
+        min-width: max-content;
     }
 
     #splitter[data-layout="horizontal"] #finalSegment table {
