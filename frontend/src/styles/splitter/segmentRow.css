@@ -311,8 +311,9 @@
         gap: 4px;
 
         white-space: normal;
-        overflow-wrap: anywhere;
+        overflow-wrap: normal;
         word-break: normal;
+        hyphens: none;
 
         box-sizing: border-box;
     }

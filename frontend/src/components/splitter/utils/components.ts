@@ -310,7 +310,7 @@ export function calculateSplitterInfoMinimumSize(element: HTMLElement): MinimumS
     if (comparison) {
         sizes.push(
             getEffectiveMinimumSize(comparison, "--splitter-comparison-min-width", "--splitter-comparison-min-height", {
-                // width: true,
+                width: true,
                 height: true,
             }),
         );
