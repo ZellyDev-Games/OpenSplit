@@ -49,12 +49,30 @@ const SEGMENT_COMPONENTS: SegmentComponent[] = [
 ];
 
 function getComponentMinimumSize(element: HTMLElement, definition: SegmentComponent): MinimumSize {
-    return getEffectiveMinimumSize(
+    const minimum = getEffectiveMinimumSize(
         element,
         definition.widthVariable,
         definition.heightVariable,
         definition.contentAware,
     );
+
+    if (definition.selector === ".splitName") {
+        const toggle = element.querySelector<HTMLElement>(".collapseToggle");
+        if (toggle) {
+            const toggleStyle = getComputedStyle(toggle);
+            const nameStyle = getComputedStyle(element);
+            minimum.width = Math.max(
+                minimum.width,
+                toggle.getBoundingClientRect().width +
+                    (parseFloat(toggleStyle.marginLeft) || 0) +
+                    (parseFloat(toggleStyle.marginRight) || 0) +
+                    (parseFloat(nameStyle.paddingLeft) || 0) +
+                    (parseFloat(nameStyle.paddingRight) || 0),
+            );
+        }
+    }
+
+    return minimum;
 }
 
 /**
@@ -195,6 +213,8 @@ export function calculateSplitListMinimumSize(element: HTMLElement): MinimumSize
 
     const layout = element.closest<HTMLElement>("#splitter")?.dataset.layout;
 
+    // Include effective content minimums when checking the rows and final segment.
+    const rows = Array.from(element.querySelectorAll<HTMLElement>("tr.segmentRow, tr.parentRow"));
     /*
      * Vertical:
      *
@@ -227,9 +247,13 @@ export function calculateSplitListMinimumSize(element: HTMLElement): MinimumSize
     const finalSegmentMinimum = finalSegment ? getFinalSegmentMinimumSize(finalSegment) : { width: 0, height: 0 };
 
     const padding = getBoxPadding(element);
+    const sharedRowMinimumHeight = Math.max(
+        0,
+        ...rows.map((row) => getSegmentRowMinimumSize(row, layout).height),
+    );
 
     return {
         width: finalSegmentMinimum.width + padding.left + padding.right,
-        height: finalSegmentMinimum.height + padding.top + padding.bottom,
+        height: Math.max(finalSegmentMinimum.height, sharedRowMinimumHeight) + padding.top + padding.bottom,
     };
 }
