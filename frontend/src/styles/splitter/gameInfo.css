@@ -72,7 +72,7 @@
      */
 
     #splitter[data-layout="horizontal"] #gameInfo {
-        flex: 0 1 calc(var(--splitter-gameinfo-min-width) + var(--splitter-game-info-padding-width, 32px));
+        flex: 0 1 max-content;
         width: auto;
         min-width: calc(var(--splitter-gameinfo-min-width) + var(--splitter-game-info-padding-width, 32px));
         max-width: none;
