@@ -19,7 +19,9 @@ export default function Timer({ offset }: TimerParams) {
 
     return (
         <div id="time-container" className="row" aria-label="formatted duration">
-            <span id="time-sign" data-present={time < 0 ? "1" : "0"}>{time < 0 && "-"}</span>
+            <span id="time-sign" data-present={time < 0 ? "1" : "0"}>
+                {time < 0 && "-"}
+            </span>
             <span id="time-hours" data-present={formattedTimeParts.showHours ? "1" : "0"}>
                 <strong>{formattedTimeParts.hoursText}</strong>
             </span>

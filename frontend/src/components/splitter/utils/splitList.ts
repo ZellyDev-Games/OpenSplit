@@ -259,10 +259,7 @@ export function calculateSplitListMinimumSize(element: HTMLElement): MinimumSize
     const finalSegmentMinimum = finalSegment ? getFinalSegmentMinimumSize(finalSegment) : { width: 0, height: 0 };
 
     const padding = getBoxPadding(element);
-    const sharedRowMinimumHeight = Math.max(
-        0,
-        ...rows.map((row) => getSegmentRowMinimumSize(row, layout).height),
-    );
+    const sharedRowMinimumHeight = Math.max(0, ...rows.map((row) => getSegmentRowMinimumSize(row, layout).height));
 
     return {
         width: finalSegmentMinimum.width + padding.left + padding.right,
