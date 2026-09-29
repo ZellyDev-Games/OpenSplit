@@ -1,5 +1,5 @@
 default skin toggle keybind?
 
-fix horizontal view
+fix horizontal view: word wrap shouldn't split words, comparison-mode needs some left/right padding, segment times need some left/right padding
 update default skin
 update other skins
