@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zellydev-games/opensplit/bridge"
@@ -92,6 +93,34 @@ type Service struct {
 	saveOnWindowDimensionChanges          bool
 	unsubscribeFromWindowDimensionChanges func()
 	windowHasFocus                        bool
+	runDoneCallback                       func()
+	runUndoneCallback                     func()
+	runForfeitCallback                    func()
+}
+
+// SetRunEventCallbacks registers notifications for race actions driven by OpenSplit.
+func (s *Service) SetRunEventCallbacks(done, undone, forfeit func()) {
+	s.runDoneCallback = done
+	s.runUndoneCallback = undone
+	s.runForfeitCallback = forfeit
+}
+
+func (s *Service) notifyRunDone() {
+	if s.runDoneCallback != nil {
+		s.runDoneCallback()
+	}
+}
+
+func (s *Service) notifyRunUndone() {
+	if s.runUndoneCallback != nil {
+		s.runUndoneCallback()
+	}
+}
+
+func (s *Service) notifyRunForfeit() {
+	if s.runForfeitCallback != nil {
+		s.runForfeitCallback()
+	}
 }
 
 func NewMachine(
@@ -216,6 +245,25 @@ func (s *Service) ReceiveDispatch(
 
 		s.windowHasFocus = *payload == "true"
 
+		return dispatcher.DispatchReply{}, nil
+	}
+
+	// RaceTime controls can arrive before a split file is loaded. Keep the
+	// runtime offset in the session so the next reset/start uses it.
+	switch c {
+	case command.SET_RUNTIME_OFFSET:
+		if payload == nil {
+			return dispatcher.DispatchReply{Code: 10, Message: "missing offset payload"}, nil
+		}
+		ms, err := strconv.ParseInt(*payload, 10, 64)
+		if err != nil {
+			return dispatcher.DispatchReply{Code: 11, Message: "invalid offset payload"}, nil
+		}
+		s.sessionService.SetRuntimeOffsetOverride(time.Duration(ms) * time.Millisecond)
+		return dispatcher.DispatchReply{}, nil
+
+	case command.CLEAR_RUNTIME_OFFSET:
+		s.sessionService.ClearRuntimeOffsetOverride()
 		return dispatcher.DispatchReply{}, nil
 	}
 

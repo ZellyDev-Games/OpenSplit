@@ -19,6 +19,8 @@ const (
 	portalBusName = "org.freedesktop.portal.Desktop"
 	portalPath    = dbus.ObjectPath("/org/freedesktop/portal/desktop")
 	portalIface   = "org.freedesktop.portal.GlobalShortcuts"
+	registryIface = "org.freedesktop.host.portal.Registry"
+	appID         = "com.zellydevgames.opensplit"
 
 	logModule = "hotkeys"
 )
@@ -98,6 +100,32 @@ func (p *PortalManager) Start(ctx context.Context) error {
 		portalPath,
 	)
 	p.mu.Unlock()
+
+	// Directly launched host apps may lack the app identity desktop portals
+	// use to label and present GlobalShortcuts requests. Register before the
+	// first portal call. Older portal versions do not expose this interface.
+	err = conn.Object(portalBusName, portalPath).Call(
+		registryIface+".Register",
+		0,
+		appID,
+		map[string]dbus.Variant{},
+	).Err
+	if err != nil {
+		dbusErr, ok := err.(dbus.Error)
+		if !ok || dbusErr.Name != "org.freedesktop.DBus.Error.UnknownMethod" {
+			cancel()
+			conn.Close()
+
+			p.mu.Lock()
+			p.cancel = nil
+			p.conn = nil
+			p.object = nil
+			p.ctx = nil
+			p.mu.Unlock()
+
+			return fmt.Errorf("register portal application ID %q: %w", appID, err)
+		}
+	}
 
 	if err := p.installSignalHandler(); err != nil {
 		cancel()

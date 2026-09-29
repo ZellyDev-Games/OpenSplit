@@ -153,6 +153,9 @@ jobs:
 
                     *)
                       ARCHIVE="opensplit-${{ matrix.goos }}-${{ matrix.goarch }}${TAGSUFFIX}.zip"
+                      if [ "${{ matrix.goos }}" = "linux" ]; then
+                        cp com.zellydevgames.opensplit.desktop build/bin/
+                      fi
                       (cd build/bin && zip -r "../../out/$ARCHIVE" .)
                       echo "ARCHIVE=out/$ARCHIVE" >> "$GITHUB_ENV"
                       ;;

@@ -2,8 +2,6 @@ package statemachine
 
 import (
 	"fmt"
-	"strconv"
-	"time"
 
 	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/command"
@@ -120,9 +118,11 @@ func (r *Running) Receive(
 			"Running received SPLIT c",
 		)
 
+		r.restoreRaceDoneForProgress()
 		result := machine.sessionService.Split()
 
 		if result == session.SplitFinished {
+			machine.notifyRunDone()
 			machine.runtimeProvider.EventsEmit(
 				"opensplit:done",
 			)
@@ -134,7 +134,18 @@ func (r *Running) Receive(
 			"Running received UNDO",
 		)
 
+		wasRaceDone := machine.sessionService.RaceDoneActive()
+		if wasRaceDone {
+			r.restoreRaceDoneForProgress()
+		}
+		wasFinished := machine.sessionService.State() == session.Finished
 		machine.sessionService.Undo()
+		afterUndo := machine.sessionService.State()
+		if wasFinished && !wasRaceDone &&
+			(afterUndo == session.Running || afterUndo == session.Paused) {
+			machine.notifyRunUndone()
+			machine.runtimeProvider.EventsEmit("opensplit:undone")
+		}
 
 	case command.SKIP:
 		logger.Debug(
@@ -142,6 +153,7 @@ func (r *Running) Receive(
 			"Running received SKIP",
 		)
 
+		r.restoreRaceDoneForProgress()
 		machine.sessionService.Skip()
 
 	case command.PAUSE:
@@ -149,8 +161,11 @@ func (r *Running) Receive(
 			logModule,
 			"Running received PAUSE",
 		)
-
-		machine.sessionService.Pause()
+		if payload != nil && *payload != "" {
+			machine.sessionService.SetForfeitPaused(*payload == "1")
+		} else {
+			machine.sessionService.Pause()
+		}
 
 	case command.RESET:
 		logger.Debug(
@@ -159,21 +174,16 @@ func (r *Running) Receive(
 		)
 
 		_ = machine.promptPartialRun()
+		machine.sessionService.ClearRuntimeOffsetOverride()
 		machine.sessionService.Reset()
+		machine.notifyRunForfeit()
 
 	case command.DONE:
 		logger.Debug(
 			logModule,
 			"Running received DONE c",
 		)
-
-		result := machine.sessionService.Done()
-
-		if result == session.SplitFinished {
-			machine.runtimeProvider.EventsEmit(
-				"opensplit:done",
-			)
-		}
+		machine.sessionService.RaceDone()
 
 	case command.UNDONE:
 		logger.Debug(
@@ -181,52 +191,7 @@ func (r *Running) Receive(
 			"Running received UNDONE c",
 		)
 
-		result := machine.sessionService.UnDone()
-
-		if result != session.SplitNoop {
-			machine.runtimeProvider.EventsEmit(
-				"opensplit:undone",
-			)
-		}
-
-	case command.SET_RUNTIME_OFFSET:
-		if payload == nil {
-			return dispatcher.DispatchReply{
-				Code:    10,
-				Message: "missing offset payload",
-			}, nil
-		}
-
-		ms, err := strconv.ParseInt(
-			*payload,
-			10,
-			64,
-		)
-
-		if err != nil {
-			return dispatcher.DispatchReply{
-				Code:    11,
-				Message: "invalid offset payload",
-			}, nil
-		}
-
-		logger.Infof(
-			logModule,
-			"runtime offset set to %dms",
-			ms,
-		)
-
-		machine.sessionService.SetRuntimeOffsetOverride(
-			time.Duration(ms) * time.Millisecond,
-		)
-
-	case command.CLEAR_RUNTIME_OFFSET:
-		logger.Info(
-			logModule,
-			"runtime offset cleared",
-		)
-
-		machine.sessionService.ClearRuntimeOffsetOverride()
+		machine.sessionService.RaceUndone()
 
 	case command.COMPARISON_LEFT:
 		machine.runtimeProvider.EventsEmit(
@@ -341,6 +306,15 @@ func (r *Running) Receive(
 	}
 
 	return dispatcher.DispatchReply{}, nil
+}
+
+func (r *Running) restoreRaceDoneForProgress() {
+	if !machine.sessionService.RaceDoneActive() {
+		return
+	}
+	machine.sessionService.RaceUndone()
+	machine.notifyRunUndone()
+	machine.runtimeProvider.EventsEmit("opensplit:undone")
 }
 
 func (r *Running) String() string {

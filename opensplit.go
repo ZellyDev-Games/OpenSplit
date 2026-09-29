@@ -174,6 +174,11 @@ func main() {
 
 			// Start racetimeGG remote control
 			racetimeControl := racetimegg.NewSocket(commandDispatcher, 6768)
+			machine.SetRunEventCallbacks(
+				racetimeControl.NotifyDone,
+				racetimeControl.NotifyUndone,
+				racetimeControl.NotifyForfeit,
+			)
 			go racetimeControl.Listen()
 
 			err = skinService.Startup()
