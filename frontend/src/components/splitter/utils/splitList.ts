@@ -1,4 +1,4 @@
-import { getBoxPadding, getEffectiveMinimumSize } from "./css";
+import { getBoxBorder, getBoxPadding, getEffectiveMinimumSize } from "./css";
 import type { MinimumSize } from "./types";
 
 type SegmentComponent = {
@@ -201,9 +201,13 @@ function getFinalSegmentMinimumSize(element: HTMLElement): MinimumSize {
 
     const tableMinimum = getTableMinimumSize(table, layout);
     const padding = getBoxPadding(element);
+    const border = getBoxBorder(element);
 
     return {
-        width: tableMinimum.width + padding.left + padding.right,
+        width: Math.max(
+            tableMinimum.width + padding.left + padding.right,
+            element.scrollWidth + border.left + border.right,
+        ),
         height: tableMinimum.height + padding.top + padding.bottom,
     };
 }
