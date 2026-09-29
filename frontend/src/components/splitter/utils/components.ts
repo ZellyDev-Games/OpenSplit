@@ -1,4 +1,4 @@
-import { getBoxPadding, getEffectiveMinimumSize } from "./css";
+import { getBoxPadding, getEffectiveMinimumSize, getGap } from "./css";
 import type { MinimumSize } from "./types";
 
 type ComponentDefinition = {
@@ -300,44 +300,83 @@ export function calculateWorldRecordMinimumSize(element: HTMLElement): MinimumSi
           };
 }
 
+function combineSizesAlongAxis(sizes: MinimumSize[], direction: "row" | "column", gap: number): MinimumSize {
+    return direction === "row"
+        ? {
+              width: sizes.reduce((total, size) => total + size.width, 0) + Math.max(0, sizes.length - 1) * gap,
+              height: Math.max(0, ...sizes.map((size) => size.height)),
+          }
+        : {
+              width: Math.max(0, ...sizes.map((size) => size.width)),
+              height: sizes.reduce((total, size) => total + size.height, 0) + Math.max(0, sizes.length - 1) * gap,
+          };
+}
+
+function combineGridSizes(element: HTMLElement, children: HTMLElement[], sizes: MinimumSize[]): MinimumSize {
+    const columns = new Map<number, number[]>();
+    const rows = new Map<number, number[]>();
+
+    children.forEach((child, index) => {
+        const rect = child.getBoundingClientRect();
+        const column = Math.round(rect.left * 2) / 2;
+        const row = Math.round(rect.top * 2) / 2;
+        columns.set(column, [...(columns.get(column) ?? []), sizes[index].width]);
+        rows.set(row, [...(rows.get(row) ?? []), sizes[index].height]);
+    });
+
+    const { row: rowGap, column: columnGap } = getGap(element);
+    const width = Array.from(columns.values()).reduce((total, track) => total + Math.max(0, ...track), 0);
+    const height = Array.from(rows.values()).reduce((total, track) => total + Math.max(0, ...track), 0);
+
+    return {
+        width: width + Math.max(0, columns.size - 1) * columnGap,
+        height: height + Math.max(0, rows.size - 1) * rowGap,
+    };
+}
+
 export function calculateSplitterInfoMinimumSize(element: HTMLElement): MinimumSize {
+    const layout = element.closest<HTMLElement>("#splitter")?.dataset.layout;
     const comparison = element.querySelector<HTMLElement>(".comparison-mode");
     const timer = element.querySelector<HTMLElement>("#time-container");
     const worldRecord = element.querySelector<HTMLElement>("#world-record");
 
+    const children: HTMLElement[] = [];
     const sizes: MinimumSize[] = [];
 
     if (comparison) {
+        children.push(comparison);
         sizes.push(
             getEffectiveMinimumSize(comparison, "--splitter-comparison-min-width", "--splitter-comparison-min-height", {
-                width: true,
+                width: layout === "horizontal",
                 height: true,
             }),
         );
     }
 
     if (timer) {
+        children.push(timer);
         sizes.push(calculateTimeContainerMinimumSize(timer));
     }
 
     if (worldRecord) {
+        children.push(worldRecord);
         sizes.push(calculateWorldRecordMinimumSize(worldRecord));
     }
 
     const padding = getBoxPadding(element);
+    const style = getComputedStyle(element);
+    let minimum: MinimumSize;
 
-    const layout = element.closest<HTMLElement>("#splitter")?.dataset.layout;
-
-    if (layout === "horizontal") {
-        return {
-            width: Math.max(0, ...sizes.map((size) => size.width)) + padding.left + padding.right,
-            height: Math.max(0, ...sizes.map((size) => size.height)) + padding.top + padding.bottom,
-        };
+    if (style.display === "grid" || style.display === "inline-grid") {
+        minimum = combineGridSizes(element, children, sizes);
+    } else {
+        const direction = style.display.includes("flex") && style.flexDirection.startsWith("row") ? "row" : "column";
+        const gap = direction === "row" ? parseFloat(style.columnGap) || 0 : parseFloat(style.rowGap) || 0;
+        minimum = combineSizesAlongAxis(sizes, direction, gap);
     }
 
     return {
-        width: Math.max(0, ...sizes.map((size) => size.width)) + padding.left + padding.right,
-
-        height: sizes.reduce((total, size) => total + size.height, 0) + padding.top + padding.bottom,
+        width: minimum.width + padding.left + padding.right,
+        height: minimum.height + padding.top + padding.bottom,
     };
 }

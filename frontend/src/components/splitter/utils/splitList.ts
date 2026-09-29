@@ -202,12 +202,13 @@ function getFinalSegmentMinimumSize(element: HTMLElement): MinimumSize {
     const tableMinimum = getTableMinimumSize(table, layout);
     const padding = getBoxPadding(element);
     const border = getBoxBorder(element);
+    const minimumWidth = tableMinimum.width + padding.left + padding.right;
 
     return {
-        width: Math.max(
-            tableMinimum.width + padding.left + padding.right,
-            element.scrollWidth + border.left + border.right,
-        ),
+        width:
+            layout === "horizontal"
+                ? Math.max(minimumWidth, element.scrollWidth + border.left + border.right)
+                : minimumWidth,
         height: tableMinimum.height + padding.top + padding.bottom,
     };
 }
