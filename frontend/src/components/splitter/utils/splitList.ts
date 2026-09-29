@@ -49,6 +49,13 @@ const SEGMENT_COMPONENTS: SegmentComponent[] = [
 ];
 
 function getComponentMinimumSize(element: HTMLElement, definition: SegmentComponent): MinimumSize {
+    if (getComputedStyle(element).position === "absolute") {
+        return {
+            width: 0,
+            height: 0,
+        };
+    }
+
     const minimum = getEffectiveMinimumSize(
         element,
         definition.widthVariable,

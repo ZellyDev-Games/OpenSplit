@@ -1,4 +1,4 @@
-import { getBoxPadding, getEffectiveMinimumSize, getGap } from "./css";
+import { getBoxBorder, getBoxPadding, getEffectiveMinimumSize, getGap } from "./css";
 import type { MinimumSize } from "./types";
 
 type ComponentDefinition = {
@@ -122,7 +122,16 @@ export function calculateGameInfoMinimumSize(element: HTMLElement): MinimumSize 
         };
     }
 
-    return getContainerMinimum(element, GAME_INFO_COMPONENTS, "column");
+    const border = getBoxBorder(element);
+    const contentHeight = element.scrollHeight + border.top + border.bottom;
+
+    return {
+        width: Math.max(0, ...sizes.map((size) => size.width)) + padding.left + padding.right,
+        height: Math.max(
+            sizes.reduce((total, size) => total + size.height, 0) + padding.top + padding.bottom,
+            contentHeight,
+        ),
+    };
 }
 
 const TIMER_COMPONENTS: ComponentDefinition[] = [
