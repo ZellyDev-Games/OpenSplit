@@ -2,8 +2,6 @@ package statemachine
 
 import (
 	"fmt"
-	"strconv"
-	"time"
 
 	"github.com/zellydev-games/opensplit/bridge"
 	"github.com/zellydev-games/opensplit/command"
@@ -194,44 +192,6 @@ func (r *Running) Receive(
 		)
 
 		machine.sessionService.RaceUndone()
-
-	case command.SET_RUNTIME_OFFSET:
-		if payload == nil {
-			return dispatcher.DispatchReply{
-				Code:    10,
-				Message: "missing offset payload",
-			}, nil
-		}
-
-		ms, err := strconv.ParseInt(
-			*payload,
-			10,
-			64,
-		)
-
-		if err != nil {
-			return dispatcher.DispatchReply{
-				Code:    11,
-				Message: "invalid offset payload",
-			}, nil
-		}
-
-		logger.Infof(
-			logModule,
-			"runtime offset set to %dms",
-			ms,
-		)
-
-		machine.sessionService.SetRuntimeOffsetOverride(
-			time.Duration(ms) * time.Millisecond,
-		)
-
-	case command.CLEAR_RUNTIME_OFFSET:
-		logger.Info(
-			logModule,
-			"runtime offset cleared",
-		)
-		machine.sessionService.ClearRuntimeOffsetOverride()
 
 	case command.COMPARISON_LEFT:
 		machine.runtimeProvider.EventsEmit(
