@@ -20,6 +20,13 @@ export function getEffectiveMinimumSize(
     heightVariable: string,
     contentAware?: { width?: boolean; height?: boolean },
 ): MinimumSize {
+    if (getComputedStyle(element).position === "absolute") {
+        return {
+            width: 0,
+            height: 0,
+        };
+    }
+
     const declared = {
         width: getMinimum(element, widthVariable),
         height: getMinimum(element, heightVariable),

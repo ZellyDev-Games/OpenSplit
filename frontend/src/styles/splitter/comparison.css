@@ -5,12 +5,13 @@
 
         text-align: center;
         font-size: 0.85rem;
-        padding: 4px 0;
+        padding: 4px;
         user-select: none;
 
         white-space: normal;
         overflow-wrap: normal;
         word-break: normal;
+        hyphens: none;
 
         box-sizing: border-box;
     }

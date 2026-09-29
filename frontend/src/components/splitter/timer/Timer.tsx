@@ -19,17 +19,19 @@ export default function Timer({ offset }: TimerParams) {
 
     return (
         <div id="time-container" className="row" aria-label="formatted duration">
-            <span id="time-sign">{time < 0 && "-"}</span>
+            <span id="time-sign" data-present={time < 0 ? "1" : "0"}>
+                {time < 0 && "-"}
+            </span>
             <span id="time-hours" data-present={formattedTimeParts.showHours ? "1" : "0"}>
                 <strong>{formattedTimeParts.hoursText}</strong>
             </span>
-            <span id="time-sep-hm" aria-hidden="true">
+            <span id="time-sep-hm" data-present={formattedTimeParts.showHours ? "1" : "0"} aria-hidden="true">
                 {formattedTimeParts.sepHM}
             </span>
             <span id="time-minutes" data-present={formattedTimeParts.showMinutes ? "1" : "0"}>
                 {formattedTimeParts.minutesText}
             </span>
-            <span id="time-sep-ms" aria-hidden="true">
+            <span id="time-sep-ms" data-present={formattedTimeParts.showMinutes ? "1" : "0"} aria-hidden="true">
                 {formattedTimeParts.sepMS}
             </span>
             <span id="time-seconds">{formattedTimeParts.secondsText}</span>
