@@ -25,6 +25,14 @@
         display: none;
     }
 
+    #time-sign:not([data-present="1"]):not([data-present="true"]),
+    #time-hours:not([data-present="1"]):not([data-present="true"]),
+    #time-sep-hm:not([data-present="1"]):not([data-present="true"]),
+    #time-minutes:not([data-present="1"]):not([data-present="true"]),
+    #time-sep-ms:not([data-present="1"]):not([data-present="true"]) {
+        display: none;
+    }
+
     /*
      * Only components containing data participate in the timer's
      * minimum-size calculation.

@@ -92,16 +92,16 @@
      */
 
     #splitter[data-layout="horizontal"] #splitList {
-        display: flex;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) max-content;
         flex: 1 1 0;
-        flex-direction: row;
 
         /*
          * The split list itself must never shrink below the
          * final segment's minimum width.
          */
         width: 0;
-        min-width: var(--splitter-segment-row-min-width);
+        min-width: min-content;
 
         min-height: 0;
         box-sizing: border-box;
@@ -109,15 +109,14 @@
     }
 
     #splitter[data-layout="horizontal"][data-has-segment-icons="true"] #splitList {
-        min-width: max(var(--splitter-segment-row-min-width), var(--splitter-segment-icon-min-width, 10px));
+        min-width: min-content;
     }
 
     #splitter[data-layout="horizontal"] #splitContainer {
-        display: block;
-        flex: 1 1 0;
-        width: 0;
+        grid-column: 1;
         min-width: 0;
-        max-width: 100%;
+        width: auto;
+        max-width: none;
         min-height: 0;
 
         overflow-x: auto;
@@ -125,6 +124,13 @@
 
         scroll-behavior: smooth;
         overscroll-behavior-x: contain;
+    }
+
+    #splitter[data-layout="horizontal"] #finalSegment {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: end;
+        flex: none;
     }
 
     #splitter[data-layout="horizontal"] #splitContainer::-webkit-scrollbar {
@@ -182,13 +188,13 @@
          * The final segment occupies exactly its configured
          * minimum width. The split container gets everything else.
          */
-        flex: 0 0 var(--splitter-segment-row-min-width);
+        flex: 0 0 max-content;
 
         flex-direction: column;
 
-        width: var(--splitter-segment-row-min-width);
+        width: max-content;
 
-        min-width: var(--splitter-segment-row-min-width);
+        min-width: max-content;
 
         max-width: 100%;
 
@@ -200,11 +206,11 @@
     }
 
     #splitter[data-layout="horizontal"][data-has-segment-icons="true"] #finalSegment {
-        flex-basis: max(var(--splitter-segment-row-min-width), var(--splitter-segment-icon-min-width, 10px));
+        flex-basis: max-content;
 
-        width: max(var(--splitter-segment-row-min-width), var(--splitter-segment-icon-min-width, 10px));
+        width: max-content;
 
-        min-width: max(var(--splitter-segment-row-min-width), var(--splitter-segment-icon-min-width, 10px));
+        min-width: max-content;
     }
 
     #splitter[data-layout="horizontal"] #finalSegment table {

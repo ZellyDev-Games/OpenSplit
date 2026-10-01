@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 import { WindowSetMinSize } from "../../../wailsjs/runtime/runtime";
 import { getMinimum } from "../../components/splitter/utils/css";
+import { calculateSplitListMinimumSize } from "../../components/splitter/utils/splitList";
 import { calculateSplitterMinimumSize } from "../../components/splitter/utils/splitter";
 import { log } from "../../utils/logger";
 
@@ -101,6 +102,38 @@ function getSegmentMinimumInfo(element: HTMLElement) {
     });
 }
 
+function getSplitListSizingInfo(element: HTMLElement) {
+    const selectors = [
+        "#splitList",
+        "#splitContainer",
+        "#finalSegment",
+        "#splitList table",
+        "#splitList tbody",
+        "#splitList tr.segmentRow",
+        "#splitList tr.parentRow",
+        "#splitList td",
+    ];
+
+    return selectors.flatMap((selector) =>
+        Array.from(element.querySelectorAll<HTMLElement>(selector)).map((target) => {
+            const style = getComputedStyle(target);
+            const rect = target.getBoundingClientRect();
+            return {
+                selector,
+                id: target.id || undefined,
+                className: typeof target.className === "string" ? target.className : undefined,
+                text: target.matches(".splitName") ? target.textContent?.trim() : undefined,
+                width: rect.width,
+                height: rect.height,
+                minWidth: style.minWidth,
+                minHeight: style.minHeight,
+                scrollWidth: target.scrollWidth,
+                scrollHeight: target.scrollHeight,
+            };
+        }),
+    );
+}
+
 export function useSplitterMinimumSize(splitterRef: React.RefObject<HTMLDivElement | null>) {
     useEffect(() => {
         const element = splitterRef.current;
@@ -134,6 +167,14 @@ export function useSplitterMinimumSize(splitterRef: React.RefObject<HTMLDivEleme
                 updateCount++;
 
                 const minimum = calculateSplitterMinimumSize(element);
+                const splitList = element.querySelector<HTMLElement>("#splitList");
+
+                if (splitList) {
+                    splitList.style.minHeight =
+                        element.dataset.layout === "vertical"
+                            ? `${calculateSplitListMinimumSize(splitList).height}px`
+                            : "";
+                }
 
                 const actual = {
                     width: element.getBoundingClientRect().width,
@@ -166,6 +207,14 @@ export function useSplitterMinimumSize(splitterRef: React.RefObject<HTMLDivEleme
                 log.debug("[SplitterMinimumSize] Component minimums", {
                     segment: getSegmentMinimumInfo(element),
                 });
+
+                if (changed || reason === "initial" || reason === "resize") {
+                    log.debug("[SplitterMinimumSize] Window and splitList sizing", {
+                        windowMinimum: minimum,
+                        splitter: actual,
+                        splitList: getSplitListSizingInfo(element),
+                    });
+                }
 
                 if (!changed) {
                     return;

@@ -301,7 +301,7 @@
         display: flex;
         flex-direction: column;
 
-        flex: 1 1 0;
+        flex: 0 0 auto;
 
         width: 100%;
         min-width: 0;
@@ -313,10 +313,14 @@
         white-space: normal;
         overflow-wrap: normal;
         word-break: normal;
-
-        overflow: hidden;
+        hyphens: none;
 
         box-sizing: border-box;
+    }
+
+    #splitter[data-layout="horizontal"] .splitName .collapseToggle {
+        flex: 0 0 auto;
+        align-self: flex-start;
     }
 
     /*
