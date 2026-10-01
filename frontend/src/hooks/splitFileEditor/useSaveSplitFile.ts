@@ -28,6 +28,7 @@ type SaveProps = {
     offsetText: string;
 
     platform: string;
+    showMilliseconds: boolean;
 };
 
 export function useSaveSplitFile(props: SaveProps) {
@@ -71,6 +72,7 @@ export function useSaveSplitFile(props: SaveProps) {
             offset: props.offsetText === "" ? 0 : Number(props.offsetText),
 
             platform: props.platform,
+            show_milliseconds: props.showMilliseconds,
 
             layout: props.splitFilePayload?.layout ?? "",
 

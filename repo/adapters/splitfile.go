@@ -36,10 +36,11 @@ func DomainSplitFileToDTO(sf session.SplitFile) dto.SplitFile {
 		Runs:     domainRunsToDTO(sf.Runs),
 		PB:       PB,
 
-		SOB:      sf.SOB.Milliseconds(),
-		Attempts: sf.Attempts,
-		Offset:   sf.Offset.Milliseconds(),
-		Platform: sf.Platform,
+		SOB:              sf.SOB.Milliseconds(),
+		Attempts:         sf.Attempts,
+		Offset:           sf.Offset.Milliseconds(),
+		Platform:         sf.Platform,
+		ShowMilliseconds: sf.ShowMilliseconds,
 
 		WR: dto.WorldRecord(sf.WR),
 
@@ -129,6 +130,7 @@ func DTOSplitFileToDomain(payload dto.SplitFile) (session.SplitFile, error) {
 	newSplitFile.Attempts = payload.Attempts
 	newSplitFile.Offset = time.Duration(payload.Offset) * time.Millisecond
 	newSplitFile.Platform = payload.Platform
+	newSplitFile.ShowMilliseconds = payload.ShowMilliseconds
 
 	newSplitFile.WR = session.WorldRecord(payload.WR)
 

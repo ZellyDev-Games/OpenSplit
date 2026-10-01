@@ -3,12 +3,14 @@ import { JSX } from "react";
 import SegmentPayload from "../../../models/segmentPayload";
 import SplitPayload from "../../../models/splitPayload";
 import { displayFormattedTimeParts, formatDuration, msToParts } from "../timer/timerUtils";
+import { useMillisecondDisplay } from "../timer/timerUtils";
 
 /**
  * Delta time display for splits and active rows.
  */
 export function DeltaDisplay({ delta, gold = false }: { delta: number; gold?: boolean }): JSX.Element {
-    const t = displayFormattedTimeParts(formatDuration(msToParts(delta), true));
+    const showMilliseconds = useMillisecondDisplay();
+    const t = displayFormattedTimeParts(formatDuration(msToParts(delta), true, showMilliseconds));
 
     let className = "";
 
@@ -35,13 +37,14 @@ export function CumulativeTimeDisplay({
     split: SplitPayload | null;
     targetCumulative: number | null;
 }): JSX.Element {
+    const showMilliseconds = useMillisecondDisplay();
     const value = split?.current_cumulative ?? targetCumulative;
 
     if (value == null) {
         return <strong className="target">-</strong>;
     }
 
-    const t = displayFormattedTimeParts(formatDuration(msToParts(value)));
+    const t = displayFormattedTimeParts(formatDuration(msToParts(value), false, showMilliseconds));
 
     return (
         <strong className="target">
@@ -62,6 +65,7 @@ export function ComparisonDisplay({
     targetIndividual: number | null;
     runningTime: number | null;
 }): JSX.Element {
+    const showMilliseconds = useMillisecondDisplay();
     const gold = segment.gold;
 
     // Completed segment -> show segment delta
@@ -87,7 +91,7 @@ export function ComparisonDisplay({
         return <strong className="target">-</strong>;
     }
 
-    const t = displayFormattedTimeParts(formatDuration(msToParts(targetIndividual)));
+    const t = displayFormattedTimeParts(formatDuration(msToParts(targetIndividual), false, showMilliseconds));
 
     return (
         <strong className="target">

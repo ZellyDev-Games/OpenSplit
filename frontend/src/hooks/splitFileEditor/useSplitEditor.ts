@@ -41,6 +41,8 @@ export default function useSplitEditor(splitFilePayload: SplitFilePayload | null
         offsetText: metadata.offsetText,
 
         platform: metadata.platform,
+
+        showMilliseconds: metadata.showMilliseconds,
     });
 
     return {

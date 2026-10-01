@@ -55,6 +55,8 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
 
         platform,
         setPlatform,
+        showMilliseconds,
+        setShowMilliseconds,
         platforms,
         setPlatforms,
 
@@ -134,6 +136,8 @@ export default function SplitEditor({ splitFilePayload }: SplitEditorParams) {
                     setSegments={setSegments}
                     showCumulativeTimes={showCumulativeTimes}
                     setShowCumulativeTimes={setShowCumulativeTimes}
+                    showMilliseconds={showMilliseconds}
+                    setShowMilliseconds={setShowMilliseconds}
                     onAddSegment={addSegment}
                     onDeleteSegment={deleteSegment}
                     onUpdateSegment={updateSegment}

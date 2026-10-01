@@ -11,6 +11,8 @@ type SegmentTableProps = {
 
     showCumulativeTimes: boolean;
     setShowCumulativeTimes: Dispatch<SetStateAction<boolean>>;
+    showMilliseconds: boolean;
+    setShowMilliseconds: Dispatch<SetStateAction<boolean>>;
 
     onAddSegment: (parent: SegmentPayload | null) => void;
     onDeleteSegment: (id: string) => void;
@@ -22,6 +24,8 @@ export default function SegmentTable({
     setSegments,
     showCumulativeTimes,
     setShowCumulativeTimes,
+    showMilliseconds,
+    setShowMilliseconds,
     onAddSegment,
     onDeleteSegment,
     onUpdateSegment,
@@ -44,6 +48,10 @@ export default function SegmentTable({
                 <button type="button" onClick={() => setShowCumulativeTimes((value) => !value)}>
                     {showCumulativeTimes ? "Show Segment Times" : "Show Cumulative Times"}
                 </button>
+                <label>
+                    <input type="checkbox" checked={showMilliseconds} onChange={(e) => setShowMilliseconds(e.target.checked)} />
+                    Show milliseconds
+                </label>
             </div>
 
             <div className="datagrid-container">
@@ -60,17 +68,17 @@ export default function SegmentTable({
 
                                     <th className="time-column">
                                         Average Time
-                                        <small>(HH:MM:SS.cc)</small>
+                                        <small>(HH:MM:SS.{showMilliseconds ? "mmm" : "cc"})</small>
                                     </th>
 
                                     <th className="time-column">
                                         Personal Best
-                                        <small>(HH:MM:SS.cc)</small>
+                                        <small>(HH:MM:SS.{showMilliseconds ? "mmm" : "cc"})</small>
                                     </th>
 
                                     <th className="time-column">
                                         Gold
-                                        <small>(HH:MM:SS.cc)</small>
+                                        <small>(HH:MM:SS.{showMilliseconds ? "mmm" : "cc"})</small>
                                     </th>
 
                                     <th style={{ width: "5%" }}>Add</th>
@@ -86,6 +94,7 @@ export default function SegmentTable({
                                         setSegments,
 
                                         showCumulativeTimes,
+                                        showMilliseconds,
 
                                         onDelete: onDeleteSegment,
                                         onAddChild: onAddSegment,

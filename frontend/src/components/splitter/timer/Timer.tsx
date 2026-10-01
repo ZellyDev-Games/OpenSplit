@@ -6,7 +6,7 @@
  */
 
 import { useTimer } from "../../../hooks/splitter/useTimer";
-import { formatDuration, msToParts } from "./timerUtils";
+import { formatDuration, msToParts, useMillisecondDisplay } from "./timerUtils";
 
 type TimerParams = {
     offset: number | undefined;
@@ -14,8 +14,9 @@ type TimerParams = {
 
 export default function Timer({ offset }: TimerParams) {
     const time = useTimer(offset);
+    const showMilliseconds = useMillisecondDisplay();
 
-    const formattedTimeParts = formatDuration(msToParts(time));
+    const formattedTimeParts = formatDuration(msToParts(time), false, showMilliseconds);
 
     return (
         <div id="time-container" className="row" aria-label="formatted duration">
@@ -39,7 +40,7 @@ export default function Timer({ offset }: TimerParams) {
                 {formattedTimeParts.sepSC}
             </span>
             <span id="time-centis">
-                <small>{formattedTimeParts.centisText}</small>
+                <small>{formattedTimeParts.fractionText}</small>
             </span>
         </div>
     );

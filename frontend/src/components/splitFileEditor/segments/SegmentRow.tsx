@@ -27,6 +27,7 @@ type SegmentRowProps = {
     pb: number;
 
     gold: number;
+    showMilliseconds: boolean;
 
     inheritedGroup: GroupCtx | null;
 
@@ -54,6 +55,7 @@ export default function SegmentRow({
     average,
     pb,
     gold,
+    showMilliseconds,
     inheritedGroup,
     isDirectChild,
     onMoveUp,
@@ -104,7 +106,7 @@ export default function SegmentRow({
 
             <SegmentNameCell segment={segment} depth={depth} onUpdate={onUpdate} />
 
-            <SegmentTimeCells segment={segment} average={average} pb={pb} gold={gold} onUpdate={onUpdate} />
+            <SegmentTimeCells segment={segment} average={average} pb={pb} gold={gold} showMilliseconds={showMilliseconds} onUpdate={onUpdate} />
 
             <SegmentChildActionsCell segment={segment} onAddChild={onAddChild} onDelete={onDelete} />
         </tr>

@@ -19,6 +19,7 @@ type RenderSegmentRowsProps = {
     totals?: RunningTotals;
 
     showCumulativeTimes: boolean;
+    showMilliseconds: boolean;
 
     onDelete: (id: string) => void;
     onAddChild: (parent: SegmentPayload | null) => void;
@@ -38,6 +39,7 @@ export function renderSegmentRows({
     },
 
     showCumulativeTimes,
+    showMilliseconds,
 
     onDelete,
     onAddChild,
@@ -75,6 +77,7 @@ export function renderSegmentRows({
                   totals: running,
 
                   showCumulativeTimes,
+                  showMilliseconds,
 
                   setSegments,
 
@@ -95,6 +98,7 @@ export function renderSegmentRows({
                 average={displayAverage}
                 pb={displayPB}
                 gold={displayGold}
+                showMilliseconds={showMilliseconds}
                 onMoveUp={(id) => updateTree((prev) => moveSegmentUp(prev, id))}
                 onMoveDown={(id) => updateTree((prev) => moveSegmentDown(prev, id))}
                 onGroup={(id) => updateTree((prev) => groupIntoPreviousSibling(prev, id))}

@@ -7,3 +7,5 @@ The portal requires a matching desktop entry for host app registration (XDG Regi
 Older portals without the Registry method continue through the existing flow.
 
 Add cancel button to reset
+add option to show milliseconds to split file editor
+add option to show completed/total runs

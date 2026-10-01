@@ -12,10 +12,11 @@ import { TimeFieldsHandle, useTimeFields } from "../../../hooks/splitFileEditor/
 type TimeRowProps = {
     time: number | null;
     onChange?: (millis: number) => void;
+    showMilliseconds?: boolean;
 };
 
 export const TimeRow = forwardRef<TimeFieldsHandle, TimeRowProps>((props, ref) => {
-    const { hours, minutes, seconds, centis, setHours, setMinutes, setSeconds, setCentis, emitChange } = useTimeFields(
+    const { hours, minutes, seconds, fraction, setHours, setMinutes, setSeconds, setFraction, emitChange } = useTimeFields(
         props,
         ref,
     );
@@ -26,7 +27,7 @@ export const TimeRow = forwardRef<TimeFieldsHandle, TimeRowProps>((props, ref) =
                 value={hours}
                 onChange={(e) => {
                     setHours(e.target.value);
-                    emitChange(e.target.value, minutes, seconds, centis);
+                    emitChange(e.target.value, minutes, seconds, fraction);
                 }}
             />
 
@@ -37,7 +38,7 @@ export const TimeRow = forwardRef<TimeFieldsHandle, TimeRowProps>((props, ref) =
                 value={minutes}
                 onChange={(e) => {
                     setMinutes(e.target.value);
-                    emitChange(hours, e.target.value, seconds, centis);
+                    emitChange(hours, e.target.value, seconds, fraction);
                 }}
             />
 
@@ -48,17 +49,17 @@ export const TimeRow = forwardRef<TimeFieldsHandle, TimeRowProps>((props, ref) =
                 value={seconds}
                 onChange={(e) => {
                     setSeconds(e.target.value);
-                    emitChange(hours, minutes, e.target.value, centis);
+                    emitChange(hours, minutes, e.target.value, fraction);
                 }}
             />
 
             <span>.</span>
 
             <input
-                placeholder="cc"
-                value={centis}
+                placeholder={props.showMilliseconds ? "mmm" : "cc"}
+                value={fraction}
                 onChange={(e) => {
-                    setCentis(e.target.value);
+                    setFraction(e.target.value);
                     emitChange(hours, minutes, seconds, e.target.value);
                 }}
             />

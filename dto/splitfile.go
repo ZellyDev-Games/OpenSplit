@@ -58,10 +58,11 @@ type SplitFile struct {
 	Runs     []Run     `json:"runs"`
 	PB       *Run      `json:"pb"`
 
-	SOB      int64  `json:"sob"`
-	Attempts int    `json:"attempts"`
-	Offset   int64  `json:"offset"`
-	Platform string `json:"platform"`
+	SOB              int64  `json:"sob"`
+	Attempts         int    `json:"attempts"`
+	Offset           int64  `json:"offset"`
+	Platform         string `json:"platform"`
+	ShowMilliseconds bool   `json:"show_milliseconds"`
 
 	WR WorldRecord `json:"wr"`
 
