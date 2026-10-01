@@ -51,7 +51,11 @@ export default function Splitter({
 
     useSplitterMinimumSize(splitterRef);
 
-    const { layout: menuLayout, items: contextMenuItems } = useSplitterMenu({
+    const {
+        layout: menuLayout,
+        items: contextMenuItems,
+        showCompletedAttempts,
+    } = useSplitterMenu({
         disableContextMenu,
         globalHotkeysInitial: configPayload.global_hotkeys_active,
         comparison,
@@ -86,6 +90,7 @@ export default function Splitter({
 
             <SplitterContent
                 sessionPayload={sessionPayload}
+                showCompletedAttempts={showCompletedAttempts}
                 comparison={comparison}
                 forceExpandAll={forceExpandAll}
                 completeClassName={completeClassName}

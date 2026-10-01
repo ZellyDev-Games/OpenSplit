@@ -9,6 +9,7 @@ import WorldRecordDisplay from "./timer/WorldRecord";
 
 type SplitterContentProps = {
     sessionPayload: SessionPayload;
+    showCompletedAttempts: boolean;
     comparison: Comparison;
     forceExpandAll: boolean;
     completeClassName: string;
@@ -80,6 +81,7 @@ function SegmentColumnGroup({ widths, hasSegmentIcons }: { widths: number[] | nu
 
 export default function SplitterContent({
     sessionPayload,
+    showCompletedAttempts,
     comparison,
     completeClassName,
     containerRef,
@@ -154,7 +156,11 @@ export default function SplitterContent({
 
     return (
         <MillisecondDisplayContext.Provider value={sessionPayload.loaded_split_file?.show_milliseconds ?? false}>
-            <SplitGameInfo sessionPayload={sessionPayload} completeClassName={completeClassName} />
+            <SplitGameInfo
+                sessionPayload={sessionPayload}
+                completeClassName={completeClassName}
+                showCompletedAttempts={showCompletedAttempts}
+            />
 
             <div id="splitList" className={completeClassName}>
                 <div ref={containerRef} id="splitContainer" className={completeClassName}>

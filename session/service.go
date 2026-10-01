@@ -277,6 +277,18 @@ func (s *Service) SetLayout(layout string) error {
 	return nil
 }
 
+// ToggleCompletedAttemptsDisplay controls whether the splitter shows completed attempts alongside the total.
+func (s *Service) ToggleCompletedAttemptsDisplay() (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	defer s.sendUpdate()
+	if s.loadedSplitFile == nil {
+		return false, errors.New("no split file loaded")
+	}
+	s.loadedSplitFile.ShowCompletedAttempts = !s.loadedSplitFile.ShowCompletedAttempts
+	return s.loadedSplitFile.ShowCompletedAttempts, nil
+}
+
 // SetRuntimeOffsetOverride replaces the configured splitfile offset for the
 // current session without resetting the active timer or run.
 func (s *Service) SetRuntimeOffsetOverride(offset time.Duration) {

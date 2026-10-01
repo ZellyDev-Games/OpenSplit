@@ -49,7 +49,11 @@ export default function SegmentTable({
                     {showCumulativeTimes ? "Show Segment Times" : "Show Cumulative Times"}
                 </button>
                 <label>
-                    <input type="checkbox" checked={showMilliseconds} onChange={(e) => setShowMilliseconds(e.target.checked)} />
+                    <input
+                        type="checkbox"
+                        checked={showMilliseconds}
+                        onChange={(e) => setShowMilliseconds(e.target.checked)}
+                    />
                     Show milliseconds
                 </label>
             </div>

@@ -16,10 +16,8 @@ type TimeRowProps = {
 };
 
 export const TimeRow = forwardRef<TimeFieldsHandle, TimeRowProps>((props, ref) => {
-    const { hours, minutes, seconds, fraction, setHours, setMinutes, setSeconds, setFraction, emitChange } = useTimeFields(
-        props,
-        ref,
-    );
+    const { hours, minutes, seconds, fraction, setHours, setMinutes, setSeconds, setFraction, emitChange } =
+        useTimeFields(props, ref);
     return (
         <div className="row segment-time">
             <input

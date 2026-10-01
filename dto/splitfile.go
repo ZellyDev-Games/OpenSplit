@@ -66,7 +66,8 @@ type SplitFile struct {
 
 	WR WorldRecord `json:"wr"`
 
-	Layout string `json:"layout"`
+	Layout                string `json:"layout"`
+	ShowCompletedAttempts bool   `json:"show_completed_attempts"`
 
 	Windows SplitterWindows `json:"windows"`
 

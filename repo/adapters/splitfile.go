@@ -44,7 +44,8 @@ func DomainSplitFileToDTO(sf session.SplitFile) dto.SplitFile {
 
 		WR: dto.WorldRecord(sf.WR),
 
-		Layout: sf.Layout,
+		Layout:                sf.Layout,
+		ShowCompletedAttempts: sf.ShowCompletedAttempts,
 
 		Windows: dto.SplitterWindows{
 			Vertical: dto.SplitterWindow{
@@ -135,6 +136,7 @@ func DTOSplitFileToDomain(payload dto.SplitFile) (session.SplitFile, error) {
 	newSplitFile.WR = session.WorldRecord(payload.WR)
 
 	newSplitFile.Layout = normalizeLayout(payload.Layout)
+	newSplitFile.ShowCompletedAttempts = payload.ShowCompletedAttempts
 	newSplitFile.Windows = migrateWindows(payload)
 
 	logger.Debugf(
