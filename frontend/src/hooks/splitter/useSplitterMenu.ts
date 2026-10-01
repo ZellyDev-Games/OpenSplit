@@ -29,6 +29,13 @@ export function useSplitterMenu({
     const [items, setItems] = useState<MenuItem[]>([]);
     const [globalHotkeys, setGlobalHotkeys] = useState(globalHotkeysInitial);
     const [layout, setLayout] = useState<SplitterLayout>(initialLayout);
+    const [showCompletedAttempts, setShowCompletedAttempts] = useState(
+        sessionPayload.loaded_split_file?.show_completed_attempts ?? false,
+    );
+
+    useEffect(() => {
+        setShowCompletedAttempts(sessionPayload.loaded_split_file?.show_completed_attempts ?? false);
+    }, [sessionPayload.loaded_split_file?.show_completed_attempts]);
 
     useEffect(() => {
         const savedLayout = sessionPayload.loaded_split_file?.layout;
@@ -49,7 +56,14 @@ export function useSplitterMenu({
         (async () => {
             setItems(await buildContextMenu());
         })();
-    }, [disableContextMenu, globalHotkeys, comparison, layout, sessionPayload.loaded_split_file?.wr?.show]);
+    }, [
+        disableContextMenu,
+        globalHotkeys,
+        comparison,
+        layout,
+        showCompletedAttempts,
+        sessionPayload.loaded_split_file?.wr?.show,
+    ]);
 
     const setSplitterLayout = async (nextLayout: SplitterLayout) => {
         if (layout === nextLayout) {
@@ -99,6 +113,19 @@ export function useSplitterMenu({
         contextMenuItems.push({
             type: "separator",
         });
+
+        contextMenuItems.push({
+            label: (showCompletedAttempts ? "✓ " : "") + "Show Completed Attempts / Total",
+            onClick: async () => {
+                const nextValue = !showCompletedAttempts;
+                const result = await Dispatch(Command.TOGGLEATTEMPTSDISPLAY, null);
+                if (result.code === 0) {
+                    setShowCompletedAttempts(nextValue);
+                }
+            },
+        });
+
+        contextMenuItems.push({ type: "separator" });
 
         /*
          * Layout
@@ -192,5 +219,6 @@ export function useSplitterMenu({
         items,
         globalHotkeys,
         layout,
+        showCompletedAttempts,
     };
 }

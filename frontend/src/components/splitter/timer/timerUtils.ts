@@ -56,7 +56,11 @@ export function partsToMS(parts: TimeParts): number {
 }
 
 // produces formatting metadata
-export function formatDuration(timeParts: TimeParts, showSign: boolean = false, showMilliseconds = false): FormattedTimeParts {
+export function formatDuration(
+    timeParts: TimeParts,
+    showSign: boolean = false,
+    showMilliseconds = false,
+): FormattedTimeParts {
     // What to show
     const showHours = timeParts.hours > 0;
     const showMinutes = showHours || timeParts.minutes > 0;

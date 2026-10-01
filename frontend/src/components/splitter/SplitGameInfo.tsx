@@ -3,9 +3,14 @@ import SessionPayload from "../../models/sessionPayload";
 type SplitGameInfoProps = {
     sessionPayload: SessionPayload;
     completeClassName: string;
+    showCompletedAttempts: boolean;
 };
 
-export default function SplitGameInfo({ sessionPayload, completeClassName }: SplitGameInfoProps) {
+export default function SplitGameInfo({
+    sessionPayload,
+    completeClassName,
+    showCompletedAttempts,
+}: SplitGameInfoProps) {
     const splitFile = sessionPayload.loaded_split_file;
 
     return (
@@ -27,7 +32,9 @@ export default function SplitGameInfo({ sessionPayload, completeClassName }: Spl
                 ))}
 
             <div id="attempts" className={completeClassName}>
-                {splitFile?.attempts}
+                {showCompletedAttempts
+                    ? `${splitFile?.runs.filter((run) => run.completed).length ?? 0}/${splitFile?.attempts ?? 0}`
+                    : splitFile?.attempts}
             </div>
         </div>
     );

@@ -106,7 +106,14 @@ export default function SegmentRow({
 
             <SegmentNameCell segment={segment} depth={depth} onUpdate={onUpdate} />
 
-            <SegmentTimeCells segment={segment} average={average} pb={pb} gold={gold} showMilliseconds={showMilliseconds} onUpdate={onUpdate} />
+            <SegmentTimeCells
+                segment={segment}
+                average={average}
+                pb={pb}
+                gold={gold}
+                showMilliseconds={showMilliseconds}
+                onUpdate={onUpdate}
+            />
 
             <SegmentChildActionsCell segment={segment} onAddChild={onAddChild} onDelete={onDelete} />
         </tr>

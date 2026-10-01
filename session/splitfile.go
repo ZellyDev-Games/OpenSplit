@@ -32,7 +32,8 @@ type SplitFile struct {
 
 	WR WorldRecord
 
-	Layout string
+	Layout                string
+	ShowCompletedAttempts bool
 
 	Windows SplitterWindows
 }
@@ -121,6 +122,8 @@ func DeepCopySplitFile(inFile *SplitFile) SplitFile {
 		WR: inFile.WR,
 
 		Layout: inFile.Layout,
+
+		ShowCompletedAttempts: inFile.ShowCompletedAttempts,
 
 		Windows: inFile.Windows,
 	}

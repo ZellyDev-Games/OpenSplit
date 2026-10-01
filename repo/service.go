@@ -222,6 +222,26 @@ func (s *Service) SaveSplitFileLayout(layout string) error {
 	)
 }
 
+// SaveCompletedAttemptsDisplay updates the persisted attempts counter display preference.
+func (s *Service) SaveCompletedAttemptsDisplay(show bool) error {
+	s.splitFileLock.Lock()
+	defer s.splitFileLock.Unlock()
+	existingBytes, err := s.repository.GetLoadedSplitFile()
+	if err != nil {
+		return err
+	}
+	dto, err := adapters.JSONSplitFileToDTO(string(existingBytes))
+	if err != nil {
+		return err
+	}
+	dto.ShowCompletedAttempts = show
+	payload, err := adapters.SplitFileToFrontEnd(dto)
+	if err != nil {
+		return err
+	}
+	return s.repository.SaveSplitFile(payload, buildSplitFileName(dto), false)
+}
+
 func (s *Service) Export() error {
 	logger.Info(logModule,
 		"exporting cleaned split file",

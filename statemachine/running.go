@@ -297,6 +297,19 @@ func (r *Running) Receive(
 			}, nil
 		}
 
+	case command.TOGGLEATTEMPTSDISPLAY:
+		show, err := machine.sessionService.ToggleCompletedAttemptsDisplay()
+		if err != nil {
+			return dispatcher.DispatchReply{Code: 1, Message: err.Error()}, nil
+		}
+		if err := machine.repoService.SaveCompletedAttemptsDisplay(show); err != nil {
+			logger.Errorf(logModule, "failed saving attempts display preference: %v", err)
+			return dispatcher.DispatchReply{Code: 2, Message: err.Error()}, nil
+		}
+		if err := r.EmitUI(); err != nil {
+			return dispatcher.DispatchReply{Code: 3, Message: err.Error()}, nil
+		}
+
 	default:
 		logger.Warnf(
 			logModule,

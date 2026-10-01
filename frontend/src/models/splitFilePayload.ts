@@ -67,6 +67,7 @@ export default class SplitFilePayload {
      * be used as the default.
      */
     layout: SplitterLayout | "" = "";
+    show_completed_attempts: boolean = false;
 
     /**
      * Persisted window geometry for each splitter layout.
