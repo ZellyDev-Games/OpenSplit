@@ -1,10 +1,11 @@
 import { ForwardedRef, useEffect, useImperativeHandle, useState } from "react";
 
-import { msToParts, partsToMS } from "../../components/splitter/timer/timerUtils";
+import { msToParts } from "../../components/splitter/timer/timerUtils";
 
 type UseTimeFieldsProps = {
     time: number | null;
     onChange?: (millis: number) => void;
+    showMilliseconds?: boolean;
 };
 
 export type TimeFieldsHandle = {
@@ -15,14 +16,14 @@ export function useTimeFields(props: UseTimeFieldsProps, ref: ForwardedRef<TimeF
     const [hours, setHours] = useState("");
     const [minutes, setMinutes] = useState("");
     const [seconds, setSeconds] = useState("");
-    const [centis, setCentis] = useState("");
+    const [fraction, setFraction] = useState("");
 
     useEffect(() => {
         if (props.time == null || props.time < 0) {
             setHours("");
             setMinutes("");
             setSeconds("");
-            setCentis("");
+            setFraction("");
             return;
         }
 
@@ -31,20 +32,16 @@ export function useTimeFields(props: UseTimeFieldsProps, ref: ForwardedRef<TimeF
         setHours(String(p.hours));
         setMinutes(String(p.minutes));
         setSeconds(String(p.seconds));
-        setCentis(String(p.centis));
-    }, [props.time]);
+        setFraction(props.showMilliseconds ? String(props.time % 1000).padStart(3, "0") : String(p.centis));
+    }, [props.time, props.showMilliseconds]);
 
-    const getMillis = (h = hours, m = minutes, s = seconds, c = centis) =>
-        partsToMS({
-            negative: false,
-            hours: Number(h || 0),
-            minutes: Number(m || 0),
-            seconds: Number(s || 0),
-            centis: Number(c || 0),
-        });
+    const getMillis = (h = hours, m = minutes, s = seconds, f = fraction) => {
+        const base = Number(h || 0) * 3600000 + Number(m || 0) * 60000 + Number(s || 0) * 1000;
+        return base + (props.showMilliseconds ? Number((f || "0").padEnd(3, "0").slice(0, 3)) : Number(f || 0) * 10);
+    };
 
-    const emitChange = (h = hours, m = minutes, s = seconds, c = centis) => {
-        props.onChange?.(getMillis(h, m, s, c));
+    const emitChange = (h = hours, m = minutes, s = seconds, f = fraction) => {
+        props.onChange?.(getMillis(h, m, s, f));
     };
 
     useImperativeHandle(ref, () => ({
@@ -55,12 +52,12 @@ export function useTimeFields(props: UseTimeFieldsProps, ref: ForwardedRef<TimeF
         hours,
         minutes,
         seconds,
-        centis,
+        fraction,
 
         setHours,
         setMinutes,
         setSeconds,
-        setCentis,
+        setFraction,
 
         emitChange,
     };

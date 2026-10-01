@@ -1,3 +1,8 @@
+import { createContext, useContext } from "react";
+
+export const MillisecondDisplayContext = createContext(false);
+export const useMillisecondDisplay = () => useContext(MillisecondDisplayContext);
+
 type FormattedTimeParts = {
     isNegative: boolean;
     showSign: boolean;
@@ -9,7 +14,7 @@ type FormattedTimeParts = {
     hoursText: string;
     minutesText: string;
     secondsText: string;
-    centisText: string;
+    fractionText: string;
 };
 
 type TimeParts = {
@@ -18,6 +23,7 @@ type TimeParts = {
     minutes: number;
     seconds: number;
     centis: number;
+    milliseconds: number;
 };
 
 export function msToParts(ms: number): TimeParts {
@@ -31,12 +37,14 @@ export function msToParts(ms: number): TimeParts {
     const seconds = totalSeconds % 60;
 
     const centis = Math.floor((abs % 1000) / 10);
+    const milliseconds = abs % 1000;
 
     return {
         hours,
         minutes,
         seconds,
         centis,
+        milliseconds,
         negative,
     };
 }
@@ -48,7 +56,7 @@ export function partsToMS(parts: TimeParts): number {
 }
 
 // produces formatting metadata
-export function formatDuration(timeParts: TimeParts, showSign: boolean = false): FormattedTimeParts {
+export function formatDuration(timeParts: TimeParts, showSign: boolean = false, showMilliseconds = false): FormattedTimeParts {
     // What to show
     const showHours = timeParts.hours > 0;
     const showMinutes = showHours || timeParts.minutes > 0;
@@ -58,7 +66,9 @@ export function formatDuration(timeParts: TimeParts, showSign: boolean = false):
     const minutesText = showMinutes ? String(timeParts.minutes).padStart(showHours ? 2 : 1, "0") : "";
     const secondsText = String(timeParts.seconds).padStart(showMinutes ? 2 : 1, "0");
 
-    const centisText = String(timeParts.centis).padStart(2, "0");
+    const fractionText = showMilliseconds
+        ? String(timeParts.milliseconds).padStart(3, "0")
+        : String(timeParts.centis).padStart(2, "0");
 
     // Separators only if the left side is present
     const sepHM = showHours ? ":" : "";
@@ -76,7 +86,7 @@ export function formatDuration(timeParts: TimeParts, showSign: boolean = false):
         hoursText: hoursText,
         minutesText: minutesText,
         secondsText: secondsText,
-        centisText: centisText,
+        fractionText,
     };
 }
 
@@ -96,8 +106,8 @@ export function displayFormattedTimeParts(formattedParts: FormattedTimeParts): s
     }
 
     timeString += `${formattedParts.sepMS}${formattedParts.secondsText}`;
-    const centisString = `${formattedParts.sepSC}${formattedParts.centisText}`;
-    return [timeString, centisString];
+    const fractionString = `${formattedParts.sepSC}${formattedParts.fractionText}`;
+    return [timeString, fractionString];
 }
 
 export const numeric = (s: string) => /^[+-]?\d+$/.test(s);

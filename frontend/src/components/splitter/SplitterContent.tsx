@@ -4,6 +4,7 @@ import { CompareAgainst, Comparison } from "../../hooks/splitter/useComparison";
 import SessionPayload from "../../models/sessionPayload";
 import SplitGameInfo from "./SplitGameInfo";
 import Timer from "./timer/Timer";
+import { MillisecondDisplayContext } from "./timer/timerUtils";
 import WorldRecordDisplay from "./timer/WorldRecord";
 
 type SplitterContentProps = {
@@ -152,7 +153,7 @@ export default function SplitterContent({
     }, [containerRef, rows, hasSegmentIcons]);
 
     return (
-        <>
+        <MillisecondDisplayContext.Provider value={sessionPayload.loaded_split_file?.show_milliseconds ?? false}>
             <SplitGameInfo sessionPayload={sessionPayload} completeClassName={completeClassName} />
 
             <div id="splitList" className={completeClassName}>
@@ -178,6 +179,6 @@ export default function SplitterContent({
 
                 <WorldRecordDisplay worldRecord={sessionPayload.loaded_split_file?.wr} />
             </div>
-        </>
+        </MillisecondDisplayContext.Provider>
     );
 }

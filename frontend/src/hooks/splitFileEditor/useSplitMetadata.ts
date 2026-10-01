@@ -18,6 +18,7 @@ export function useSplitMetadata(splitFilePayload: SplitFilePayload | null) {
     const [selectedSkin, setSelectedSkin] = useState(splitFilePayload?.selected_skin ?? "");
 
     const [platform, setPlatform] = useState(splitFilePayload?.platform ?? "");
+    const [showMilliseconds, setShowMilliseconds] = useState(splitFilePayload?.show_milliseconds ?? false);
 
     const [attempts, setAttempts] = useState(splitFilePayload?.attempts ?? 0);
 
@@ -78,6 +79,8 @@ export function useSplitMetadata(splitFilePayload: SplitFilePayload | null) {
 
         platform,
         setPlatform,
+        showMilliseconds,
+        setShowMilliseconds,
 
         platforms,
         setPlatforms,

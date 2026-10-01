@@ -7,16 +7,18 @@ type Props = {
     average: number;
     pb: number;
     gold: number;
+    showMilliseconds: boolean;
 
     onUpdate(id: string, updater: (segment: SegmentPayload) => SegmentPayload): void;
 };
 
-export default function SegmentTimeCells({ segment, average, pb, gold, onUpdate }: Props) {
+export default function SegmentTimeCells({ segment, average, pb, gold, showMilliseconds, onUpdate }: Props) {
     return (
         <>
             <td>
                 <TimeRow
                     time={average}
+                    showMilliseconds={showMilliseconds}
                     onChange={(value) =>
                         onUpdate(segment.id, (s) => ({
                             ...s,
@@ -29,6 +31,7 @@ export default function SegmentTimeCells({ segment, average, pb, gold, onUpdate 
             <td>
                 <TimeRow
                     time={pb}
+                    showMilliseconds={showMilliseconds}
                     onChange={(value) =>
                         onUpdate(segment.id, (s) => ({
                             ...s,
@@ -41,6 +44,7 @@ export default function SegmentTimeCells({ segment, average, pb, gold, onUpdate 
             <td>
                 <TimeRow
                     time={gold}
+                    showMilliseconds={showMilliseconds}
                     onChange={(value) =>
                         onUpdate(segment.id, (s) => ({
                             ...s,

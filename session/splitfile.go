@@ -27,6 +27,7 @@ type SplitFile struct {
 	Attempts           int
 	Offset             time.Duration
 	Platform           string
+	ShowMilliseconds   bool
 	RollingAverageRuns int
 
 	WR WorldRecord
@@ -114,6 +115,7 @@ func DeepCopySplitFile(inFile *SplitFile) SplitFile {
 		Attempts:           inFile.Attempts,
 		Offset:             inFile.Offset,
 		Platform:           inFile.Platform,
+		ShowMilliseconds:   inFile.ShowMilliseconds,
 		RollingAverageRuns: inFile.RollingAverageRuns,
 
 		WR: inFile.WR,

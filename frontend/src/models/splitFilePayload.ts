@@ -55,6 +55,7 @@ export default class SplitFilePayload {
     attempts: number = 0;
     offset: number = 0;
     platform: string = "SNES";
+    show_milliseconds: boolean = false;
 
     wr: WorldRecord = new WorldRecord();
 
