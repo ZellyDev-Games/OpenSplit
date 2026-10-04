@@ -27,11 +27,7 @@ export default function Welcome() {
             >
                 Create New Split File
             </button>
-            <button
-                onClick={loadSplitFile}
-            >
-                Load Split File
-            </button>
+            <button onClick={loadSplitFile}>Load Split File</button>
             <button
                 onClick={async () => {
                     await Dispatch(Command.NEW_SKIN, null);
