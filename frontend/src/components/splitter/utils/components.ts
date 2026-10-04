@@ -1,4 +1,4 @@
-import { getBoxBorder, getBoxPadding, getEffectiveMinimumSize, getGap } from "./css";
+import { getBoxBorder, getBoxPadding, getContentMinimumSize, getEffectiveMinimumSize, getGap } from "./css";
 import type { MinimumSize } from "./types";
 
 type ComponentDefinition = {
@@ -123,7 +123,34 @@ export function calculateGameInfoMinimumSize(element: HTMLElement): MinimumSize 
     }
 
     const border = getBoxBorder(element);
-    const contentHeight = element.scrollHeight + border.top + border.bottom;
+    const outOfFlowDescendants = Array.from(element.querySelectorAll<HTMLElement>("*"))
+        .filter((child) => {
+            const position = getComputedStyle(child).position;
+            return position === "absolute" || position === "fixed";
+        })
+        .map((child) => ({
+            child,
+            display: child.style.getPropertyValue("display"),
+            priority: child.style.getPropertyPriority("display"),
+        }));
+
+    let contentHeight: number;
+
+    try {
+        for (const { child } of outOfFlowDescendants) {
+            child.style.setProperty("display", "none", "important");
+        }
+
+        contentHeight = element.scrollHeight + border.top + border.bottom;
+    } finally {
+        for (const { child, display, priority } of outOfFlowDescendants) {
+            if (display) {
+                child.style.setProperty("display", display, priority);
+            } else {
+                child.style.removeProperty("display");
+            }
+        }
+    }
 
     return {
         width: Math.max(0, ...sizes.map((size) => size.width)) + padding.left + padding.right,
@@ -386,6 +413,12 @@ export function calculateSplitterInfoMinimumSize(element: HTMLElement): MinimumS
 
     return {
         width: minimum.width + padding.left + padding.right,
-        height: minimum.height + padding.top + padding.bottom,
+        height:
+            layout === "vertical"
+                ? Math.max(
+                      minimum.height + padding.top + padding.bottom,
+                      getContentMinimumSize(element, { height: true }).height,
+                  )
+                : minimum.height + padding.top + padding.bottom,
     };
 }
