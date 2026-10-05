@@ -524,7 +524,11 @@ func (s *Service) updateWorldRecord() {
 		"Searching for New World Record",
 	)
 
-	wr, err := s.speedrunService.SearchWR(sf.CategoryID)
+	variables := make([]speedrun.WRVariable, 0, len(sf.Variables))
+	for _, variable := range sf.Variables {
+		variables = append(variables, speedrun.WRVariable{ID: variable.ID, ValueID: variable.ValueID})
+	}
+	wr, err := s.speedrunService.SearchWR(sf.GameID, sf.CategoryID, variables)
 	if err != nil {
 		logger.Error(
 			logModule,
