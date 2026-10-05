@@ -1,4 +1,4 @@
-import { getBoxBorder, getBoxPadding, getEffectiveMinimumSize, getGap } from "./css";
+import { getBoxBorder, getBoxPadding, getEffectiveMinimumSize, getGap, getMinimum } from "./css";
 import type { MinimumSize } from "./types";
 
 type SegmentComponent = {
@@ -14,7 +14,8 @@ type SegmentComponent = {
 /*
  * The values declared by these variables are the complete minimum
  * component sizes. The components use box-sizing: border-box, so
- * padding is already included in those dimensions.
+ * their own padding is already included. Table-cell padding is added
+ * separately when measuring each component below.
  */
 const SEGMENT_COMPONENTS: SegmentComponent[] = [
     {
@@ -70,6 +71,19 @@ function getComponentMinimumSize(
                   width: measureContentWidth || layout === "horizontal",
               };
     const minimum = getEffectiveMinimumSize(element, definition.widthVariable, definition.heightVariable, contentAware);
+    const cell = element.closest<HTMLElement>("td");
+
+    if (cell) {
+        const padding = getBoxPadding(cell);
+        minimum.width = Math.max(
+            minimum.width,
+            getMinimum(element, definition.widthVariable) + padding.left + padding.right,
+        );
+        minimum.height = Math.max(
+            minimum.height,
+            getMinimum(element, definition.heightVariable) + padding.top + padding.bottom,
+        );
+    }
 
     if (definition.selector === ".splitName") {
         const toggle = element.querySelector<HTMLElement>(".collapseToggle");

@@ -20,7 +20,11 @@ type ComponentDefinition = {
  *
  * Do not add component padding here.
  */
-function getComponentMinimum(parent: HTMLElement, definition: ComponentDefinition): MinimumSize {
+function getComponentMinimum(
+    parent: HTMLElement,
+    definition: ComponentDefinition,
+    contentAware = definition.contentAware,
+): MinimumSize {
     const element = parent.querySelector<HTMLElement>(definition.selector);
 
     if (!element) {
@@ -34,7 +38,7 @@ function getComponentMinimum(parent: HTMLElement, definition: ComponentDefinitio
         element,
         definition.widthVariable,
         definition.heightVariable,
-        definition.contentAware,
+        contentAware,
     );
 }
 
@@ -68,7 +72,7 @@ const GAME_INFO_COMPONENTS: ComponentDefinition[] = [
         widthVariable: "--splitter-game-title-min-width",
         heightVariable: "--splitter-game-title-min-height",
         contentAware: {
-            // width: true,
+            width: true,
             height: true,
         },
     },
@@ -77,7 +81,7 @@ const GAME_INFO_COMPONENTS: ComponentDefinition[] = [
         widthVariable: "--splitter-game-category-min-width",
         heightVariable: "--splitter-game-category-min-height",
         contentAware: {
-            // width: true,
+            width: true,
             height: true,
         },
     },
@@ -86,7 +90,7 @@ const GAME_INFO_COMPONENTS: ComponentDefinition[] = [
         widthVariable: "--splitter-game-variable-min-width",
         heightVariable: "--splitter-game-variable-min-height",
         contentAware: {
-            // width: true,
+            width: true,
             height: true,
         },
     },
@@ -100,8 +104,13 @@ const GAME_INFO_COMPONENTS: ComponentDefinition[] = [
 export function calculateGameInfoMinimumSize(element: HTMLElement): MinimumSize {
     const layout = element.closest<HTMLElement>("#splitter")?.dataset.layout;
     const sizes = GAME_INFO_COMPONENTS.flatMap((definition) => {
+        const contentAware = {
+            ...definition.contentAware,
+            width: layout === "horizontal" && definition.contentAware?.width,
+        };
+
         if (definition.selector !== ".game-variable") {
-            return [getComponentMinimum(element, definition)];
+            return [getComponentMinimum(element, definition, contentAware)];
         }
 
         return Array.from(element.querySelectorAll<HTMLElement>(definition.selector)).map((variable) =>
@@ -109,7 +118,7 @@ export function calculateGameInfoMinimumSize(element: HTMLElement): MinimumSize 
                 variable,
                 definition.widthVariable,
                 definition.heightVariable,
-                definition.contentAware,
+                contentAware,
             ),
         );
     });
