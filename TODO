@@ -6,6 +6,6 @@ Older portals without the Registry method continue through the existing flow.
 
 Add cancel button to reset
 
-In horizontal layout the FF6 skin window size is incorrect this causes the finalsegment to flex under the splitterInfo
-In horizontal layout the hollowknight skin window minimum width is incorrect causing the finalsegment to flex under the splitterInfo
-In horizontal layout the hammerwatch skin window size is incorrect prevents the window from flexing small enough for the splitContainer to not be visible
+In horizontal layout the FF6 skin window size is incorrect this causes the finalsegment to flex under the splitterInfo; window is too small
+In horizontal layout the hollowknight skin window minimum width is incorrect causing the finalsegment to flex under the splitterInfo; window is too small
+In horizontal layout the hammerwatch skin window size is incorrect prevents the window from flexing small enough for the splitContainer to not be visible; window is too large
