@@ -1,4 +1,4 @@
-import { getBoxBorder, getBoxPadding, getEffectiveMinimumSize } from "./css";
+import { getBoxBorder, getBoxPadding, getEffectiveMinimumSize, getGap } from "./css";
 import type { MinimumSize } from "./types";
 
 type SegmentComponent = {
@@ -314,7 +314,7 @@ export function calculateSplitListMinimumSize(element: HTMLElement): MinimumSize
     const sharedRowMinimumHeight = Math.max(0, ...rows.map((row) => getSegmentRowMinimumSize(row, layout).height));
 
     return {
-        width: finalSegmentMinimum.width + padding.left + padding.right,
+        width: finalSegmentMinimum.width + getGap(element).column + padding.left + padding.right,
         height: Math.max(finalSegmentMinimum.height, sharedRowMinimumHeight) + padding.top + padding.bottom,
     };
 }
