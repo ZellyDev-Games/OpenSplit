@@ -27,7 +27,7 @@ const SEGMENT_COMPONENTS: SegmentComponent[] = [
         widthVariable: "--splitter-segment-name-min-width",
         heightVariable: "--splitter-segment-name-min-height",
         contentAware: {
-            // width: true,
+            width: true,
             height: true,
         },
     },
@@ -35,16 +35,25 @@ const SEGMENT_COMPONENTS: SegmentComponent[] = [
         selector: ".splitDelta",
         widthVariable: "--splitter-segment-delta-min-width",
         heightVariable: "--splitter-segment-delta-min-height",
+        contentAware: {
+            width: true,
+        },
     },
     {
         selector: ".splitComparison",
         widthVariable: "--splitter-segment-comparison-min-width",
         heightVariable: "--splitter-segment-comparison-min-height",
+        contentAware: {
+            width: true,
+        },
     },
     {
         selector: ".splitTime",
         widthVariable: "--splitter-segment-time-min-width",
         heightVariable: "--splitter-segment-time-min-height",
+        contentAware: {
+            width: true,
+        },
     },
 ];
 
@@ -209,7 +218,7 @@ function getFinalSegmentMinimumSize(element: HTMLElement): MinimumSize {
     const tableMinimum = getTableMinimumSize(table, layout);
     const padding = getBoxPadding(element);
     const border = getBoxBorder(element);
-    const minimumWidth = tableMinimum.width + padding.left + padding.right;
+    const minimumWidth = tableMinimum.width + padding.left + padding.right + border.left + border.right;
 
     return {
         width:
@@ -218,6 +227,38 @@ function getFinalSegmentMinimumSize(element: HTMLElement): MinimumSize {
                 : minimumWidth,
         height: tableMinimum.height + padding.top + padding.bottom,
     };
+}
+
+function setMinimumWidth(element: HTMLElement, width: number | null) {
+    const property = "--splitter-effective-min-width";
+    const value = width === null ? "" : `${width}px`;
+
+    if (element.style.getPropertyValue(property) !== value) {
+        if (value) {
+            element.style.setProperty(property, value);
+        } else {
+            element.style.removeProperty(property);
+        }
+    }
+}
+
+/** Apply effective horizontal column widths to the rows and final column. */
+export function updateSplitListMinimumWidths(element: HTMLElement) {
+    const layout = element.closest<HTMLElement>("#splitter")?.dataset.layout;
+    const rows = Array.from(element.querySelectorAll<HTMLElement>("tr.segmentRow, tr.parentRow"));
+    const finalSegment = element.querySelector<HTMLElement>("#finalSegment");
+
+    if (layout !== "horizontal") {
+        rows.forEach((row) => setMinimumWidth(row, null));
+        if (finalSegment) setMinimumWidth(finalSegment, null);
+        return;
+    }
+
+    rows.forEach((row) => setMinimumWidth(row, getSegmentRowMinimumSize(row, layout).width));
+
+    if (finalSegment) {
+        setMinimumWidth(finalSegment, getFinalSegmentMinimumSize(finalSegment).width);
+    }
 }
 
 export function calculateSplitListMinimumSize(element: HTMLElement): MinimumSize {
@@ -239,11 +280,22 @@ export function calculateSplitListMinimumSize(element: HTMLElement): MinimumSize
      */
     if (layout === "vertical") {
         const finalSegmentMinimum = finalSegment ? getFinalSegmentMinimumSize(finalSegment) : { width: 0, height: 0 };
+        const splitContainer = element.querySelector<HTMLElement>("#splitContainer");
+        const splitTable = splitContainer?.querySelector<HTMLElement>(":scope > table");
+        const splitContainerPadding = splitContainer ? getBoxPadding(splitContainer) : { left: 0, right: 0 };
+        const splitContainerBorder = splitContainer ? getBoxBorder(splitContainer) : { left: 0, right: 0 };
+        const splitTableMinimumWidth = splitTable
+            ? getTableMinimumSize(splitTable, layout).width +
+              splitContainerPadding.left +
+              splitContainerPadding.right +
+              splitContainerBorder.left +
+              splitContainerBorder.right
+            : 0;
 
         const padding = getBoxPadding(element);
 
         return {
-            width: finalSegmentMinimum.width + padding.left + padding.right,
+            width: Math.max(finalSegmentMinimum.width, splitTableMinimumWidth) + padding.left + padding.right,
             height: finalSegmentMinimum.height + padding.top + padding.bottom,
         };
     }

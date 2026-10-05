@@ -2,7 +2,10 @@ import { useEffect } from "react";
 
 import { WindowSetMinSize } from "../../../wailsjs/runtime/runtime";
 import { getMinimum } from "../../components/splitter/utils/css";
-import { calculateSplitListMinimumSize } from "../../components/splitter/utils/splitList";
+import {
+    calculateSplitListMinimumSize,
+    updateSplitListMinimumWidths,
+} from "../../components/splitter/utils/splitList";
 import { calculateSplitterMinimumSize } from "../../components/splitter/utils/splitter";
 import { log } from "../../utils/logger";
 
@@ -166,8 +169,12 @@ export function useSplitterMinimumSize(splitterRef: React.RefObject<HTMLDivEleme
             frame = requestAnimationFrame(() => {
                 updateCount++;
 
-                const minimum = calculateSplitterMinimumSize(element);
                 const splitList = element.querySelector<HTMLElement>("#splitList");
+                if (splitList) {
+                    updateSplitListMinimumWidths(splitList);
+                }
+
+                const minimum = calculateSplitterMinimumSize(element);
 
                 if (splitList) {
                     splitList.style.minHeight =
