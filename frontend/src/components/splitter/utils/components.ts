@@ -113,9 +113,41 @@ export function calculateGameInfoMinimumSize(element: HTMLElement): MinimumSize 
             ),
         );
     });
+    const measuredComponents = GAME_INFO_COMPONENTS.flatMap((definition) =>
+        definition.selector === ".game-variable"
+            ? Array.from(element.querySelectorAll<HTMLElement>(definition.selector))
+            : [element.querySelector<HTMLElement>(definition.selector)].filter(
+                  (component): component is HTMLElement => component !== null,
+              ),
+    );
     const padding = getBoxPadding(element);
+    const style = getComputedStyle(element);
+    const isGrid = style.display === "grid" || style.display === "inline-grid";
+    const gridMinimum = isGrid ? combineGridSizes(element, measuredComponents, sizes) : null;
+    const gridBorder = isGrid ? getBoxBorder(element) : null;
+    const titleMinimum = sizes[0]?.width ?? 0;
+    const categoryMinimum = sizes[1]?.width ?? 0;
+    const attemptsMinimum = sizes[sizes.length - 1]?.width ?? 0;
+    const variableMinimum = Math.max(0, ...sizes.slice(2, -1).map((size) => size.width));
+    const gridContentWidth = Math.max(
+        titleMinimum,
+        variableMinimum,
+        categoryMinimum + attemptsMinimum + (parseFloat(style.columnGap) || 0),
+    );
 
     if (layout === "horizontal") {
+        if (isGrid && gridMinimum && gridBorder) {
+            return {
+                width:
+                    gridContentWidth +
+                    padding.left +
+                    padding.right +
+                    gridBorder.left +
+                    gridBorder.right,
+                height: gridMinimum.height + padding.top + padding.bottom,
+            };
+        }
+
         return {
             width: Math.max(0, ...sizes.map((size) => size.width)) + padding.left + padding.right,
             height: Math.max(0, ...sizes.map((size) => size.height)) + padding.top + padding.bottom,
@@ -123,6 +155,10 @@ export function calculateGameInfoMinimumSize(element: HTMLElement): MinimumSize 
     }
 
     const border = getBoxBorder(element);
+    const measuredHeight =
+        isGrid
+            ? combineGridSizes(element, measuredComponents, sizes).height + padding.top + padding.bottom
+            : sizes.reduce((total, size) => total + size.height, 0) + padding.top + padding.bottom;
     const outOfFlowDescendants = Array.from(element.querySelectorAll<HTMLElement>("*"))
         .filter((child) => {
             const position = getComputedStyle(child).position;
@@ -153,11 +189,13 @@ export function calculateGameInfoMinimumSize(element: HTMLElement): MinimumSize 
     }
 
     return {
-        width: Math.max(0, ...sizes.map((size) => size.width)) + padding.left + padding.right,
-        height: Math.max(
-            sizes.reduce((total, size) => total + size.height, 0) + padding.top + padding.bottom,
-            contentHeight,
-        ),
+        width: isGrid
+            ? gridContentWidth + padding.left + padding.right + (gridBorder?.left ?? 0) + (gridBorder?.right ?? 0)
+            : Math.max(0, ...sizes.map((size) => size.width)) + padding.left + padding.right,
+        // Grid rows can contain multiple aligned items whose top edges differ by a
+        // fractional pixel. In that case measured row grouping can count one row
+        // twice; the rendered content height already includes the grid tracks.
+        height: isGrid ? contentHeight : Math.max(measuredHeight, contentHeight),
     };
 }
 
@@ -205,13 +243,13 @@ const TIMER_COMPONENTS: ComponentDefinition[] = [
 ];
 
 export function calculateTimeContainerMinimumSize(element: HTMLElement): MinimumSize {
-    const layout = element.closest<HTMLElement>("#splitter")?.dataset.layout;
     const definitions = TIMER_COMPONENTS.filter((definition) => {
         const component = element.querySelector<HTMLElement>(definition.selector);
         if (!component) return false;
         if (["#time-seconds", "#time-sep-sc", "#time-centis"].includes(definition.selector)) return true;
         return component.dataset.present === "1" || component.dataset.present === "true";
     });
+    const layout = element.closest<HTMLElement>("#splitter")?.dataset.layout;
     if (layout === "horizontal") {
         return getContainerMinimum(element, definitions, "row");
     }
@@ -328,7 +366,11 @@ export function calculateWorldRecordMinimumSize(element: HTMLElement): MinimumSi
     return layout === "horizontal"
         ? {
               width: Math.max(0, ...sizes.map((size) => size.width)) + padding.left + padding.right,
-              height: Math.max(0, ...sizes.map((size) => size.height)) + padding.top + padding.bottom,
+              height:
+                  sizes.reduce((total, size) => total + size.height, 0) +
+                  Math.max(0, sizes.length - 1) * getGap(element).row +
+                  padding.top +
+                  padding.bottom,
           }
         : {
               width: Math.max(0, ...sizes.map((size) => size.width)) + padding.left + padding.right,
