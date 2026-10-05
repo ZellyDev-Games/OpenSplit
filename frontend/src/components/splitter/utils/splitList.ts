@@ -27,7 +27,6 @@ const SEGMENT_COMPONENTS: SegmentComponent[] = [
         widthVariable: "--splitter-segment-name-min-width",
         heightVariable: "--splitter-segment-name-min-height",
         contentAware: {
-            width: true,
             height: true,
         },
     },
@@ -35,29 +34,24 @@ const SEGMENT_COMPONENTS: SegmentComponent[] = [
         selector: ".splitDelta",
         widthVariable: "--splitter-segment-delta-min-width",
         heightVariable: "--splitter-segment-delta-min-height",
-        contentAware: {
-            width: true,
-        },
     },
     {
         selector: ".splitComparison",
         widthVariable: "--splitter-segment-comparison-min-width",
         heightVariable: "--splitter-segment-comparison-min-height",
-        contentAware: {
-            width: true,
-        },
     },
     {
         selector: ".splitTime",
         widthVariable: "--splitter-segment-time-min-width",
         heightVariable: "--splitter-segment-time-min-height",
-        contentAware: {
-            width: true,
-        },
     },
 ];
 
-function getComponentMinimumSize(element: HTMLElement, definition: SegmentComponent): MinimumSize {
+function getComponentMinimumSize(
+    element: HTMLElement,
+    definition: SegmentComponent,
+    layout: string | undefined,
+): MinimumSize {
     if (getComputedStyle(element).position === "absolute") {
         return {
             width: 0,
@@ -65,12 +59,14 @@ function getComponentMinimumSize(element: HTMLElement, definition: SegmentCompon
         };
     }
 
-    const minimum = getEffectiveMinimumSize(
-        element,
-        definition.widthVariable,
-        definition.heightVariable,
-        definition.contentAware,
-    );
+    const contentAware =
+        definition.selector === ".segmentIcon"
+            ? definition.contentAware
+            : {
+                  ...definition.contentAware,
+                  width: layout === "horizontal",
+              };
+    const minimum = getEffectiveMinimumSize(element, definition.widthVariable, definition.heightVariable, contentAware);
 
     if (definition.selector === ".splitName") {
         const toggle = element.querySelector<HTMLElement>(".collapseToggle");
@@ -113,7 +109,7 @@ function getSegmentRowMinimumSize(row: HTMLElement, layout: string | undefined):
         .map((definition) => {
             const component = row.querySelector<HTMLElement>(definition.selector);
 
-            return component ? getComponentMinimumSize(component, definition) : null;
+            return component ? getComponentMinimumSize(component, definition, layout) : null;
         })
         .filter((size): size is MinimumSize => size !== null);
 
