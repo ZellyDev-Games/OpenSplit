@@ -47,10 +47,13 @@ const SEGMENT_COMPONENTS: SegmentComponent[] = [
     },
 ];
 
+const finalSegmentOverflowMinimumWidths = new WeakMap<HTMLElement, { signature: string; width: number }>();
+
 function getComponentMinimumSize(
     element: HTMLElement,
     definition: SegmentComponent,
     layout: string | undefined,
+    measureContentWidth = false,
 ): MinimumSize {
     if (getComputedStyle(element).position === "absolute") {
         return {
@@ -64,7 +67,7 @@ function getComponentMinimumSize(
             ? definition.contentAware
             : {
                   ...definition.contentAware,
-                  width: layout === "horizontal",
+                  width: measureContentWidth || layout === "horizontal",
               };
     const minimum = getEffectiveMinimumSize(element, definition.widthVariable, definition.heightVariable, contentAware);
 
@@ -100,7 +103,11 @@ function getComponentMinimumSize(
  *     row width  = max(component widths)
  *     row height = sum(component heights)
  */
-function getSegmentRowMinimumSize(row: HTMLElement, layout: string | undefined): MinimumSize {
+function getSegmentRowMinimumSize(
+    row: HTMLElement,
+    layout: string | undefined,
+    measureContentWidth = false,
+): MinimumSize {
     const hasSegmentIcon = row.querySelector(".segmentIcon") !== null;
 
     const components = SEGMENT_COMPONENTS.filter(
@@ -109,7 +116,7 @@ function getSegmentRowMinimumSize(row: HTMLElement, layout: string | undefined):
         .map((definition) => {
             const component = row.querySelector<HTMLElement>(definition.selector);
 
-            return component ? getComponentMinimumSize(component, definition, layout) : null;
+            return component ? getComponentMinimumSize(component, definition, layout, measureContentWidth) : null;
         })
         .filter((size): size is MinimumSize => size !== null);
 
@@ -141,7 +148,11 @@ function getSegmentRowMinimumSize(row: HTMLElement, layout: string | undefined):
  * height because the final segment contains the one visible final
  * row.
  */
-function getTbodyMinimumSize(tbody: HTMLElement, layout: string | undefined): MinimumSize {
+function getTbodyMinimumSize(
+    tbody: HTMLElement,
+    layout: string | undefined,
+    measureContentWidth = false,
+): MinimumSize {
     const rows = Array.from(tbody.querySelectorAll<HTMLElement>(":scope > tr.segmentRow, :scope > tr.parentRow"));
 
     if (rows.length === 0) {
@@ -151,7 +162,7 @@ function getTbodyMinimumSize(tbody: HTMLElement, layout: string | undefined): Mi
         };
     }
 
-    const rowSizes = rows.map((row) => getSegmentRowMinimumSize(row, layout));
+    const rowSizes = rows.map((row) => getSegmentRowMinimumSize(row, layout, measureContentWidth));
 
     return {
         width: Math.max(...rowSizes.map((size) => size.width)),
@@ -165,7 +176,11 @@ function getTbodyMinimumSize(tbody: HTMLElement, layout: string | undefined): Mi
  * The table must be large enough to contain its tbody's required
  * component dimensions.
  */
-function getTableMinimumSize(table: HTMLElement, layout: string | undefined): MinimumSize {
+function getTableMinimumSize(
+    table: HTMLElement,
+    layout: string | undefined,
+    measureContentWidth = false,
+): MinimumSize {
     const tbodies = Array.from(table.querySelectorAll<HTMLElement>(":scope > tbody"));
 
     if (tbodies.length === 0) {
@@ -175,7 +190,7 @@ function getTableMinimumSize(table: HTMLElement, layout: string | undefined): Mi
         };
     }
 
-    const tbodySizes = tbodies.map((tbody) => getTbodyMinimumSize(tbody, layout));
+    const tbodySizes = tbodies.map((tbody) => getTbodyMinimumSize(tbody, layout, measureContentWidth));
 
     return {
         width: Math.max(...tbodySizes.map((size) => size.width)),
@@ -211,10 +226,33 @@ function getFinalSegmentMinimumSize(element: HTMLElement): MinimumSize {
     const splitter = element.closest<HTMLElement>("#splitter");
     const layout = splitter?.dataset.layout;
 
-    const tableMinimum = getTableMinimumSize(table, layout);
     const padding = getBoxPadding(element);
     const border = getBoxBorder(element);
-    const minimumWidth = tableMinimum.width + padding.left + padding.right + border.left + border.right;
+    const tableBorder = getBoxBorder(table);
+    const wrapperWidth = element.getBoundingClientRect().width;
+    const renderedTableWidth = table.scrollWidth + tableBorder.left + tableBorder.right;
+    const minimumWidth = getTableMinimumSize(table, layout).width + padding.left + padding.right + border.left + border.right;
+
+    if (layout === "vertical") {
+        const signature = `${layout}:${element.textContent ?? ""}`;
+        const overflowWidth = renderedTableWidth + padding.left + padding.right + border.left + border.right;
+        const previous = finalSegmentOverflowMinimumWidths.get(element);
+        const previousWidth = previous?.signature === signature ? previous.width : 0;
+
+        if (overflowWidth > wrapperWidth + 0.5) {
+            const contentMinimum = getTableMinimumSize(table, layout, true).width;
+            const contentWidth = contentMinimum + padding.left + padding.right + border.left + border.right;
+            const width = Math.max(previousWidth, contentWidth);
+            finalSegmentOverflowMinimumWidths.set(element, { signature, width });
+        }
+
+        return {
+            width: Math.max(minimumWidth, previousWidth),
+            height: getTableMinimumSize(table, layout).height + padding.top + padding.bottom,
+        };
+    }
+
+    const tableMinimum = getTableMinimumSize(table, layout, true);
 
     return {
         width:
@@ -238,18 +276,27 @@ function setMinimumWidth(element: HTMLElement, width: number | null) {
     }
 }
 
-/** Apply effective horizontal column widths to the rows and final column. */
+/** Apply effective minimum widths to the split list and its segment columns. */
 export function updateSplitListMinimumWidths(element: HTMLElement) {
     const layout = element.closest<HTMLElement>("#splitter")?.dataset.layout;
     const rows = Array.from(element.querySelectorAll<HTMLElement>("tr.segmentRow, tr.parentRow"));
     const finalSegment = element.querySelector<HTMLElement>("#finalSegment");
 
-    if (layout !== "horizontal") {
+    if (layout === "vertical") {
         rows.forEach((row) => setMinimumWidth(row, null));
         if (finalSegment) setMinimumWidth(finalSegment, null);
+        setMinimumWidth(element, null);
         return;
     }
 
+    if (layout !== "horizontal") {
+        rows.forEach((row) => setMinimumWidth(row, null));
+        if (finalSegment) setMinimumWidth(finalSegment, null);
+        setMinimumWidth(element, null);
+        return;
+    }
+
+    setMinimumWidth(element, null);
     rows.forEach((row) => setMinimumWidth(row, getSegmentRowMinimumSize(row, layout).width));
 
     if (finalSegment) {
