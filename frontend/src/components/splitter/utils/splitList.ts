@@ -75,13 +75,18 @@ function getComponentMinimumSize(
 
     if (cell) {
         const padding = getBoxPadding(cell);
+        const border = getBoxBorder(cell);
         minimum.width = Math.max(
             minimum.width,
             getMinimum(element, definition.widthVariable) + padding.left + padding.right,
         );
+        const cellVerticalSpacing =
+            layout === "vertical"
+                ? Math.max(border.top, border.bottom)
+                : padding.top + padding.bottom;
         minimum.height = Math.max(
             minimum.height,
-            getMinimum(element, definition.heightVariable) + padding.top + padding.bottom,
+            getMinimum(element, definition.heightVariable) + cellVerticalSpacing,
         );
     }
 
