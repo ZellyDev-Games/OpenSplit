@@ -159,10 +159,10 @@
         display: flex;
         flex-direction: column;
 
-        flex: 0 0 var(--splitter-segment-row-min-width);
+        flex: 0 0 var(--splitter-effective-min-width, var(--splitter-segment-row-min-width));
 
-        width: var(--splitter-segment-row-min-width);
-        min-width: var(--splitter-segment-row-min-width);
+        width: var(--splitter-effective-min-width, var(--splitter-segment-row-min-width));
+        min-width: var(--splitter-effective-min-width, var(--splitter-segment-row-min-width));
 
         height: 100%;
         min-height: 0;
@@ -180,11 +180,20 @@
     }
 
     #splitter[data-layout="horizontal"][data-has-segment-icons="true"] #splitContainer table tr {
-        flex-basis: max(var(--splitter-segment-row-min-width), var(--splitter-segment-icon-min-width, 0px));
+        flex-basis: max(
+            var(--splitter-effective-min-width, var(--splitter-segment-row-min-width)),
+            var(--splitter-segment-icon-min-width, 0px)
+        );
 
-        width: max(var(--splitter-segment-row-min-width), var(--splitter-segment-icon-min-width, 0px));
+        width: max(
+            var(--splitter-effective-min-width, var(--splitter-segment-row-min-width)),
+            var(--splitter-segment-icon-min-width, 0px)
+        );
 
-        min-width: max(var(--splitter-segment-row-min-width), var(--splitter-segment-icon-min-width, 0px));
+        min-width: max(
+            var(--splitter-effective-min-width, var(--splitter-segment-row-min-width)),
+            var(--splitter-segment-icon-min-width, 0px)
+        );
     }
 
     /*

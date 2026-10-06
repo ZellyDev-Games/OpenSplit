@@ -52,20 +52,16 @@ func (s *Service) Startup() {
 
 // ToWorldRecord converts a speedrun.com API response into the session model.
 func (s *Service) ToWorldRecord(result WRSearchResult) session.WorldRecord {
-	if len(result.Data) == 0 {
+	if len(result.Data.Runs) == 0 {
 		return session.WorldRecord{}
 	}
 
-	if len(result.Data[0].Runs) == 0 {
-		return session.WorldRecord{}
-	}
-
-	players := make([]string, 0, len(result.Data[0].Players.Data))
-	for _, p := range result.Data[0].Players.Data {
+	players := make([]string, 0, len(result.Data.Players.Data))
+	for _, p := range result.Data.Players.Data {
 		players = append(players, p.Names.International)
 	}
 
-	run := result.Data[0].Runs[0].Run
+	run := result.Data.Runs[0].Run
 
 	return session.WorldRecord{
 		Show:       true,

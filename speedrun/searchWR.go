@@ -13,13 +13,18 @@ import (
 
 // WRSearchResult is the frontend-friendly representation of the WR search.
 type WRSearchResult struct {
-	Data []WRSearchItem `json:"data"`
+	Data WRSearchItem `json:"data"`
 }
 
 // WRSearchItem describes a speedrun.com WR.
 type WRSearchItem struct {
 	Runs    []WRSearchRuns `json:"runs"`
 	Players WRPlayerEmbed  `json:"players"`
+}
+
+type WRVariable struct {
+	ID      string
+	ValueID string
 }
 
 // WRPlayerEmbed describes a speedrun.com player array.
@@ -55,12 +60,21 @@ type WRTime struct {
 	InGame   float64 `json:"ingame_t"`
 }
 
-func (s *Service) SearchWR(categoryID string) (WRSearchResult, error) {
-	endpoint := fmt.Sprintf(
-		"%s/categories/%s/records?top=1&embed=players",
-		s.baseURL,
-		url.QueryEscape(categoryID),
-	)
+func (s *Service) SearchWR(gameID, categoryID string, variables []WRVariable) (WRSearchResult, error) {
+	u, err := url.Parse(fmt.Sprintf("%s/leaderboards/%s/category/%s", s.baseURL, url.PathEscape(gameID), url.PathEscape(categoryID)))
+	if err != nil {
+		return WRSearchResult{}, err
+	}
+	query := u.Query()
+	query.Set("top", "1")
+	query.Set("embed", "players")
+	for _, variable := range variables {
+		if variable.ID != "" && variable.ValueID != "" {
+			query.Set("var-"+variable.ID, variable.ValueID)
+		}
+	}
+	u.RawQuery = query.Encode()
+	endpoint := u.String()
 	logger.Debugf(logModule,
 		"GET %s",
 		endpoint,

@@ -20,13 +20,13 @@ export function calculateSplitterMinimumSize(element: HTMLElement): MinimumSize 
     const splitterInfo = getChild(element, "splitterInfo");
 
     const gameInfoMinimum = gameInfo ? calculateGameInfoMinimumSize(gameInfo) : { width: 0, height: 0 };
-    log.debug(gameInfoMinimum);
+    log.debug("[gameInfo Minimum] ", gameInfoMinimum);
 
     const splitListMinimum = splitList ? calculateSplitListMinimumSize(splitList) : { width: 0, height: 0 };
-    log.debug(splitListMinimum);
+    log.debug("[splitList Minimum] ", splitListMinimum);
 
     const splitterInfoMinimum = splitterInfo ? calculateSplitterInfoMinimumSize(splitterInfo) : { width: 0, height: 0 };
-    log.debug(splitterInfoMinimum);
+    log.debug("[splitterInfo Minimum] ", splitterInfoMinimum);
 
     const padding = getBoxPadding(element);
 

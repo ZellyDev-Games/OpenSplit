@@ -1,4 +1,4 @@
-import { getBoxBorder, getBoxPadding, getEffectiveMinimumSize, getGap } from "./css";
+import { getBoxBorder, getBoxPadding, getContentMinimumSize, getEffectiveMinimumSize, getGap } from "./css";
 import type { MinimumSize } from "./types";
 
 type ComponentDefinition = {
@@ -20,7 +20,11 @@ type ComponentDefinition = {
  *
  * Do not add component padding here.
  */
-function getComponentMinimum(parent: HTMLElement, definition: ComponentDefinition): MinimumSize {
+function getComponentMinimum(
+    parent: HTMLElement,
+    definition: ComponentDefinition,
+    contentAware = definition.contentAware,
+): MinimumSize {
     const element = parent.querySelector<HTMLElement>(definition.selector);
 
     if (!element) {
@@ -30,12 +34,7 @@ function getComponentMinimum(parent: HTMLElement, definition: ComponentDefinitio
         };
     }
 
-    return getEffectiveMinimumSize(
-        element,
-        definition.widthVariable,
-        definition.heightVariable,
-        definition.contentAware,
-    );
+    return getEffectiveMinimumSize(element, definition.widthVariable, definition.heightVariable, contentAware);
 }
 
 function getContainerMinimum(
@@ -68,7 +67,7 @@ const GAME_INFO_COMPONENTS: ComponentDefinition[] = [
         widthVariable: "--splitter-game-title-min-width",
         heightVariable: "--splitter-game-title-min-height",
         contentAware: {
-            // width: true,
+            width: true,
             height: true,
         },
     },
@@ -77,7 +76,7 @@ const GAME_INFO_COMPONENTS: ComponentDefinition[] = [
         widthVariable: "--splitter-game-category-min-width",
         heightVariable: "--splitter-game-category-min-height",
         contentAware: {
-            // width: true,
+            width: true,
             height: true,
         },
     },
@@ -86,7 +85,7 @@ const GAME_INFO_COMPONENTS: ComponentDefinition[] = [
         widthVariable: "--splitter-game-variable-min-width",
         heightVariable: "--splitter-game-variable-min-height",
         contentAware: {
-            // width: true,
+            width: true,
             height: true,
         },
     },
@@ -100,22 +99,49 @@ const GAME_INFO_COMPONENTS: ComponentDefinition[] = [
 export function calculateGameInfoMinimumSize(element: HTMLElement): MinimumSize {
     const layout = element.closest<HTMLElement>("#splitter")?.dataset.layout;
     const sizes = GAME_INFO_COMPONENTS.flatMap((definition) => {
+        const contentAware = {
+            ...definition.contentAware,
+            width: layout === "horizontal" && definition.contentAware?.width,
+        };
+
         if (definition.selector !== ".game-variable") {
-            return [getComponentMinimum(element, definition)];
+            return [getComponentMinimum(element, definition, contentAware)];
         }
 
         return Array.from(element.querySelectorAll<HTMLElement>(definition.selector)).map((variable) =>
-            getEffectiveMinimumSize(
-                variable,
-                definition.widthVariable,
-                definition.heightVariable,
-                definition.contentAware,
-            ),
+            getEffectiveMinimumSize(variable, definition.widthVariable, definition.heightVariable, contentAware),
         );
     });
+    const measuredComponents = GAME_INFO_COMPONENTS.flatMap((definition) =>
+        definition.selector === ".game-variable"
+            ? Array.from(element.querySelectorAll<HTMLElement>(definition.selector))
+            : [element.querySelector<HTMLElement>(definition.selector)].filter(
+                  (component): component is HTMLElement => component !== null,
+              ),
+    );
     const padding = getBoxPadding(element);
+    const style = getComputedStyle(element);
+    const isGrid = style.display === "grid" || style.display === "inline-grid";
+    const gridMinimum = isGrid ? combineGridSizes(element, measuredComponents, sizes) : null;
+    const gridBorder = isGrid ? getBoxBorder(element) : null;
+    const titleMinimum = sizes[0]?.width ?? 0;
+    const categoryMinimum = sizes[1]?.width ?? 0;
+    const attemptsMinimum = sizes[sizes.length - 1]?.width ?? 0;
+    const variableMinimum = Math.max(0, ...sizes.slice(2, -1).map((size) => size.width));
+    const gridContentWidth = Math.max(
+        titleMinimum,
+        variableMinimum,
+        categoryMinimum + attemptsMinimum + (parseFloat(style.columnGap) || 0),
+    );
 
     if (layout === "horizontal") {
+        if (isGrid && gridMinimum && gridBorder) {
+            return {
+                width: gridContentWidth + padding.left + padding.right + gridBorder.left + gridBorder.right,
+                height: gridMinimum.height + padding.top + padding.bottom,
+            };
+        }
+
         return {
             width: Math.max(0, ...sizes.map((size) => size.width)) + padding.left + padding.right,
             height: Math.max(0, ...sizes.map((size) => size.height)) + padding.top + padding.bottom,
@@ -123,14 +149,46 @@ export function calculateGameInfoMinimumSize(element: HTMLElement): MinimumSize 
     }
 
     const border = getBoxBorder(element);
-    const contentHeight = element.scrollHeight + border.top + border.bottom;
+    const measuredHeight = isGrid
+        ? combineGridSizes(element, measuredComponents, sizes).height + padding.top + padding.bottom
+        : sizes.reduce((total, size) => total + size.height, 0) + padding.top + padding.bottom;
+    const outOfFlowDescendants = Array.from(element.querySelectorAll<HTMLElement>("*"))
+        .filter((child) => {
+            const position = getComputedStyle(child).position;
+            return position === "absolute" || position === "fixed";
+        })
+        .map((child) => ({
+            child,
+            display: child.style.getPropertyValue("display"),
+            priority: child.style.getPropertyPriority("display"),
+        }));
+
+    let contentHeight: number;
+
+    try {
+        for (const { child } of outOfFlowDescendants) {
+            child.style.setProperty("display", "none", "important");
+        }
+
+        contentHeight = element.scrollHeight + border.top + border.bottom;
+    } finally {
+        for (const { child, display, priority } of outOfFlowDescendants) {
+            if (display) {
+                child.style.setProperty("display", display, priority);
+            } else {
+                child.style.removeProperty("display");
+            }
+        }
+    }
 
     return {
-        width: Math.max(0, ...sizes.map((size) => size.width)) + padding.left + padding.right,
-        height: Math.max(
-            sizes.reduce((total, size) => total + size.height, 0) + padding.top + padding.bottom,
-            contentHeight,
-        ),
+        width: isGrid
+            ? gridContentWidth + padding.left + padding.right + (gridBorder?.left ?? 0) + (gridBorder?.right ?? 0)
+            : Math.max(0, ...sizes.map((size) => size.width)) + padding.left + padding.right,
+        // Grid rows can contain multiple aligned items whose top edges differ by a
+        // fractional pixel. In that case measured row grouping can count one row
+        // twice; the rendered content height already includes the grid tracks.
+        height: isGrid ? contentHeight : Math.max(measuredHeight, contentHeight),
     };
 }
 
@@ -178,13 +236,13 @@ const TIMER_COMPONENTS: ComponentDefinition[] = [
 ];
 
 export function calculateTimeContainerMinimumSize(element: HTMLElement): MinimumSize {
-    const layout = element.closest<HTMLElement>("#splitter")?.dataset.layout;
     const definitions = TIMER_COMPONENTS.filter((definition) => {
         const component = element.querySelector<HTMLElement>(definition.selector);
         if (!component) return false;
         if (["#time-seconds", "#time-sep-sc", "#time-centis"].includes(definition.selector)) return true;
         return component.dataset.present === "1" || component.dataset.present === "true";
     });
+    const layout = element.closest<HTMLElement>("#splitter")?.dataset.layout;
     if (layout === "horizontal") {
         return getContainerMinimum(element, definitions, "row");
     }
@@ -301,7 +359,11 @@ export function calculateWorldRecordMinimumSize(element: HTMLElement): MinimumSi
     return layout === "horizontal"
         ? {
               width: Math.max(0, ...sizes.map((size) => size.width)) + padding.left + padding.right,
-              height: Math.max(0, ...sizes.map((size) => size.height)) + padding.top + padding.bottom,
+              height:
+                  sizes.reduce((total, size) => total + size.height, 0) +
+                  Math.max(0, sizes.length - 1) * getGap(element).row +
+                  padding.top +
+                  padding.bottom,
           }
         : {
               width: Math.max(0, ...sizes.map((size) => size.width)) + padding.left + padding.right,
@@ -386,6 +448,12 @@ export function calculateSplitterInfoMinimumSize(element: HTMLElement): MinimumS
 
     return {
         width: minimum.width + padding.left + padding.right,
-        height: minimum.height + padding.top + padding.bottom,
+        height:
+            layout === "vertical"
+                ? Math.max(
+                      minimum.height + padding.top + padding.bottom,
+                      getContentMinimumSize(element, { height: true }).height,
+                  )
+                : minimum.height + padding.top + padding.bottom,
     };
 }

@@ -1,1049 +1,284 @@
 # OpenSplit Skin Development Guide
 
-## Overview
+OpenSplit skins are folders of CSS files and optional assets. A skin changes the appearance of the splitter without changing application code. The current system supports CSS variables, separate appearance and override layers, vertical and horizontal splitter layouts, and a built-in skin editor with a live preview.
 
-OpenSplit uses a layered CSS architecture that separates:
+Use the working `default` and `HomeImprovement` skins in [OpenSplit-Skins](https://github.com/zellydev-games/opensplit-skins) as examples of the current format.
 
-- Application structure
-- Reusable components
-- Skin variables
-- Skin appearance
-- Final user overrides
+## How a skin loads
 
-This allows skins to completely change the appearance of OpenSplit without modifying application source code.
+Each installed skin is a directory with an `index.css` entry point:
 
-A skin should primarily control:
-
-- colors
-- fonts
-- spacing
-- borders
-- animations
-- visual effects
-
-Structural changes should be isolated to `overrides.css`.
-
----
-
-# CSS Layer Order
-
-OpenSplit defines the following CSS layer order:
-
-```css
-@layer reset, vars, components, skins, overrides;
-```
-
-Layers are applied in order.
-
-### Layer Purpose
-
-_reset_ - Browser normalization and application layout <br>
-_components_ - Core application styling <br>
-_vars_ - Skin variables <br>
-_skins_ - Visual appearance <br>
-_overrides_ - Final user overrides <br>
-
-Later layers always override earlier layers.
-
-Order:
-
-```
-reset
-  ↓
-components
-  ↓
-vars
-  ↓
-skins
-  ↓
-overrides
-```
-
-## Layer Purpose
-
-### reset
-
-Browser normalization and application requirements.
-
-Contains:
-
-- document sizing
-- default element behavior
-- Wails drag behavior
-- selection rules
-- scrollbar handling
-
----
-
-### components
-
-Application-owned component styling.
-
-Contains:
-
-- layouts
-- forms
-- buttons
-- tables
-- editor controls
-- autocomplete
-- context menus
-- splitter structure
-- timer structure
-
-Skins should avoid modifying these unless necessary.
-
----
-
-### vars
-
-Skin variables.
-
-Used for values that skins commonly customize:
-
-- colors
-- fonts
-- spacing
-- alignment
-- sizing
-
-Variables should be preferred over selector overrides.
-
----
-
-### skins
-
-Visual appearance.
-
-Used for:
-
-- colors
-- gradients
-- animations
-- typography
-- active states
-
----
-
-### overrides
-
-Final customization layer.
-
-Use for:
-
-- layout changes
-- replacing component behavior
-- unsupported customization
-
-This layer always wins.
-
----
-
-# Application Styles
-
-Application styles are owned by OpenSplit and should generally not be modified by skins.
-
-```
-styles/
+```text
+my-skin/
 ├── index.css
-├── reset.css
-├── common.css
-├── app.css
-├── forms.css
-├── autocomplete.css
-├── config.css
-├── context-menu.css
-├── editor.css
-├── splitter.css
-└── timer.css
+├── vars.css          # optional
+├── splitter.css      # optional
+├── timer.css         # optional
+├── pb.css            # optional
+├── complete.css      # optional
+├── overrides.css     # optional
+└── images/           # optional assets
 ```
 
-These provide:
-
-## reset.css
-
-Defines:
-
-- document sizing
-- Wails drag regions
-- selection behavior
-- scrollbar behavior
-
----
-
-## common.css
-
-Defines:
-
-- application fonts
-- root colors
-- buttons
-- shared containers
-- common controls
-
-Provided fonts:
-
-- Techna
-- Hack
-- Monofonto
-- Sublima
-
----
-
-## forms.css
-
-Defines:
-
-- forms
-- inputs
-- textareas
-- tables
-- datagrids
-- segment editing controls
-
----
-
-## autocomplete.css
-
-Defines:
-
-- game search autocomplete
-- dropdown lists
-- game result display
-
----
-
-## context-menu.css
-
-Defines:
-
-- right-click menus
-- menu items
-- separators
-
----
-
-## config.css
-
-Defines configuration page layout.
-
-Includes:
-
-- hotkey rows
-- action buttons
-- option containers
-
----
-
-## editor.css
-
-Defines split editor components.
-
-Includes:
-
-- variable selectors
-- variable rows
-- editor controls
-
----
-
-## splitter.css
-
-Defines split list structure.
-
-Includes:
-
-- split container
-- game information area
-- segment table
-- split columns
-
----
-
-## timer.css
-
-Defines timer structure.
-
-Includes:
-
-- timer placement
-- world record display
-- timer layout
-
----
-
-# Skin Structure
-
-A skin consists of:
-
-```
-skin/
-├── index.css
-├── vars.css
-├── splitter.css
-├── timer.css
-├── complete.css
-├── pb.css
-└── overrides.css
-```
-
-Only `index.css` is required.
-
-All other files are optional.
-
----
-
-# index.css
-
-`index.css` loads all skin components.
-
-Example:
+`index.css` is required. OpenSplit loads it after the application styles. It can import other files in the same skin using relative paths:
 
 ```css
 @import "./vars.css";
 @import "./splitter.css";
 @import "./timer.css";
-@import "./complete.css";
 @import "./pb.css";
+@import "./complete.css";
 @import "./overrides.css";
 ```
 
-Recommended order:
+Only import files that exist. You can also put all rules in `index.css`. Keep image and font URLs relative to the CSS file that references them, for example `url("./images/background.png")`.
 
-1. Variables
-2. Appearance
-3. Animations
-4. Overrides
+## Cascade layers
 
-`overrides.css` should be loaded last.
+OpenSplit declares this layer order:
 
----
+```css
+@layer reset, vars, components, skins, overrides;
+```
 
-# vars.css
+The application puts its normalization in `reset`, default values in `vars`, and component structure in `components`. Skin variables belong in `vars`; normal visual rules belong in `skins`; custom rules that need to take precedence belong in `overrides`.
 
-Variables define the customizable parts of a skin.
+```css
+/* vars.css */
+@layer vars {
+  :root {
+    --color-primary: #4f0f7f;
+    --segment-padding: 8px;
+  }
+}
+```
+
+```css
+/* splitter.css */
+@layer skins {
+  #gameInfo {
+    background: var(--color-primary);
+  }
+}
+```
+
+```css
+/* overrides.css */
+@layer overrides {
+  #gameInfo {
+    border-radius: 8px;
+  }
+}
+```
+
+The declared layer order matters: a rule in a later layer wins over a rule in an earlier layer, regardless of selector specificity. Keep structural or exceptional changes in `overrides` and ordinary theme styling in `skins`.
+
+## Layouts
+
+The splitter supports two layouts, selected with `--splitter-layout`:
+
+```css
+@layer vars {
+  :root {
+    --splitter-layout: vertical;
+  }
+}
+```
+
+- `vertical` stacks game information, the vertically scrolling segment list, and the splitter information panel (timer, comparison, and world record) from top to bottom.
+- `horizontal` places splitter information beside the segment list, with segments arranged across the available width.
+
+The user can switch the layout from the splitter context menu. The active layout is reflected by `data-layout="vertical"` or `data-layout="horizontal"` on `#splitter`. Write layout-specific rules against that attribute when a skin needs different styling in each mode. The older `--splitlist-direction` variable controls the flex direction of `#splitList`; it does not select the overall splitter layout.
+
+```css
+@layer skins {
+  #splitter[data-layout="horizontal"] .splitName {
+    text-align: center;
+  }
+}
+```
+
+The layout and segment sizing calculations use minimum widths and heights. Prefer the sizing variables below so the app can account for the skin when sizing the window. Use direct layout overrides only when a variable does not cover the change.
+
+`--splitter-gameinfo-min-width`, `--splitter-segment-row-min-width`, and `--splitter-segment-row-min-height` are aggregate values derived from the component minimums by the application. Usually, set the component variables instead of overriding these aggregate values.
+
+## Built-in skin variables
+
+Override variables in `vars.css` inside `@layer vars`. These are the principal variables used by the current splitter styles and sizing logic; application versions may add more.
+
+### Colors and shared appearance
+
+| Variable | Purpose |
+| --- | --- |
+| `--color-primary` | Theme background used for game information and the final segment by the default skin. Accepts any CSS background value, including gradients. |
+| `--active-segment-background` | Background of the selected segment row. |
+| `--active-segment-text-color` | Text color of the selected segment row. |
+| `--group-bg` | Background used for grouped segment controls. |
+| `--background`, `--surface`, `--surface-dark` | Application palette values. |
+| `--text-color`, `--muted-text`, `--border-color` | Common text and border colors. |
+| `--accent`, `--accent-color` | Common accent colors. |
+
+### Game information
+
+| Variable | Purpose |
+| --- | --- |
+| `--gameinfo-text-align` | Alignment of game information text. |
+| `--gameinfo-title-size`, `--gameinfo-title-font-weight`, `--gameinfo-title-padding`, `--gameinfo-title-line-height` | Game title typography and spacing. |
+| `--gameinfo-category-margin`, `--gameinfo-category-padding`, `--gameinfo-category-font-size`, `--gameinfo-category-font-weight`, `--gameinfo-category-line-height` | Category typography and spacing. |
+| `--splitter-game-title-min-width`, `--splitter-game-title-min-height` | Minimum size for the title. |
+| `--splitter-game-category-min-width`, `--splitter-game-category-min-height` | Minimum size for the category. |
+| `--splitter-game-variable-min-width`, `--splitter-game-variable-min-height` | Minimum size for each game variable. |
+| `--splitter-attempts-min-width`, `--splitter-attempts-min-height` | Minimum size for the attempt counter. |
+| `--splitter-game-info-padding-width` | Horizontal game information padding accounted for by the horizontal layout sizing. |
+| `--splitter-gameinfo-min-width` | Aggregate game information minimum width. Derived from title, category, variables, and attempts. |
+
+### Segments and comparisons
+
+| Variable | Purpose |
+| --- | --- |
+| `--segment-border`, `--segment-padding`, `--segment-name-width` | Segment cell border, padding, and name column width in the default skin. |
+| `--split-delta-font-family`, `--split-delta-text-align` | Delta column font and alignment. |
+| `--split-comparison-font-family`, `--split-comparison-text-align` | Comparison column font and alignment. |
+| `--splitter-segment-icon-min-width`, `--splitter-segment-icon-min-height` | Minimum size of an icon cell when segment icons are present. |
+| `--splitter-segment-name-min-width`, `--splitter-segment-name-min-height` | Minimum size of a segment name cell. |
+| `--splitter-segment-delta-min-width`, `--splitter-segment-delta-min-height` | Minimum size of a delta cell. |
+| `--splitter-segment-comparison-min-width`, `--splitter-segment-comparison-min-height` | Minimum size of a comparison cell. |
+| `--splitter-segment-time-min-width`, `--splitter-segment-time-min-height` | Minimum size of a segment time cell. |
+| `--splitter-segment-row-min-width`, `--splitter-segment-row-min-height` | Aggregate segment row minimums derived from component minimums. |
+| `--splitter-comparison-min-width`, `--splitter-comparison-min-height` | Minimum size of the comparison label. |
+
+### Timer and world record
+
+Timer component minimums use paired `-min-width` and `-min-height` variables:
+
+- `--splitter-timer-sign-*`
+- `--splitter-timer-hours-*`
+- `--splitter-timer-minutes-*`
+- `--splitter-timer-seconds-*`
+- `--splitter-timer-centis-*`
+- `--splitter-timer-separator-hours-minutes-*`
+- `--splitter-timer-separator-minutes-seconds-*`
+- `--splitter-timer-separator-seconds-centis-*`
+
+For example, `--splitter-timer-seconds-min-width` and `--splitter-timer-seconds-min-height` set the minimum size for the seconds component. Components with no displayed value are hidden and do not take part in the timer sizing calculation.
+
+World record component minimums also use paired `-min-width` and `-min-height` variables:
+
+- `--splitter-world-record-label-*`, `--splitter-world-record-names-*`
+- `--splitter-world-record-rt-label-*`, `--splitter-world-record-rt-time-*`, `--splitter-world-record-rt-centiseconds-*`
+- `--splitter-world-record-igt-label-*`, `--splitter-world-record-igt-time-*`, `--splitter-world-record-igt-centiseconds-*`
+
+The `*` stands for `min-width` and `min-height`; for example, `--splitter-world-record-rt-time-min-width`.
 
 Example:
 
 ```css
 @layer vars {
   :root {
-    --color-primary: #4f0f7f;
-
-    --segment-padding: 5px;
-
-    --split-delta-font-family: Monofonto;
+    --splitter-layout: horizontal;
+    --splitter-game-title-min-width: 150px;
+    --splitter-segment-name-min-width: 90px;
+    --splitter-segment-name-min-height: 48px;
+    --splitter-timer-seconds-min-width: 42px;
+    --splitter-timer-seconds-min-height: 60px;
   }
 }
 ```
 
----
+## Styling files and states
 
-# Available Variables
+File names are a convention, not a requirement. Splitting rules by purpose makes skins easier to maintain:
 
-## Primary Colors
+- `vars.css`: variables and preferred layout.
+- `splitter.css`: game information and segment list appearance.
+- `timer.css`: timer and timer states.
+- `pb.css`: personal best effects.
+- `complete.css`: completion effects.
+- `overrides.css`: layout or component changes that need the final layer.
 
-### --color-primary
-
-Used for:
-
-- game header
-- final segment
-- completion effects
-- PB effects
-
-Example:
+The timer uses `.timer-ahead`, `.timer-behind`, and `.timer-gold` for split times. A completed run adds `.complete` to the game information and segment list elements. A personal best adds `.pb` to those elements. They can be styled independently or in combination:
 
 ```css
-:root {
-  --color-primary: linear-gradient(to bottom, #4f0f7f, #400060);
+@layer skins {
+  .timer-ahead { color: greenyellow; }
+  .timer-behind { color: red; }
+  .timer-gold { color: gold; }
+
+  #gameInfo.complete { filter: brightness(120%); }
+  #gameInfo.pb { animation: pulse 1s infinite; }
+}
+
+@keyframes pulse {
+  50% { filter: brightness(150%); }
 }
 ```
 
----
-
-# Split List
-
-## --splitlist-direction
-
-Controls split orientation.
-
-Values:
-
-```
-column
-row
-```
-
-Example:
-
-```css
-:root {
-  --splitlist-direction: row;
-}
-```
-
----
-
-# Game Information
-
-## Variables
-
-```
---gameinfo-text-align
-
---gameinfo-title-size
---gameinfo-title-font-weight
---gameinfo-title-padding
---gameinfo-title-line-height
-
---gameinfo-category-margin
---gameinfo-category-padding
---gameinfo-category-font-size
---gameinfo-category-font-weight
---gameinfo-category-line-height
-```
-
-Example:
-
-```css
-:root {
-  --gameinfo-text-align: left;
-
-  --gameinfo-title-size: 28px;
-
-  --gameinfo-category-font-size: 16px;
-}
-```
-
----
-
-# Segment List
-
-Variables:
-
-```
---active-segment-background
---active-segment-text-color
-
---segment-border
---segment-padding
---segment-name-width
-```
-
-Example:
-
-```css
-:root {
-  --segment-padding: 12px;
-
-  --segment-border: none;
-
-  --segment-name-width: 70%;
-}
-```
-
----
-
-# Delta Column
-
-Variables:
-
-```
---split-delta-font-family
---split-delta-text-align
-```
-
-Example:
-
-```css
-:root {
-  --split-delta-font-family: Hack;
-
-  --split-delta-text-align: center;
-}
-```
-
----
-
-# Comparison Column
-
-Variables:
-
-```
---split-comparison-font-family
---split-comparison-text-align
-```
-
-Example:
-
-```css
-:root {
-  --split-comparison-text-align: left;
-}
-```
-
----
-
-# splitter.css
-
-Controls split list appearance.
-
-Example:
-
-```css
-#gameInfo {
-  background: #222;
-}
-
-.selected {
-  color: white;
-}
-```
-
-Common customizations:
-
-- game title
-- category
-- split rows
-- active segment
-- columns
-- spacing
-
----
-
-# timer.css
-
-Controls timer colors and states.
-
-Available classes:
-
-```
-.timer-ahead
-.timer-behind
-.timer-gold
-```
-
-Example:
-
-```css
-.timer-ahead {
-  color: greenyellow;
-}
-
-.timer-behind {
-  color: red;
-}
-
-.timer-gold {
-  color: gold;
-}
-```
-
----
-
-# Personal Best Animation
-
-When a personal best occurs:
-
-```
-#gameInfo
-#finalSegment
-```
-
-receive:
-
-```
-.pb
-```
-
-Example:
-
-```css
-#gameInfo.pb {
-  animation: pulse 1s infinite;
-}
-```
-
-PB effects belong in:
-
-```
-pb.css
-```
-
----
-
-# Completion Animation
-
-When a run completes:
-
-```
-#gameInfo
-#finalSegment
-```
-
-receive:
-
-```
-.complete
-```
-
-Example:
-
-```css
-#gameInfo.complete {
-  filter: brightness(120%);
-}
-```
-
-Completion effects belong in:
-
-```
-complete.css
-```
-
----
-
-# overrides.css
-
-`overrides.css` is the final stylesheet loaded.
-
-Use it for:
-
-- layout changes
-- unsupported customization
-- replacing component behavior
-
-Example:
-
-```css
-button {
-  border-radius: 20px;
-}
-
-.datagrid {
-  border: none;
-}
-```
-
----
-
-# Layout Overrides
-
-## Horizontal Split Layout
-
-```css
-:root {
-  --splitlist-direction: row;
-}
-```
-
----
-
-## Left-aligned Game Header
-
-```css
-#gameInfo {
-  text-align: left;
-}
-```
-
----
-
-## Hide Category
-
-```css
-#gameCategory {
-  display: none;
-}
-```
-
----
-
-## Move Attempt Counter
-
-```css
-#attempts {
-  left: 10px;
-  right: auto;
-}
-```
-
----
-
-## Change Segment Spacing
-
-```css
-#splitList td {
-  padding: 15px;
-}
-```
-
----
-
-# Available IDs
-
-The following IDs are intended for skins.
-
-```
-#splitter
-
-#splitList
-
-#splitContainer
-
-#gameInfo
-
-#gameTitle
-
-#gameCategory
-
-#attempts
-
-#time-container
-
+## Useful selectors
+
+The splitter's current public-facing IDs include:
+
+```text
+#splitter                 #splitterInfo
+#splitList                #splitContainer
+#finalSegment             #gameInfo
+#gameTitle                #gameCategory
+#attempts                 #time-container
+#time-sign                #time-hours
+#time-sep-hm              #time-minutes
+#time-sep-ms              #time-seconds
+#time-sep-sc              #time-centis
 #world-record
-
-#finalSegment
+#world-record-players     #world-record-real-time
+#world-record-in-game-time
 ```
 
----
+Segment classes include `.segmentRow`, `.parentRow`, `.selected`, `.segmentIcon`, `.segment-icon` (the image), `.splitName`, `.splitDelta`, `.splitComparison`, and `.splitTime`. Grouped rows also use `.parentName`, `.parentDelta`, `.parentComparison`, and `.parentTime`; expandable groups use `.collapseToggle`. The splitter has a `.comparison-mode` label and sets `data-has-segment-icons="true"` when rows contain icons. State classes include `.complete`, `.pb`, `.timer-ahead`, `.timer-behind`, and `.timer-gold`.
 
-# Available Classes
+These selectors describe the current splitter DOM. Prefer variables for values the system exposes and avoid relying on unrelated editor or internal wrapper markup, which can change between versions.
 
-## Split Components
+## Fonts and assets
 
-```
-.selected
-
-.splitName
-
-.splitDelta
-
-.splitComparison
-```
-
----
-
-## Segment Groups
-
-```
-.seg-group
-
-.seg-group-parent
-
-.seg-group-child
-
-.seg-group-bottom
-```
-
----
-
-## Timer States
-
-```
-.timer-ahead
-
-.timer-behind
-
-.timer-gold
-```
-
----
-
-## Effects
-
-```
-.pb
-
-.complete
-```
-
----
-
-## UI Components
-
-```
-.icon-btn
-
-.has-tooltip
-
-.tooltip-bubble
-
-.comparison-mode
-
-.collapseToggle
-```
-
----
-
-# Fonts
-
-OpenSplit provides:
-
-```
-Techna
-Hack
-Monofonto
-Sublima
-```
-
-Example:
+OpenSplit bundles the fonts `Techna`, `Hack`, `Monofonto`, and `Sublima`. Use a bundled font by name:
 
 ```css
-#gameTitle {
-  font-family: Sublima;
+@layer skins {
+  #gameTitle { font-family: Sublima, sans-serif; }
+  #time-container { font-family: Monofonto, monospace; }
 }
 ```
 
----
+A skin can include its own fonts and images:
 
-# Custom Fonts
-
-Skins may include custom fonts.
-
-Example:
-
+```text
+my-skin/
+├── index.css
+├── fonts/myfont.ttf
+└── images/background.png
 ```
-skin/
-├── fonts/
-│   └── myfont.ttf
-```
-
-Declare:
 
 ```css
 @font-face {
   font-family: "MyFont";
-
   src: url("./fonts/myfont.ttf") format("truetype");
 }
-```
 
-Use:
-
-```css
-#time-container {
-  font-family: MyFont;
-}
-```
-
----
-
-# Rearranging CSS Elements
-
-Skins are not limited to changing colors and fonts. Using `overrides.css`, a skin can rearrange existing application elements.
-
-This allows a skin to create different layouts while keeping the application logic unchanged.
-
-Common rearrangements include:
-
-- moving the timer above or beside the split list
-- changing the game information layout
-- placing attempts in a different location
-- changing the order of flex/grid elements
-- creating horizontal or vertical layouts
-
-Structural changes should be placed in:
-
-```
-overrides.css
-```
-
-This keeps appearance-related styles separate from layout modifications.
-
----
-
-## Example: Move Timer Above Split List
-
-The default layout places the timer within the application layout. A skin can rearrange it by changing the container layout.
-
-Example:
-
-```css
-@layer overrides {
-  #splitter {
-    flex-direction: column;
-  }
-
-  #time-container {
-    order: -1;
+@layer skins {
+  #splitList {
+    background: url("./images/background.png") center / cover no-repeat;
+    font-family: "MyFont", sans-serif;
   }
 }
 ```
 
-This moves the timer before the split list without changing application code.
+## Skin editor
 
----
+OpenSplit includes a skin editor for creating and editing installed skins. It presents the skin's CSS files and rules, supports adding CSS files and rules, and provides a splitter preview. Use the preview to check your styling in both layouts and across the available preview states. Changes can also be made directly in the skin folder; the active skin is watched and reloaded when its files change.
 
-## Example: Place Game Information Beside Splits
+## Working examples and best practices
 
-A skin can create a side-by-side layout:
-
-```css
-@layer overrides {
-  #gameInfo {
-    width: 300px;
-  }
-
-  #splitContainer {
-    flex: 1;
-  }
-}
-```
-
-This creates a layout with:
-
-```
-+-------------+----------------+
-| Game Info   | Split List     |
-|             |                |
-| Timer       | Segments       |
-+-------------+----------------+
-```
-
----
-
-When rearranging elements:
-
-- Prefer existing flex and grid containers.
-- Use documented IDs when possible.
-- Keep changes inside `overrides.css`.
-- Avoid depending on undocumented wrappers or generated DOM structure.
-
-A skin may completely change the visual arrangement of OpenSplit while leaving the application components untouched.
-
----
-
-# Best Practices
-
-## Prefer variables
-
-Good:
-
-```css
-:root {
-  --segment-padding: 10px;
-}
-```
-
-Avoid:
-
-```css
-#splitList td {
-  padding: 10px;
-}
-```
-
----
-
-## Keep visual changes in skins
-
-Good:
-
-```
-splitter.css
-timer.css
-pb.css
-complete.css
-```
-
----
-
-## Keep layout changes isolated
-
-Use:
-
-```
-overrides.css
-```
-
-for:
-
-- moving elements
-- changing structure
-- replacing layouts
-
----
-
-## Avoid internal DOM dependencies
-
-Prefer documented selectors.
-
-Avoid relying on:
-
-- generated wrappers
-- temporary elements
-- implementation details
-
----
-
-# Example Skins
-
-## Minimal Skin
-
-```
-minimal/
-├── index.css
-└── vars.css
-```
-
-index.css:
-
-```css
-@import "./vars.css";
-```
-
-vars.css:
-
-```css
-:root {
-  --color-primary: #202020;
-  --active-segment-background: #444;
-  --active-segment-text-color: white;
-}
-```
-
----
-
-## Full Skin
-
-```
-retro/
-├── index.css
-├── vars.css
-├── splitter.css
-├── timer.css
-├── pb.css
-├── complete.css
-└── overrides.css
-```
-
-A full skin can:
-
-- change colors
-- replace fonts
-- animate PBs
-- animate completions
-- change split orientation
-- redesign buttons
-- modify tables
-- restyle menus
-- customize autocomplete
-
-without changing application code.
-
----
-
-# Compatibility
-
-Future OpenSplit versions may introduce additional variables and selectors.
-
-To maximize compatibility:
-
-- prefer variables over selector overrides
-- keep overrides minimal
-- avoid undocumented DOM structure
-- isolate layout changes
-- keep appearance changes in skin files
-- keep structural changes in overrides.css
+- Start from the `default` skin for a compact baseline, or inspect `HomeImprovement` for a skin split into component stylesheets with image assets.
+- Put reusable values in `vars.css`; put ordinary appearance rules in `skins`.
+- Keep `overrides.css` for structural or exceptional rules that need to win the cascade.
+- Use `[data-layout="vertical"]` and `[data-layout="horizontal"]` for layout-specific styling.
+- Set component minimum size variables when a skin changes widths or heights so window sizing can account for those choices.
+- Prefer documented selectors and variables. If a design depends on an app structure that is not exposed, treat it as version-sensitive.

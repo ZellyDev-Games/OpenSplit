@@ -69,3 +69,14 @@
         box-sizing: border-box;
     }
 }
+
+@layer skins {
+    /* Collapse the reserved world-record row when no record is displayed. */
+    #splitter[data-layout="horizontal"] #splitterInfo:not(:has(#world-record)) #time-container {
+        grid-row: 1;
+    }
+
+    #splitter[data-layout="horizontal"] #splitterInfo:not(:has(#world-record)) .comparison-mode {
+        grid-row: 2;
+    }
+}

@@ -168,11 +168,13 @@
     #splitter[data-layout="horizontal"] #splitContainer table tbody {
         display: flex;
         flex-direction: row;
+        gap: 1px;
         width: max-content;
         min-width: 0;
         height: 100%;
         margin: 0;
         padding: 0;
+        box-sizing: border-box;
     }
 
     /*
@@ -188,13 +190,13 @@
          * The final segment occupies exactly its configured
          * minimum width. The split container gets everything else.
          */
-        flex: 0 0 max-content;
+        flex: 0 0 var(--splitter-effective-min-width, max-content);
 
         flex-direction: column;
 
-        width: max-content;
+        width: var(--splitter-effective-min-width, max-content);
 
-        min-width: max-content;
+        min-width: var(--splitter-effective-min-width, max-content);
 
         max-width: 100%;
 
@@ -206,11 +208,11 @@
     }
 
     #splitter[data-layout="horizontal"][data-has-segment-icons="true"] #finalSegment {
-        flex-basis: max-content;
+        flex-basis: var(--splitter-effective-min-width, max-content);
 
-        width: max-content;
+        width: var(--splitter-effective-min-width, max-content);
 
-        min-width: max-content;
+        min-width: var(--splitter-effective-min-width, max-content);
     }
 
     #splitter[data-layout="horizontal"] #finalSegment table {

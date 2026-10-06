@@ -15,6 +15,15 @@ export default function VariableField({ variable, value, onChange }: VariableFie
                 id={`variable-${variable.id}`}
                 value={value?.value ?? variable.default}
                 onChange={(e) => {
+                    if (e.target.value === "") {
+                        onChange({
+                            name: variable.name,
+                            value: "",
+                            label: "",
+                        });
+                        return;
+                    }
+
                     const option = variable.options.find((o) => o.id === e.target.value);
 
                     if (!option) {
@@ -28,6 +37,7 @@ export default function VariableField({ variable, value, onChange }: VariableFie
                     });
                 }}
             >
+                <option value=""></option>
                 {variable.options.map((option) => (
                     <option key={option.id} value={option.id}>
                         {option.label}
