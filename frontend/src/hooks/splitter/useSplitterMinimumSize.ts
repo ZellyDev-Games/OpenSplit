@@ -2,10 +2,7 @@ import { useEffect } from "react";
 
 import { WindowSetMinSize } from "../../../wailsjs/runtime/runtime";
 import { getMinimum } from "../../components/splitter/utils/css";
-import {
-    calculateSplitListMinimumSize,
-    updateSplitListMinimumWidths,
-} from "../../components/splitter/utils/splitList";
+import { calculateSplitListMinimumSize, updateSplitListMinimumWidths } from "../../components/splitter/utils/splitList";
 import { calculateSplitterMinimumSize } from "../../components/splitter/utils/splitter";
 import { log } from "../../utils/logger";
 

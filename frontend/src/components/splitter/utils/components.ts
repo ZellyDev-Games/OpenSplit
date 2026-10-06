@@ -34,12 +34,7 @@ function getComponentMinimum(
         };
     }
 
-    return getEffectiveMinimumSize(
-        element,
-        definition.widthVariable,
-        definition.heightVariable,
-        contentAware,
-    );
+    return getEffectiveMinimumSize(element, definition.widthVariable, definition.heightVariable, contentAware);
 }
 
 function getContainerMinimum(
@@ -114,12 +109,7 @@ export function calculateGameInfoMinimumSize(element: HTMLElement): MinimumSize 
         }
 
         return Array.from(element.querySelectorAll<HTMLElement>(definition.selector)).map((variable) =>
-            getEffectiveMinimumSize(
-                variable,
-                definition.widthVariable,
-                definition.heightVariable,
-                contentAware,
-            ),
+            getEffectiveMinimumSize(variable, definition.widthVariable, definition.heightVariable, contentAware),
         );
     });
     const measuredComponents = GAME_INFO_COMPONENTS.flatMap((definition) =>
@@ -147,12 +137,7 @@ export function calculateGameInfoMinimumSize(element: HTMLElement): MinimumSize 
     if (layout === "horizontal") {
         if (isGrid && gridMinimum && gridBorder) {
             return {
-                width:
-                    gridContentWidth +
-                    padding.left +
-                    padding.right +
-                    gridBorder.left +
-                    gridBorder.right,
+                width: gridContentWidth + padding.left + padding.right + gridBorder.left + gridBorder.right,
                 height: gridMinimum.height + padding.top + padding.bottom,
             };
         }
@@ -164,10 +149,9 @@ export function calculateGameInfoMinimumSize(element: HTMLElement): MinimumSize 
     }
 
     const border = getBoxBorder(element);
-    const measuredHeight =
-        isGrid
-            ? combineGridSizes(element, measuredComponents, sizes).height + padding.top + padding.bottom
-            : sizes.reduce((total, size) => total + size.height, 0) + padding.top + padding.bottom;
+    const measuredHeight = isGrid
+        ? combineGridSizes(element, measuredComponents, sizes).height + padding.top + padding.bottom
+        : sizes.reduce((total, size) => total + size.height, 0) + padding.top + padding.bottom;
     const outOfFlowDescendants = Array.from(element.querySelectorAll<HTMLElement>("*"))
         .filter((child) => {
             const position = getComputedStyle(child).position;

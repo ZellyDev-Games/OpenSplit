@@ -81,13 +81,8 @@ function getComponentMinimumSize(
             getMinimum(element, definition.widthVariable) + padding.left + padding.right,
         );
         const cellVerticalSpacing =
-            layout === "vertical"
-                ? Math.max(border.top, border.bottom)
-                : padding.top + padding.bottom;
-        minimum.height = Math.max(
-            minimum.height,
-            getMinimum(element, definition.heightVariable) + cellVerticalSpacing,
-        );
+            layout === "vertical" ? Math.max(border.top, border.bottom) : padding.top + padding.bottom;
+        minimum.height = Math.max(minimum.height, getMinimum(element, definition.heightVariable) + cellVerticalSpacing);
     }
 
     if (definition.selector === ".splitName") {
@@ -167,11 +162,7 @@ function getSegmentRowMinimumSize(
  * height because the final segment contains the one visible final
  * row.
  */
-function getTbodyMinimumSize(
-    tbody: HTMLElement,
-    layout: string | undefined,
-    measureContentWidth = false,
-): MinimumSize {
+function getTbodyMinimumSize(tbody: HTMLElement, layout: string | undefined, measureContentWidth = false): MinimumSize {
     const rows = Array.from(tbody.querySelectorAll<HTMLElement>(":scope > tr.segmentRow, :scope > tr.parentRow"));
 
     if (rows.length === 0) {
@@ -195,11 +186,7 @@ function getTbodyMinimumSize(
  * The table must be large enough to contain its tbody's required
  * component dimensions.
  */
-function getTableMinimumSize(
-    table: HTMLElement,
-    layout: string | undefined,
-    measureContentWidth = false,
-): MinimumSize {
+function getTableMinimumSize(table: HTMLElement, layout: string | undefined, measureContentWidth = false): MinimumSize {
     const tbodies = Array.from(table.querySelectorAll<HTMLElement>(":scope > tbody"));
 
     if (tbodies.length === 0) {
@@ -250,7 +237,8 @@ function getFinalSegmentMinimumSize(element: HTMLElement): MinimumSize {
     const tableBorder = getBoxBorder(table);
     const wrapperWidth = element.getBoundingClientRect().width;
     const renderedTableWidth = table.scrollWidth + tableBorder.left + tableBorder.right;
-    const minimumWidth = getTableMinimumSize(table, layout).width + padding.left + padding.right + border.left + border.right;
+    const minimumWidth =
+        getTableMinimumSize(table, layout).width + padding.left + padding.right + border.left + border.right;
 
     if (layout === "vertical") {
         const signature = `${layout}:${element.textContent ?? ""}`;
