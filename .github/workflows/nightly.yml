@@ -242,8 +242,9 @@ jobs:
 
                   Pick the archive that matches your WebKitGTK **runtime**:
 
-                  - Distros with WebKitGTK 4.1: use the `*-x11-webkit2_41*` build
-                  - Distros with WebKitGTK 4.0: use the `*-x11-webkit2_40*` build
+                  - Distros with X11 and WebKitGTK 4.1: use the `*-x11-webkit2_41*` build
+                  - Distros with X11 and WebKitGTK 4.0: use the `*-x11-webkit2_40*` build
+                  - Distros with wayland and WebKitGTK 4.1: use the `*-wayland-webkit2_41*` build
 
                   You can check your system with one of these one-liners:
 
@@ -251,7 +252,22 @@ jobs:
                   ```bash
                   echo "$XDG_SESSION_TYPE"
                   ```
+                  **Output:**
                   wayland or x11
+
+                  For the release archive entry to work copy or download:
+                  ```
+                  https://github.com/ZellyDev-Games/OpenSplit/blob/main/com.zellydevgames.opensplit.desktop
+                  ```
+                  The install it here:
+                  ```
+                  ~/.local/share/applications
+                  ```
+                  Make sure OpenSplit is available on PATH or update the Exec entry with the full path to the OpenSplit Executable.
+                  Eventually packages and/or an install script will be made to handle this.
+
+                  The portal **requires** a matching desktop entry for host app registration (XDG Registry docs).
+                  Older portals without the Registry method continue through the existing flow.
 
                   **Debian/Ubuntu:**
                   ```bash
