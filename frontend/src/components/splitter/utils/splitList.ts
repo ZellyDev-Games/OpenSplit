@@ -204,6 +204,19 @@ function getTableMinimumSize(table: HTMLElement, layout: string | undefined, mea
     };
 }
 
+function getOnlyVisibleFinalSegmentRow(element: HTMLElement, table: HTMLElement): HTMLElement | null {
+    const finalRows = Array.from(table.querySelectorAll<HTMLElement>(":scope > tbody > tr.segmentRow"));
+
+    if (finalRows.length !== 1) {
+        return null;
+    }
+
+    const splitContainer = element.parentElement?.querySelector<HTMLElement>("#splitContainer");
+    const otherVisibleRows = splitContainer?.querySelector(":scope > table > tbody > tr.segmentRow");
+
+    return otherVisibleRows ? null : finalRows[0];
+}
+
 /**
  * Minimum size of the final segment.
  *
@@ -241,20 +254,26 @@ function getFinalSegmentMinimumSize(element: HTMLElement): MinimumSize {
         getTableMinimumSize(table, layout).width + padding.left + padding.right + border.left + border.right;
 
     if (layout === "vertical") {
-        const signature = `${layout}:${element.textContent ?? ""}`;
-        const overflowWidth = renderedTableWidth + padding.left + padding.right + border.left + border.right;
+        const onlyFinalRow = getOnlyVisibleFinalSegmentRow(element, table);
+        const signature = `${layout}:${onlyFinalRow ? "single:" : ""}${element.textContent ?? ""}`;
+        // With no regular rows, colgroup widths can inflate the table's scrollWidth.
+        // Measure overflow from the final row's actual component cells instead.
+        const renderedContentWidth = onlyFinalRow ? onlyFinalRow.scrollWidth : renderedTableWidth;
+        const overflowWidth = renderedContentWidth + padding.left + padding.right + border.left + border.right;
         const previous = finalSegmentOverflowMinimumWidths.get(element);
         const previousWidth = previous?.signature === signature ? previous.width : 0;
+        let effectiveWidth = previousWidth;
 
         if (overflowWidth > wrapperWidth + 0.5) {
             const contentMinimum = getTableMinimumSize(table, layout, true).width;
             const contentWidth = contentMinimum + padding.left + padding.right + border.left + border.right;
             const width = Math.max(previousWidth, contentWidth);
             finalSegmentOverflowMinimumWidths.set(element, { signature, width });
+            effectiveWidth = width;
         }
 
         return {
-            width: Math.max(minimumWidth, previousWidth),
+            width: Math.max(minimumWidth, onlyFinalRow ? effectiveWidth : previousWidth),
             height: getTableMinimumSize(table, layout).height + padding.top + padding.bottom,
         };
     }
@@ -291,7 +310,15 @@ export function updateSplitListMinimumWidths(element: HTMLElement) {
 
     if (layout === "vertical") {
         rows.forEach((row) => setMinimumWidth(row, null));
-        if (finalSegment) setMinimumWidth(finalSegment, null);
+
+        const finalTable = finalSegment?.querySelector<HTMLElement>(":scope > table");
+        const onlyFinalRow =
+            finalSegment && finalTable ? getOnlyVisibleFinalSegmentRow(finalSegment, finalTable) : null;
+
+        if (finalSegment) {
+            setMinimumWidth(finalSegment, onlyFinalRow ? getFinalSegmentMinimumSize(finalSegment).width : null);
+        }
+
         setMinimumWidth(element, null);
         return;
     }
